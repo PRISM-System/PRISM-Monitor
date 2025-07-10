@@ -1,0 +1,12 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"type": "shell",
+			"label": "Run FastAPI server",
+			"command": "C:/Users/oesnu/.pyenv/pyenv-win/versions/3.11.9/python.exe -m uvicorn main:app --reload --host 0.0.0.0 --port 8000",
+			"isBackground": true,
+			"group": "build"
+		}
+	]
+}
