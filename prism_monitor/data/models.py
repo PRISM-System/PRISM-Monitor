@@ -1,128 +1,116 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Optional, List, Union
+from typing import Union, Literal
+from typing_extensions import Annotated
 
-class SensorData(BaseModel):
-    sensor_id: int
-    timestamp: str
-    value: float
-
-class Event(BaseModel):
-    event_id: int
-    description: str
-    severity: str
-    detected_at: str
-
-# Request Models
-class DashboardRequest(BaseModel):
-    field: str  # line_id or sensor_id
-    type: str   # LINE or SENSOR
-
-class StatusPendingRequest(BaseModel):
-    task_id: Optional[int]
-
-class EventOutputRequest(BaseModel):
-    result: dict
-
-class MonitoringOutputRequest(BaseModel):
-    taskId: int
-    result: dict
-
-class EventDetectRequest(BaseModel):
-    start: str
-    end: str
-
-class EventExplainRequest(BaseModel):
-    anomalyPeriods: dict
-
-class CauseCandidatesRequest(BaseModel):
-    anomalyPeriods: dict
-
-class PrecursorRequest(BaseModel):
-    lineId: int
-    sensors: List[str]
-
-class EvaluateRiskRequest(BaseModel):
-    currentTemp: int
-
-class DashboardUpdateRequest(BaseModel):
-    field: str
-    type: str
-    status: str
-    anomalyDetected: bool
-    anomalyType: Optional[str]
-    updatedAt: str
-
-# Response Models
-class DashboardResponseResult(BaseModel):
-    status: str
-    anomaly_detected: bool
-    anomaly_type: Optional[str]
-    updatedAt: str
-
+#/api/v1/task/{task_id}/monitoring/dashboard
 class DashboardResponse(BaseModel):
-    isSuccess: bool
-    code: int
-    message: str
-    result: DashboardResponseResult
+    class Result(BaseModel):
+        status: Literal["정상", "비정상"] = Field("비정상", description="Current status of the line or sensor")
+        anomaly_detected: bool = Field(True, description="Whether an anomaly has been detected")
+        anomaly_type: Literal[None,"temperature_spike", "temperature_drop", "sensor_failure"] = Field("temperature_spike", description="Type of anomaly detected")
+        updatedAt: str = Field("2023-10-01T12:00:00Z", description="Last updated timestamp in ISO 8601 format")
+    isSuccess: bool = True
+    code: int = 200
+    message: str = "대시보드 데이터 조회 성공"
+    result: Result = Result()
 
-class StatusPendingTask(BaseModel):
-    taskId: int
-    instruction: str
-    status: str
-
+#/api/v1/task/{task_id}/monitoring/status=pending
 class StatusPendingResponse(BaseModel):
-    isSuccess: bool
-    code: int
-    message: str
-    tasks: List[StatusPendingTask]
+    class Task(BaseModel):
+        taskId: int = 112
+        instruction: str = "이상 탐지 실행 중"
+        status: Literal["pending", "running", "completed"] = "pending"
+    isSuccess: bool = True
+    code: int = 200
+    message: str = "이상 탐지 실행 중"
+    tasks: List[Task] = [Task()]
 
-class EventOutputResult(BaseModel):
-    status: str
-    anomalyDetected: bool
-    description: str
+#/api/v1/monitoring/event/output
+class EventOutputRequest(BaseModel):
+    class Result(BaseModel):
+        status: Literal["complete", "failed"] = "complete"
+        anomalyDetected: bool = True
+        description: str = "라인2-5 온도 이상 감지"
+    result: Result = Result()
 
 class EventOutputResponse(BaseModel):
-    isSuccess: bool
-    code: int
-    message: str
-    result: EventOutputResult
+    isSuccess: bool = True
+    code: int = 201
+    message: str = "결과 전달 완료"
 
-class MonitoringOutputResult(BaseModel):
-    status: str
-    anomalyDetected: bool
-    description: str
+#/api/v1/task/{task_id}/monitoring/output
+class MonitoringOutputRequest(BaseModel):
+    class Result(BaseModel):
+        status: Literal["complete", "failed"] = "complete"
+        anomalyDetected: bool = True
+        description: str = "라인2-5 온도 이상 감지"
+    result: Result = Result()
 
 class MonitoringOutputResponse(BaseModel):
-    isSuccess: bool
-    code: int
-    message: str
-    taskId: int
-    result: MonitoringOutputResult
+    isSuccess: bool = True
+    code: int = 201
+    message: str = "결과 전달 완료" 
 
-class AnomalyPeriod(BaseModel):
-    from_: str
-    to: str
-    class Config:
-        fields = {'from_': 'from'}
+#/api/v1/monitoring/event/detect
+class EventDetectRequest(BaseModel):
+    start: str = Field("2023-10-01T12:00:00Z", description="Start time in ISO 8601 format")
+    end: str = Field("2023-10-01T12:30:00Z", description="End time in ISO 8601 format")
 
 class EventDetectResponse(BaseModel):
-    anomalyPeriods: List[AnomalyPeriod]
-    Value: Union[str, int]
+    class AnomalyPeriod(BaseModel):
+        start: str = Field("2023-10-01T12:00:00Z", description="Start time of the anomaly period in ISO 8601 format")
+        end: str = Field("2023-10-01T12:30:00Z", description="End time of the anomaly period in ISO 8601 format")
+    anomalyPeriods: List[AnomalyPeriod] = [AnomalyPeriod()]
+    value: Union[str, int] = "225C"
+
+
+#/api/v1/monitoring/event/explain
+class EventExplainRequest(BaseModel):
+    class AnomalyPeriod(BaseModel):
+        start: str = Field("2023-10-01T12:00:00Z", description="Start time of the anomaly period in ISO 8601 format")
+        end: str = Field("2023-10-01T12:30:00Z", description="End time of the anomaly period in ISO 8601 format")
+    anomalyPeriod: AnomalyPeriod = AnomalyPeriod()
 
 class EventExplainResponse(BaseModel):
-    explanation: str
+    explanation: str = "센서 #2, #5가 다른 센서 대비 급격히 상승 추세를 보였습니다."
+
+#/api/v1/monitoring/event/cause-candidates
+class CauseCandidatesRequest(BaseModel):
+    class AnomalyPeriod(BaseModel):
+        start: str = Field("2023-10-01T12:00:00Z", description="Start time of the anomaly period in ISO 8601 format")
+        end: str = Field("2023-10-01T12:30:00Z", description="End time of the anomaly period in ISO 8601 format")
+    anomalyPeriod: AnomalyPeriod = AnomalyPeriod()
 
 class CauseCandidatesResponse(BaseModel):
-    candidates: List[str]
+    candidates: List[str] = ["센서 #2, #5의 상승", "라인 #2의 평균 온도 상승"]
+
+#/api/v1/monitoring/event/precursor
+class PrecursorRequest(BaseModel):
+    lineId: int = 0
+    sensors: List[str] = ['#2', '#3', '#5']
 
 class PrecursorResponse(BaseModel):
-    precursor: str
+    percursor: str = "10분 후 215도 이상이 되어서 기준이 초과할 예상이 된다."
+
+#/api/v1/monitoring/event/evaluate-risk
+class EvaluateRiskRequest(BaseModel):
+    currentTemp: int = 0
 
 class EvaluateRiskResponse(BaseModel):
-    riskLevel: str
-    message: str
+    riskLevel: Literal["위험", "주의", "안전"] = "위험"
+    message: str = "법적 한계 기준 초과"
+
+#/api/v1/monitoring/dashboard/update
+class DashboardUpdateRequest(BaseModel):
+    field: Literal["line_id", "sensor_id"] = "line_id"
+    type: Literal["LINE", "SENSOR"] = "LINE"
+    status: Literal["정상", "비정상"] = "비정상"
+    anomalyDetected: bool = True
+    anomalyType: Optional[Literal["temperature_spike", "temperature_drop", "sensor_failure"]] = "temperature_spike"
+    updatedAt: str = "2023-10-01T12:00:00Z"
 
 class DashboardUpdateResponse(BaseModel):
-    isSuccess: bool
-    code: int
-    message: str
+    isSuccess: bool = True
+    code: int = 200
+    message: str = "대시보드 업데이트 완료"
