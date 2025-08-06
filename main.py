@@ -1,102 +1,185 @@
-from fastapi import FastAPI
-from typing import List, Dict, Any
-from pydantic import BaseModel
-from factory_monitoring_agent import FactoryMonitoringAgent
-import asyncio
+from fastapi import FastAPI, Query, Path
 
-app = FastAPI(title="PRISM-Monitor API", description="제조 공정 모니터링 에이전트 API", version="0.1.0")
+from prism_monitor.data.models import (
+    DashboardResponse,
+    StatusPendingResponse,
+    EventOutputRequest, EventOutputResponse,
+    MonitoringOutputRequest, MonitoringOutputResponse,
+    EventDetectRequest, EventDetectResponse,
+    EventExplainRequest, EventExplainResponse,
+    CauseCandidatesRequest, CauseCandidatesResponse,
+    PrecursorRequest, PrecursorResponse,
+    EvaluateRiskRequest, EvaluateRiskResponse,
+    DashboardUpdateRequest, DashboardUpdateResponse
+)
+from prism_monitor.modules.task import (
+    monitoring_dashboard,
+    monitoring_status_pending,
+    monitoring_output
+)
+from prism_monitor.modules.monitoring import (
+    event_output, 
+    event_detect, 
+    event_explain, 
+    event_cause_candidates,
+    event_precursor,
+    event_evaluate_risk,
+    dashboard_update
+)
+from typing import Union, Literal
 
-# 목데이터
-SENSOR_DATA = [
-    {"sensor_id": 1, "type": "temperature", "value": 180, "unit": "°C", "timestamp": "2025-07-10T10:00:00"},
-    {"sensor_id": 2, "type": "pressure", "value": 2.1, "unit": "bar", "timestamp": "2025-07-10T10:00:00"}
-]
+# FastAPI 앱 인스턴스 생성
+app = FastAPI()
 
-EVENTS = [
-    {"event_id": 101, "type": "warning", "message": "온도 임계값 초과", "timestamp": "2025-07-10T10:01:00"}
-]
+# 라우팅 예시
+@app.get("/")
+def read_root():
+    return {"message": "Hello World"}
 
-ANOMALY = {"detected": True, "score": 0.92, "description": "온도 급상승 감지"}
+@app.get(
+    "/api/v1/task/{task_id}/monitoring/dashboard",
+    response_model=DashboardResponse,
+    summary="실시간 대시보드 조회 (line or sensor)",
+    tags=["Monitoring"]
+)
+def get_dashboard_data(
+    task_id: int = Path(..., description="작업 ID"),
+    type: Literal["LINE", "SENSOR"] = Query("LINE", description="요청 타입, LINE 또는 SENSOR"),
+    field: int = Query(4, description="필터링할 필드, line_id 또는 sensor_id")
+):
+    res = monitoring_dashboard(task_id, type, field)
 
-RISK = {"level": "high", "reason": "온도 200°C 초과", "priority": 1}
+    return res
 
-class SensorData(BaseModel):
-    sensor_id: int
-    type: str
-    value: float
-    unit: str
-    timestamp: str
+#/api/v1/task/{task_id}/monitoring/status=pending
+@app.get(
+    "/api/v1/task/{task_id}/monitoring/status",
+    response_model=StatusPendingResponse,
+    summary="과업 처리 진행 상황 조회",
+    tags=["Monitoring"]
+)
+def get_task_status(
+    task_id: int = Path(..., description="작업 ID"),
+    status: Literal["pending"] = Query("pending", description="과업 상태 필터")
+):
+    res = monitoring_status_pending(task_id, status)
 
-class Event(BaseModel):
-    event_id: int
-    type: str
-    message: str
-    timestamp: str
+    return res
 
-@app.get("/status", summary="공정 상태 요약", tags=["실시간 모니터링"])
-def get_status() -> Dict[str, Any]:
-    return {"status": "RUNNING", "active_sensors": len(SENSOR_DATA), "last_event": EVENTS[-1]}
+#/api/v1/monitoring/event/output
+@app.post(
+    "/api/v1/monitoring/event/output",
+    response_model=EventOutputResponse,
+    summary="이상 발생 알림",
+    tags=["Monitoring"]
+)
+def receive_monitoring_event(body: EventOutputRequest):
+    res = event_output(
+        status=body.result.status,
+        anomaly_detected=body.result.anomalyDetected,
+        description=body.result.description
+    )
+    return res
 
-@app.get("/sensors", response_model=List[SensorData], summary="센서 데이터 조회", tags=["실시간 모니터링"])
-def get_sensors() -> List[SensorData]:
-    return SENSOR_DATA
+@app.post(
+    "/api/v1/task/{task_id}/monitoring/output",
+    response_model=MonitoringOutputResponse,
+    summary="과업지시 결과 오케스트레이션 전달",
+    tags=["Monitoring"]
+)
+def receive_monitoring_output(
+    task_id: int = Path(..., description="과업 ID"),
+    body: MonitoringOutputRequest = ...
+):
+    # 실제 로직: DB 저장, 이벤트 처리, 오케스트레이션 등
+    res = monitoring_output(
+        task_id=task_id,
+        status=body.result.status,
+        anomaly_detected=body.result.anomalyDetected,
+        description=body.result.description
+    )
 
-@app.get("/events", response_model=List[Event], summary="이벤트 목록 조회", tags=["경고/이벤트"])
-def get_events() -> List[Event]:
-    return EVENTS
+    return res
 
-@app.get("/anomaly", summary="이상 탐지 결과", tags=["이상 탐지"])
-def get_anomaly() -> Dict[str, Any]:
-    return ANOMALY
+@app.post(
+    "/api/v1/monitoring/event/detect",
+    response_model=EventDetectResponse,
+    summary="주어진 시간 구간에 이상 이벤트 탐지",
+    tags=["Monitoring"]
+)
+def detect_anomaly_in_period(body: EventDetectRequest):
+    res = event_detect(
+        start=body.start,
+        end=body.end
+    )
+    return res
 
-@app.get("/risk", summary="위험 평가 결과", tags=["위험 평가"])
-def get_risk() -> Dict[str, Any]:
-    return RISK
+@app.post(
+    "/api/v1/monitoring/event/explain",
+    response_model=EventExplainResponse,
+    summary="이상 이벤트의 원인 설명",
+    tags=["Monitoring"]
+)
+def explain_anomaly_event(body: EventExplainRequest):
+    res = event_explain(
+        anomaly_period=body.anomalyPeriod
+    )
+    return res
 
-@app.get("/monitoring/anomaly", summary="이상치 탐지", tags=["이상 탐지"])
-async def detect_anomaly(line_id: str, sensor_id: str):
-    base_url = "http://localhost:8000"
-    async with FactoryMonitoringAgent(base_url) as agent:
-        result = await agent.detect_anomaly(line_id, sensor_id)
-        return result.__dict__
+@app.post(
+    "/api/v1/monitoring/event/cause-candidates",
+    response_model=CauseCandidatesResponse,
+    summary="예측 분석을 위한 문제 원인 후보군 생성",
+    tags=["Monitoring"]
+)
+def explain_anomaly_event(body: CauseCandidatesRequest):
+    res = event_cause_candidates(
+        anomaly_period=body.anomalyPeriod
+    )
+    return res
 
-@app.get("/monitoring/explanation", summary="이상치 원인 설명", tags=["이상 탐지"])
-async def explain_anomaly(task_id: int, line_id: str, sensor_id: str):
-    base_url = "http://localhost:8000"
-    anomaly_data = {"line_id": line_id, "sensor_id": sensor_id}
-    async with FactoryMonitoringAgent(base_url) as agent:
-        result = await agent.explain_anomaly(task_id, anomaly_data)
-        return result.__dict__
+@app.post(
+    "/api/v1/monitoring/event/precursor",
+    response_model=PrecursorResponse,
+    summary="현재 상태로부터 향후 이상징후 예측",
+    tags=["Monitoring"]
+)
+def explain_anomaly_event(body: PrecursorRequest):
+    res = event_precursor(
+        line_id=body.lineId,
+        sensors=body.sensors
+    )
+    return res
 
-@app.get("/monitoring/cause_candidates", summary="원인 후보군 생성", tags=["이상 탐지"])
-async def generate_cause_candidates(task_id: int, line_id: str, sensor_id: str):
-    base_url = "http://localhost:8000"
-    anomaly_data = {"line_id": line_id, "sensor_id": sensor_id}
-    async with FactoryMonitoringAgent(base_url) as agent:
-        result = await agent.generate_cause_candidates(task_id, anomaly_data)
-        return result.__dict__
+@app.post(
+    "/api/v1/monitoring/event/evaluate-risk",
+    response_model=EvaluateRiskResponse,
+    summary="현재 상태를 기준으로 위험 여부 평가",
+    tags=["Monitoring"]
+)
+def explain_anomaly_event(body: EvaluateRiskRequest):
+    res = event_evaluate_risk(
+        current_temp=body.currentTemp
+    )
+    return res
 
-@app.get("/monitoring/precursor", summary="이상징후 예측", tags=["이상 탐지"])
-async def predict_precursor(task_id: int, line_id: str, sensor_id: str):
-    base_url = "http://localhost:8000"
-    anomaly_data = {"line_id": line_id, "sensor_id": sensor_id}
-    async with FactoryMonitoringAgent(base_url) as agent:
-        result = await agent.predict_precursor(task_id, anomaly_data)
-        return result.__dict__
+@app.post(
+    "/api/v1/monitoring/dashboard/update",
+    response_model=DashboardUpdateResponse,
+    summary="대시보드 업데이트",
+    tags=["Monitoring"]
+)
+def update_dashboard(body: DashboardUpdateRequest):
+    res = dashboard_update(
+        field=body.field,
+        type=body.type,
+        status=body.status,
+        anomaly_detected=body.anomalyDetected,
+        anomaly_type=body.anomalyType,
+        updated_at=body.updatedAt,
+    )
+    return res
 
-@app.get("/monitoring/risk_evaluation", summary="위험도 평가", tags=["위험 평가"])
-async def evaluate_risk(task_id: int, line_id: str, sensor_id: str):
-    base_url = "http://localhost:8000"
-    anomaly_data = {"line_id": line_id, "sensor_id": sensor_id}
-    async with FactoryMonitoringAgent(base_url) as agent:
-        result = await agent.evaluate_risk(task_id, anomaly_data)
-        return result.__dict__
-
-@app.get("/monitoring/full_cycle", summary="전체 모니터링 사이클 실행", tags=["실시간 모니터링"])
-async def run_full_monitoring_cycle(task_id: str = "112", line_id: str = "LINE_01", sensor_id: str = "TEMP_SENSOR_01"):
-    base_url = "http://localhost:8000"
-    async with FactoryMonitoringAgent(base_url) as agent:
-        result = await agent.run_full_monitoring_cycle(task_id, line_id, sensor_id)
-        return result
-
-# uvicorn main:app --reload
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
