@@ -32,7 +32,7 @@
 
 ## 3. 실행 방법
 
-### 1) 환경설치
+### 1) 환경설치(optional)
 ```bash
 pipenv install
 pipenv shell
