@@ -48,7 +48,7 @@ def read_root():
     return {"message": "Hello World"}
 
 @app.get(
-    "/api/v1/task/{task_id}/monitoring/dashboard",
+    "/api/v1/task/{task_id}/monitoring/dashboard", 
     response_model=DashboardResponse,
     summary="실시간 대시보드 조회 (line or sensor)",
     tags=["Monitoring"]
