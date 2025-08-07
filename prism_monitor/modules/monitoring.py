@@ -1,4 +1,4 @@
-
+import pandas as pd
 
 def event_output(status="complete", anomaly_detected=True, description="라인2-5 온도 이상 감지"):
     res = {

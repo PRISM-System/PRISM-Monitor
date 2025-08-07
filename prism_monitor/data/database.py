@@ -1,20 +1,30 @@
-from typing import List
-from .models import SensorData, Event
+import sqlite3
 
-# Dummy in-memory database
-sensor_data_db: List[SensorData] = []
-event_db: List[Event] = []
+class Database:
+    def __init__(self, db_path):
+        self.db_path = db_path
+        self.conn = None
+        self.cursor = None
 
-# Functions to interact with the database
+    def connect(self):
+        self.conn = sqlite3.connect(self.db_path)
+        self.cursor = self.conn.cursor()
 
-def add_sensor_data(data: SensorData):
-    sensor_data_db.append(data)
+    def execute(self, query, params=None):
+        if params is None:
+            params = ()
+        self.cursor.execute(query, params)
+        self.conn.commit()
+        return self.cursor
 
-def get_sensor_data() -> List[SensorData]:
-    return sensor_data_db
+    def fetchall(self):
+        return self.cursor.fetchall()
 
-def add_event(event: Event):
-    event_db.append(event)
+    def fetchone(self):
+        return self.cursor.fetchone()
 
-def get_events() -> List[Event]:
-    return event_db
+    def close(self):
+        if self.cursor:
+            self.cursor.close()
+        if self.conn:
+            self.conn.close()
