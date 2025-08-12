@@ -32,10 +32,20 @@
 
 ## 3. 실행 방법
 
-### 1) 환경설치(optional)
+### 환경설치(pip) # pip와 pipenv 둘중 하나만 하면 됩니다.
+```bash
+pip install -r requirements.txt
+```
+
+### 환경설치(pipenv)
 ```bash
 pipenv install
 pipenv shell
+```
+
+### 1) llm 서버 실행
+```bash
+./run_llm_server.sh
 ```
 
 ### 2) 서버 실행

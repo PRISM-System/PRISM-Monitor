@@ -1,6 +1,10 @@
 import logging
-from fastapi import FastAPI, Query, Path
+import sqlite3
 
+from fastapi import FastAPI, Query, Path
+from typing import Union, Literal
+
+from database import generate_temp_database
 from prism_monitor.data.models import (
     DashboardResponse,
     StatusPendingResponse,
@@ -27,8 +31,11 @@ from prism_monitor.modules.monitoring import (
     event_evaluate_risk,
     dashboard_update
 )
-from typing import Union, Literal
 
+DATABASE_PATH="my_database.db"
+LOCAL_FILE_DIR='prism_monitor/data/local'
+conn = sqlite3.connect(DATABASE_PATH)
+generate_temp_database(DATABASE_PATH, LOCAL_FILE_DIR)
 
 # Logger 설정
 logger = logging.getLogger("prism_monitor")

@@ -8,6 +8,8 @@ fastapi = "*"
 uvicorn = "*"
 pydantic = "*"
 pandas = "*"
+vllm = "*"
+openai = "*"
 
 [dev-packages]
 
