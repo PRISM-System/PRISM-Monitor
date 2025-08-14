@@ -98,8 +98,15 @@ class EvaluateRiskRequest(BaseModel):
     currentTemp: int = 0
 
 class EvaluateRiskResponse(BaseModel):
-    riskLevel: Literal["위험", "주의", "안전"] = "위험"
-    message: str = "법적 한계 기준 초과"
+    totalCandidates: int
+    passedCandidates: int
+    failedCandidates: int
+    riskLevel: Literal["HIGH", "LOW", "MEDIUM"]
+    complianceStatus: bool
+    class recommendedAction(BaseModel):
+        actionName: str
+        TotalScore: float
+    recommendedActions: List[recommendedAction]
 
 #/api/v1/monitoring/dashboard/update
 class DashboardUpdateRequest(BaseModel):

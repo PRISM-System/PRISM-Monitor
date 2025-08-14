@@ -47,10 +47,23 @@ def event_precursor(line_id: int, sensors: list[str]):
 
 def event_evaluate_risk(current_temp):
     # 실제 위험 평가 로직 대신 더미 응답 제공
-    return {
-        "riskLevel": "위험",
-        "message": "법적 한계 기준 초과"
+    from prism_monitor.modules.evaluate_risk.evaluate_risk import evaluate_risk
+    evaluated = evaluate_risk()
+    result = {
+        'totalCandidates': evaluated['total_candidates'],
+        'passedCandidates': evaluated['passed_candidates'],
+        'failedCandidates': evaluated['failed_candidates'],
+        'riskLevel': evaluated['risk_level'],
+        'complianceStatus':evaluated['compliance_status']
     }
+    recommended_actions = []
+    for recommended_action in evaluated.get('recommended_actions',[]):
+        recommended_actions.append({
+            'actionName': recommended_action['action_name'],
+            'totalScore': recommended_action['total_score']/50
+        })
+    result['recommendedActions'] = recommended_actions
+    return result
 
 def dashboard_update(field: str = "line_id", type: str = "LINE", status: str = "비정상", anomaly_detected: bool = True, anomaly_type: str = "temperature_spike", updated_at: str = "2025-07-17T12:01:03Z"):
     return {
