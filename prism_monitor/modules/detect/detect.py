@@ -248,7 +248,7 @@ class RangeBasedAnomalyDetector:
         # 요약 정보 생성
         for param in self.normal_ranges.keys():
             param_anomalies = [detail for detail in anomaly_details 
-                              if param in detail['anomalous_parameters']]
+                            if param in detail['anomalous_parameters']]
             summary[param] = {
                 'anomaly_count': len(param_anomalies),
                 'percentage': (len(param_anomalies) / len(df)) * 100 if len(df) > 0 else 0
@@ -317,7 +317,7 @@ class RangeBasedAnomalyDetector:
     def visualize_anomalies(self, summary, equipment_analysis=None, save_plot=True):
         """이상치 시각화"""
         param_counts = {param: info['anomaly_count'] for param, info in summary.items() 
-                       if info['anomaly_count'] > 0}
+                    if info['anomaly_count'] > 0}
         
         if not param_counts:
             print("시각화할 이상치가 없습니다.")

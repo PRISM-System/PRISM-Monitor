@@ -1,19 +1,32 @@
 import json
 
-from _data_load import (
+# from _data_load import (
+#     load_and_explore_data,
+#     create_unified_dataset_2,
+#     prepare_features
+# )
+
+from prism_monitor.modules.risk_assessment._data_load import (
     load_and_explore_data,
     create_unified_dataset_2,
     prepare_features
 )
 
-from _assessment import (
+# from _assessment import (
+#     evaluate_event_risk,
+#     evaluate_prediction_risk
+# )
+
+from prism_monitor.modules.risk_assessment._assessment import (
     evaluate_event_risk,
     evaluate_prediction_risk
 )
 
+
 def main():
     # 데이터 로드
     data_base_path = '../../data/Industrial_DB_sample/'
+    # data_base_path = '/home/jonghak/agi/PRISM-Monitor/prism_monitor/data/Industrial_DB_sample/'
     datasets = load_and_explore_data(data_base_path)
     
     # 통합 데이터셋 생성
