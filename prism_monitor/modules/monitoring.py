@@ -3,6 +3,7 @@ import pandas as pd
 
 from prism_monitor.data.database import PrismCoreDataBase
 from prism_monitor.modules.event.event_detect import detect_anomalies_in_timerange
+from prism_monitor.modules.event_precursor.precursor import precursor
 
 def event_output(status="complete", anomaly_detected=True, description="라인2-5 온도 이상 감지"):
     res = {
@@ -41,10 +42,11 @@ def event_cause_candidates(anomaly_period: dict):
         "causeCandidates": cause_candidates(data)
     }
 
-def event_precursor(line_id: int, sensors: list[str]):
-    # 실제 예측 분석 로직 대신 더미 응답 제공
-    from prism_monitor.modules.event_precursor.precursor import precurse
-    return precurse()
+def event_precursor(prism_core_db: PrismCoreDataBase):
+    datasets = {}
+    for table_name in prism_core_db.get_tables():
+        datasets[table_name] = prism_core_db.get_table_data(table_name)
+    return precursor(datasets)
 
 
 def event_evaluate_risk(current_temp):

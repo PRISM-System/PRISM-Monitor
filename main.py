@@ -175,8 +175,7 @@ def explain_anomaly_event(body: CauseCandidatesRequest):
 def explain_anomaly_event(body: PrecursorRequest):
     logger.info(f"Precursor requested: lineId={body.lineId}, sensors={body.sensors}")
     res = event_precursor(
-        line_id=body.lineId,
-        sensors=body.sensors
+        prism_core_db=prism_core_db
     )
     return res
 

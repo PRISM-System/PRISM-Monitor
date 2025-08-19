@@ -92,7 +92,6 @@ class PrecursorRequest(BaseModel):
 
 class PrecursorResponse(BaseModel):
     class Summary(BaseModel):
-        test_loss: float = 0.0
         predicted_value: float = 0.0
         is_anomaly: bool = False
     summary: Summary = Summary()

@@ -1,26 +1,26 @@
-# from prism_monitor.modules.event_precursor._precursor import (
-#     load_and_explore_data,
-#     create_unified_dataset,
-#     prepare_features
-# )
-
-# from prism_monitor.modules.event_precursor._precursor import (
-#     run_single_output_scenario,
-#     run_real_time_monitoring_scenario,
-#     run_multi_output_scenario
-# )
-
-from _precursor import (
+from prism_monitor.modules.event_precursor._precursor import (
     load_and_explore_data,
     create_unified_dataset,
     prepare_features
 )
 
-from _precursor import (
+from prism_monitor.modules.event_precursor._precursor import (
     run_single_output_scenario,
     run_real_time_monitoring_scenario,
     run_multi_output_scenario
 )
+
+# from _precursor import (
+#     load_and_explore_data,
+#     create_unified_dataset,
+#     prepare_features
+# )
+
+# from _precursor import (
+#     run_single_output_scenario,
+#     run_real_time_monitoring_scenario,
+#     run_multi_output_scenario
+# )
 
 from sklearn.model_selection import train_test_split
 
@@ -67,5 +67,19 @@ def main():
         }
     }
 
+def precursor(datasets):
+    unified_df = create_unified_dataset(datasets)
+    processed_df, feature_cols, scaler = prepare_features(unified_df)
+    train_val_df, test_df = train_test_split(processed_df, test_size=0.1, shuffle=False)
+    train_df, val_df = train_test_split(train_val_df, test_size=0.1, shuffle=False)
+    trained_model, model_scaler = run_single_output_scenario(train_df, val_df, test_df, feature_cols, scaler)
+    pred_value = run_multi_output_scenario(train_df, val_df, test_df, feature_cols)
+    anomaly_status = run_real_time_monitoring_scenario(trained_model, model_scaler, feature_cols, test_df)
+    return {
+        'summary': {
+            'predicted_value': pred_value,
+            'is_anomaly': anomaly_status
+        }
+    }
 if __name__ == "__main__":
     main()

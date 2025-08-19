@@ -17,16 +17,16 @@ import time
 def load_and_explore_data(data_base_path):
     print("Data Loading...")
     data_files = {
-        'lot_manage': 'SEMI_LOT_MANAGE.csv',
-        'process_history': 'SEMI_PROCESS_HISTORY.csv', 
-        'param_measure': 'SEMI_PARAM_MEASURE.csv',
-        'equipment_sensor': 'SEMI_EQUIPMENT_SENSOR.csv',
-        'alert_config': 'SEMI_SENSOR_ALERT_CONFIG.csv',
-        'photo_sensors': 'SEMI_PHOTO_SENSORS.csv',
-        'etch_sensors': 'SEMI_ETCH_SENSORS.csv',
-        'cvd_sensors': 'SEMI_CVD_SENSORS.csv',
-        'implant_sensors': 'SEMI_IMPLANT_SENSORS.csv',
-        'cmp_sensors': 'SEMI_CMP_SENSORS.csv'
+        'semi_lot_manage': 'SEMI_LOT_MANAGE.csv',
+        'semi_process_history': 'SEMI_PROCESS_HISTORY.csv', 
+        'semi_param_measure': 'SEMI_PARAM_MEASURE.csv',
+        'semi_equipment_sensor': 'SEMI_EQUIPMENT_SENSOR.csv',
+        'semi_alert_config': 'SEMI_SENSOR_ALERT_CONFIG.csv',
+        'semi_photo_sensors': 'SEMI_PHOTO_SENSORS.csv',
+        'semi_etch_sensors': 'SEMI_ETCH_SENSORS.csv',
+        'semi_cvd_sensors': 'SEMI_CVD_SENSORS.csv',
+        'semi_implant_sensors': 'SEMI_IMPLANT_SENSORS.csv',
+        'semi_cmp_sensors': 'SEMI_CMP_SENSORS.csv'
     }
     
     datasets = {}
@@ -48,29 +48,29 @@ def load_and_explore_data(data_base_path):
 def integrate_sensor_data(datasets):
     print("Integrating sensor data...")
     
-    sensor_tables = ['photo_sensors', 'etch_sensors', 'cvd_sensors', 
-                    'implant_sensors', 'cmp_sensors']
+    sensor_tables = ['semi_photo_sensors', 'semi_etch_sensors', 'semi_cvd_sensors', 
+                    'semi_implant_sensors', 'semi_cmp_sensors']
     
     integrated_sensors = []
     
     for table_name in sensor_tables:
         if table_name in datasets:
             df = datasets[table_name].copy()
-            common_cols = ['PNO', 'EQUIPMENT_ID', 'LOT_NO', 'TIMESTAMP']
+            common_cols = ['pno', 'equipment_id', 'lot_no', 'timestamp']
             available_common = [col for col in common_cols if col in df.columns]
             
             if available_common:
                 numeric_cols = df.select_dtypes(include=[np.number]).columns.tolist()
-                sensor_cols = [col for col in numeric_cols if col != 'PNO']
+                sensor_cols = [col for col in numeric_cols if col != 'pno']
                 
-                df['SENSOR_TABLE'] = table_name.replace('_sensors', '').upper()
+                df['sensor_table'] = table_name.replace('_sensors', '')
                 
                 if sensor_cols:
                     df_long = df.melt(
-                        id_vars=available_common + ['SENSOR_TABLE'],
+                        id_vars=available_common + ['sensor_table'],
                         value_vars=sensor_cols,
-                        var_name='SENSOR_TYPE',
-                        value_name='SENSOR_VALUE'
+                        var_name='sensor_type',
+                        value_name='sensor_value'
                     )
                     integrated_sensors.append(df_long)
                     print(f"  - {table_name}: Sensor count: {len(sensor_cols)}, Record count: {len(df)}")
@@ -87,20 +87,20 @@ def create_unified_dataset(datasets):
     
     integrated_sensors = integrate_sensor_data(datasets)
     
-    if 'lot_manage' in datasets:
-        main_df = datasets['lot_manage'].copy()
+    if 'semi_lot_manage' in datasets:
+        main_df = datasets['semi_lot_manage'].copy()
         print(f"LOT data count: {len(main_df)} LOT")
     else:
         return pd.DataFrame()
     
-    if not integrated_sensors.empty and 'LOT_NO' in integrated_sensors.columns:
-        sensor_stats = integrated_sensors.groupby(['LOT_NO', 'SENSOR_TYPE'])['SENSOR_VALUE'].agg([
+    if not integrated_sensors.empty and 'lot_no' in integrated_sensors.columns:
+        sensor_stats = integrated_sensors.groupby(['lot_no', 'sensor_type'])['sensor_value'].agg([
             'mean', 'std', 'min', 'max', 'count'
         ]).reset_index()
         
         sensor_features = sensor_stats.pivot_table(
-            index='LOT_NO',
-            columns='SENSOR_TYPE',
+            index='lot_no',
+            columns='sensor_type',
             values=['mean', 'std', 'min', 'max'],
             fill_value=0
         )
@@ -108,34 +108,34 @@ def create_unified_dataset(datasets):
         sensor_features.columns = [f"{stat}_{sensor}" for stat, sensor in sensor_features.columns]
         sensor_features = sensor_features.reset_index()
         
-        main_df = main_df.merge(sensor_features, on='LOT_NO', how='left')
+        main_df = main_df.merge(sensor_features, on='lot_no', how='left')
         print(f"센서 특성 추가 완료: {sensor_features.shape[1]-1}개 특성")
     
     if 'process_history' in datasets:
         process_df = datasets['process_history']
-        if 'LOT_NO' in process_df.columns:
-            process_stats = process_df.groupby('LOT_NO').agg({
-                'IN_QTY': ['mean', 'sum'],
-                'OUT_QTY': ['mean', 'sum'],
+        if 'lot_no' in process_df.columns:
+            process_stats = process_df.groupby('lot_no').agg({
+                'in_qty': ['mean', 'sum'],
+                'out_qty': ['mean', 'sum'],
             }).reset_index()
             
             process_stats.columns = [f"process_{col[0]}_{col[1]}" if col[1] else col[0] 
                                         for col in process_stats.columns]
-            process_stats.columns = [col.replace('process_LOT_NO_', 'LOT_NO') for col in process_stats.columns]
+            process_stats.columns = [col.replace('process_lot_no_', 'lot_no') for col in process_stats.columns]
             
-            main_df = main_df.merge(process_stats, on='LOT_NO', how='left')
+            main_df = main_df.merge(process_stats, on='lot_no', how='left')
     
     if 'param_measure' in datasets:
         param_df = datasets['param_measure']
-        if 'LOT_NO' in param_df.columns:
-            param_stats = param_df.groupby('LOT_NO')['MEASURED_VAL'].agg([
+        if 'lot_no' in param_df.columns:
+            param_stats = param_df.groupby('LOT_NO')['measured_val'].agg([
                 'mean', 'std', 'min', 'max'
             ]).reset_index()
             
-            param_stats.columns = [f"param_{col}" if col != 'LOT_NO' else col 
+            param_stats.columns = [f"param_{col}" if col != 'lot_no' else col 
                                         for col in param_stats.columns]
             
-            main_df = main_df.merge(param_stats, on='LOT_NO', how='left')
+            main_df = main_df.merge(param_stats, on='lot_no', how='left')
     
     print(f"최종 통합 데이터셋: {main_df.shape}")
     return main_df
@@ -144,18 +144,18 @@ def prepare_features(df):
     print("Preparing features and preprocessing...")
     
     numeric_cols = df.select_dtypes(include=[np.number]).columns.tolist()
-    exclude_cols = ['PNO']
-    if 'FINAL_YIELD' in numeric_cols:
-        exclude_cols.append('FINAL_YIELD')
+    exclude_cols = ['pno']
+    if 'final_yield' in numeric_cols:
+        exclude_cols.append('final_yield')
     
     feature_cols = [col for col in numeric_cols if col not in exclude_cols]
     
     df_processed = df.copy()
     df_processed[feature_cols] = df_processed[feature_cols].fillna(0)
     
-    if 'FINAL_YIELD' in df.columns:
-        yield_threshold = df['FINAL_YIELD'].quantile(0.1)
-        df_processed['is_anomaly'] = df_processed['FINAL_YIELD'] < yield_threshold
+    if 'final_yield' in df.columns:
+        yield_threshold = df['final_yield'].quantile(0.1)
+        df_processed['is_anomaly'] = df_processed['final_yield'] < yield_threshold
     else:
         feature_data = df_processed[feature_cols]
         z_scores = np.abs((feature_data - feature_data.mean()) / feature_data.std()).mean(axis=1)
@@ -408,7 +408,7 @@ def generate_alerts(anomaly_probs, lot_numbers=None, # feature_names
     alerts = []
     
     for i, prob in enumerate(anomaly_probs):
-        lot_no = lot_numbers[i] if lot_numbers else f"LOT_{i:04d}"
+        lot_no = lot_numbers[i] if lot_numbers else f"lot_{i:04d}"
         
         if prob >= alert_threshold:
             alert_level = "CRITICAL"
@@ -503,13 +503,13 @@ def run_single_output_scenario(train_df, val_df, test_df, feature_cols, scaler):
     model = create_lstm_model(input_size=input_size)
     
     # 테스트를 위해 낮은 epoch 설정
-    trained_model, _, _ = train_lstm_model(model, X_train, y_train, X_val, y_val, epochs=20)
+    trained_model, _, _ = train_lstm_model(model, X_train, y_train, X_val, y_val, epochs=10)
 
     print("\n 테스트 데이터 예측 및 경고 생성")
     probs, labels = predict_future_anomalies(trained_model, X_test)
 
     test_indices = test_df.index[SEQ_LENGTH : len(probs) + SEQ_LENGTH]
-    lot_numbers = test_df.loc[test_indices, 'LOT_NO'].tolist() if 'LOT_NO' in test_df else None
+    lot_numbers = test_df.loc[test_indices, 'lot_no'].tolist() if 'lot_no' in test_df else None
 
     alerts = generate_alerts(probs, lot_numbers=lot_numbers)
     
