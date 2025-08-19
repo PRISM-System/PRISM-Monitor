@@ -91,7 +91,11 @@ class PrecursorRequest(BaseModel):
     sensors: List[str] = ['#2', '#3', '#5']
 
 class PrecursorResponse(BaseModel):
-    percursor: str = "10분 후 215도 이상이 되어서 기준이 초과할 예상이 된다."
+    class Summary(BaseModel):
+        test_loss: float = 0.0
+        predicted_value: float = 0.0
+        is_anomaly: bool = False
+    summary: Summary = Summary()
 
 #/api/v1/monitoring/event/evaluate-risk
 class EvaluateRiskRequest(BaseModel):

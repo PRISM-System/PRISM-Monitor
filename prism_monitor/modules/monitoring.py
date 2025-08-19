@@ -1,5 +1,6 @@
 import pandas as pd
 
+
 def event_output(status="complete", anomaly_detected=True, description="라인2-5 온도 이상 감지"):
     res = {
         "isSuccess": True,
@@ -12,7 +13,7 @@ def event_output(status="complete", anomaly_detected=True, description="라인2-
 def event_detect(start: str, end: str):
     from prism_monitor.modules.detect.detect import detect
     return detect()
-     
+
 def event_explain(anomaly_period: dict):
     # 실제 설명 분석 로직 대신 더미 응답 제공
     from prism_monitor.modules.explanation.explanation import explain
@@ -30,9 +31,9 @@ def event_cause_candidates(anomaly_period: dict):
 
 def event_precursor(line_id: int, sensors: list[str]):
     # 실제 예측 분석 로직 대신 더미 응답 제공
-    return {
-        "percursor": "10분 후 215도 이상이 되어서 기준이 초과할 예상이 된다."
-    }
+    from prism_monitor.modules.event_precursor.precursor import precurse
+    return precurse()
+
 
 def event_evaluate_risk(current_temp):
     # 실제 위험 평가 로직 대신 더미 응답 제공
