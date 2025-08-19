@@ -60,27 +60,21 @@ class EventDetectRequest(BaseModel):
 class EventDetectResponse(BaseModel):
     class Result(BaseModel):
         status: Literal["complete", "failed"] = "complete"
-        anomalyDetected: bool = True
+        anomalies: bool = True
         description: str = "SEMI_PHOTO_SENSORS 이상치 탐지"
     result: Result = Result()
 
 
 #/api/v1/monitoring/event/explain
 class EventExplainRequest(BaseModel):
-    class AnomalyPeriod(BaseModel):
-        start: str = Field("2023-10-01T12:00:00Z", description="Start time of the anomaly period in ISO 8601 format")
-        end: str = Field("2023-10-01T12:30:00Z", description="End time of the anomaly period in ISO 8601 format")
-    anomalyPeriod: AnomalyPeriod = AnomalyPeriod()
+    eventDetectDesc: str ='{"LOT_NO":"LOT30012A","PRODUCT_NAME":"DRAM_512","START_QTY":25,"CURRENT_STEP":"PHOTO","FINAL_YIELD":75.0,"EXPOSURE_DOSE":45.0,"FOCUS_POSITION":80.0,"STAGE_TEMP":23.4,"HUMIDITY":60.0}'
 
 class EventExplainResponse(BaseModel):
     explain: str
 
 #/api/v1/monitoring/event/cause-candidates
 class CauseCandidatesRequest(BaseModel):
-    class AnomalyPeriod(BaseModel):
-        start: str = Field("2023-10-01T12:00:00Z", description="Start time of the anomaly period in ISO 8601 format")
-        end: str = Field("2023-10-01T12:30:00Z", description="End time of the anomaly period in ISO 8601 format")
-    anomalyPeriod: AnomalyPeriod = AnomalyPeriod()
+    eventDetectDesc: str = '{"LOT_NO":"LOT30012A","PRODUCT_NAME":"DRAM_512","START_QTY":25,"CURRENT_STEP":"PHOTO","FINAL_YIELD":75.0,"EXPOSURE_DOSE":45.0,"FOCUS_POSITION":80.0,"STAGE_TEMP":23.4,"HUMIDITY":60.0}'
 
 class CauseCandidatesResponse(BaseModel):
     causeCandidates: str
@@ -92,7 +86,6 @@ class PrecursorRequest(BaseModel):
 
 class PrecursorResponse(BaseModel):
     class Summary(BaseModel):
-        test_loss: float = 0.0
         predicted_value: float = 0.0
         is_anomaly: bool = False
     summary: Summary = Summary()

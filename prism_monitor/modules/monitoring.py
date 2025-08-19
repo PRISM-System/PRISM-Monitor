@@ -1,7 +1,15 @@
 import pandas as pd
+import json
 
 
-def event_output(status="complete", anomaly_detected=True, description="라인2-5 온도 이상 감지"):
+from prism_monitor.data.database import PrismCoreDataBase
+from prism_monitor.modules.event.event_detect import detect_anomalies_in_timerange
+from prism_monitor.modules.event_precursor.precursor import precursor
+from prism_monitor.modules.explanation.explanation import event_explain
+from prism_monitor.modules.explanation.explanation import event_cause_candidates
+
+
+def monitoring_event_output(status="complete", anomaly_detected=True, description="라인2-5 온도 이상 감지"):
     res = {
         "isSuccess": True,
         "code": 201,
@@ -10,32 +18,47 @@ def event_output(status="complete", anomaly_detected=True, description="라인2-
     return res
 
 
-def event_detect(start: str, end: str):
-    from prism_monitor.modules.detect.detect import detect
-    return detect()
+def monitoring_event_detect(prism_core_db: PrismCoreDataBase, start: str, end: str):
+    datasets = {}
+    for table_name in prism_core_db.get_tables():
+        datasets[table_name] = prism_core_db.get_table_data(table_name)
+    anomalies, analysis = detect_anomalies_in_timerange(datasets)
+    return {
+        'result':{
+            'status':'complete',
+            'anomalies': True if len(anomalies) else False,
+            'description': json.dumps(analysis)
+        }
+    }
 
-def event_explain(anomaly_period: dict):
+def monitoring_event_explain(url, event_detect_desc:str):
     # 실제 설명 분석 로직 대신 더미 응답 제공
-    from prism_monitor.modules.explanation.explanation import explain
-    data = '{"PNO":"PS024","EQUIPMENT_ID":"PHO_003","LOT_NO":"LOT24009A","WAFER_ID":"W001","TIMESTAMP":"2024-01-23 08:15:20","EXPOSURE_DOSE":41.2,"FOCUS_POSITION":-25.3,"STAGE_TEMP":23.02,"BAROMETRIC_PRESSURE":1014.1,"HUMIDITY":54.3,"ALIGNMENT_ERROR_X":2.6,"ALIGNMENT_ERROR_Y":2.8,"LENS_ABERRATION":4.5,"ILLUMINATION_UNIFORMITY":97.8,"RETICLE_TEMP":23.06}'
+    res = event_explain(
+        url=url,
+        event_detect_desc=event_detect_desc
+    )
+    print(res)
     return {
-        'explain':explain(data)
+        'explain':res
     }
 
-def event_cause_candidates(anomaly_period: dict):
-    from prism_monitor.modules.explanation.explanation import cause_candidates
-    data = '{"PNO":"PS024","EQUIPMENT_ID":"PHO_003","LOT_NO":"LOT24009A","WAFER_ID":"W001","TIMESTAMP":"2024-01-23 08:15:20","EXPOSURE_DOSE":41.2,"FOCUS_POSITION":-25.3,"STAGE_TEMP":23.02,"BAROMETRIC_PRESSURE":1014.1,"HUMIDITY":54.3,"ALIGNMENT_ERROR_X":2.6,"ALIGNMENT_ERROR_Y":2.8,"LENS_ABERRATION":4.5,"ILLUMINATION_UNIFORMITY":97.8,"RETICLE_TEMP":23.06}'
+def monitoring_event_cause_candidates(url, event_detect_desc:str):
+    res = event_cause_candidates(
+        url=url,
+        event_detect_desc=event_detect_desc
+    )
     return {
-        "causeCandidates": cause_candidates(data)
+        "causeCandidates": res
     }
 
-def event_precursor(line_id: int, sensors: list[str]):
-    # 실제 예측 분석 로직 대신 더미 응답 제공
-    from prism_monitor.modules.event_precursor.precursor import precurse
-    return precurse()
+def monitoring_event_precursor(prism_core_db: PrismCoreDataBase):
+    datasets = {}
+    for table_name in prism_core_db.get_tables():
+        datasets[table_name] = prism_core_db.get_table_data(table_name)
+    return precursor(datasets)
 
 
-def event_evaluate_risk(current_temp):
+def monitoring_event_evaluate_risk(current_temp):
     # 실제 위험 평가 로직 대신 더미 응답 제공
     from prism_monitor.modules.evaluate_risk.evaluate_risk import evaluate_risk
     evaluated = evaluate_risk()
@@ -55,7 +78,7 @@ def event_evaluate_risk(current_temp):
     result['recommendedActions'] = recommended_actions
     return result
 
-def dashboard_update(field: str = "line_id", type: str = "LINE", status: str = "비정상", anomaly_detected: bool = True, anomaly_type: str = "temperature_spike", updated_at: str = "2025-07-17T12:01:03Z"):
+def monitoring_dashboard_update(field: str = "line_id", type: str = "LINE", status: str = "비정상", anomaly_detected: bool = True, anomaly_type: str = "temperature_spike", updated_at: str = "2025-07-17T12:01:03Z"):
     return {
         "isSuccess": True,
         "code": 200,

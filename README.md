@@ -43,10 +43,8 @@ pipenv install
 pipenv shell
 ```
 
-### 1) llm 서버 실행
-```bash
-./run_llm_server.sh
-```
+### 1) .env 파일 작성(env과 같은 포맷입니다)
+
 
 ### 2) 서버 실행
 ```bash
