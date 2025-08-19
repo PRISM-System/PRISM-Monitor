@@ -13,6 +13,10 @@ openai = "*"
 psycopg2-binary = "*"
 matplotlib = "*"
 seaborn = "*"
+joblib = "*"
+scikit-learn = "*"
+tensorflow = "*"
+tabulate = "*"
 
 [dev-packages]
 ipykernel = "*"

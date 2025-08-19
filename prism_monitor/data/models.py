@@ -60,7 +60,7 @@ class EventDetectRequest(BaseModel):
 class EventDetectResponse(BaseModel):
     class Result(BaseModel):
         status: Literal["complete", "failed"] = "complete"
-        anomalyDetected: bool = True
+        anomalies: bool = True
         description: str = "SEMI_PHOTO_SENSORS 이상치 탐지"
     result: Result = Result()
 

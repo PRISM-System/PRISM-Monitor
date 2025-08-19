@@ -1,6 +1,9 @@
 import pandas as pd
 
 
+from prism_monitor.data.database import PrismCoreDataBase
+from prism_monitor.modules.event.event_detect import detect_anomalies_in_timerange
+
 def event_output(status="complete", anomaly_detected=True, description="라인2-5 온도 이상 감지"):
     res = {
         "isSuccess": True,
@@ -10,9 +13,18 @@ def event_output(status="complete", anomaly_detected=True, description="라인2-
     return res
 
 
-def event_detect(start: str, end: str):
-    from prism_monitor.modules.detect.detect import detect
-    return detect()
+def event_detect(prism_core_db: PrismCoreDataBase, start: str, end: str):
+    datasets = {}
+    for table_name in prism_core_db.get_tables():
+        datasets[table_name] = prism_core_db.get_table_data(table_name)
+    anomalies, analysis = detect_anomalies_in_timerange(datasets)
+    return {
+        'result':{
+            'status':'complete',
+            'anomalies': True if len(anomalies) else False,
+            'analysis': analysis
+        }
+    }
 
 def event_explain(anomaly_period: dict):
     # 실제 설명 분석 로직 대신 더미 응답 제공

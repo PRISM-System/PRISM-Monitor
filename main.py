@@ -1,3 +1,7 @@
+from dotenv import load_dotenv
+load_dotenv()
+
+import os
 import logging
 import sqlite3
 
@@ -5,6 +9,7 @@ from fastapi import FastAPI, Query, Path
 from typing import Union, Literal
 
 from database import generate_temp_database
+from prism_monitor.data.database import PrismCoreDataBase
 from prism_monitor.data.models import (
     DashboardResponse,
     StatusPendingResponse,
@@ -36,6 +41,7 @@ DATABASE_PATH="my_database.db"
 LOCAL_FILE_DIR='prism_monitor/data/local'
 conn = sqlite3.connect(DATABASE_PATH)
 generate_temp_database(DATABASE_PATH, LOCAL_FILE_DIR)
+prism_core_db = PrismCoreDataBase(os.environ['PRISM_CORE_DATABASE_URL'])
 
 # Logger 설정
 logger = logging.getLogger("prism_monitor")
@@ -129,7 +135,8 @@ def detect_anomaly_in_period(body: EventDetectRequest):
     logger.info(f"Anomaly detection requested: start={body.start}, end={body.end}")
     res = event_detect(
         start=body.start,
-        end=body.end
+        end=body.end,
+        prism_core_db=prism_core_db
     )
     return res
 
