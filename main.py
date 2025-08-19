@@ -165,7 +165,8 @@ def explain_anomaly_event(body: EventExplainRequest):
 def explain_anomaly_event(body: CauseCandidatesRequest):
     logger.info(f"Cause candidates requested: {body}")
     res = monitoring_event_cause_candidates(
-        anomaly_period=body.anomalyPeriod
+        url=LLM_URL,
+        event_detect_desc=body.eventDetectDesc
     )
     return res
 
