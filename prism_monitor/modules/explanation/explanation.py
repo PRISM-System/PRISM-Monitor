@@ -1,4 +1,5 @@
 from openai import OpenAI
+import json
 
 # 이상치 설명 생성용 프롬프트
 EXPLANATION_SYSTEM_PROMPT = r"""
@@ -242,110 +243,159 @@ TASK_SYSTEM_PROMPT = r"""
 """
 
 # Few-shot 예시 데이터
-FEWSHOT_USER = r"""
+# LOT/Param + Sensor 등 다중 데이터 활용의 예시
+FEWSHOT_USER_CASE_MULTI_1 = r"""
 data:
-{"PNO":"PS001","EQUIPMENT_ID":"PHO_001","LOT_NO":"LOT24001A","WAFER_ID":"W001","TIMESTAMP":"2024-01-15 08:30:15","EXPOSURE_DOSE":45.0.5,"FOCUS_POSITION":60.0,"STAGE_TEMP":23.3,"BAROMETRIC_PRESSURE":800.0,"HUMIDITY":60.0,"ALIGNMENT_ERROR_X":5.0,"ALIGNMENT_ERROR_Y":3.5,"LENS_ABERRATION":7.0,"ILLUMINATION_UNIFORMITY":95.0,"RETICLE_TEMP":23.2}
-
+{"LOT_NO":"LOT30012A","PRODUCT_NAME":"DRAM_512","START_QTY":25,"CURRENT_STEP":"PHOTO","FINAL_YIELD":75.0,
+ "EXPOSURE_DOSE":45.0,"FOCUS_POSITION":80.0,"STAGE_TEMP":23.4,"HUMIDITY":60.0}
 answer:
 """
-
-FEWSHOT_EXPLANATION = (
-    """
-    2024-01-15 08:30:15에 PHO_001 장비에서 노광량 45.0mJ/cm²(정상 20~40), 
-    초점 위치 60.0nm(정상 ±50), 스테이지 온도 23.3°C(정상 22.9~23.1°C),
-    습도 60.0%(정상 40~50%), 얼라인먼트 오차 X 5.0nm(정상 <3),
-    얼라인먼트 오차 Y 3.5nm(정상 <3), 렌즈 수차 7.0mλ(정상 <5),
-    레티클 온도 23.2°C(정상 22.95~23.05°C)가 각각 정상 범위를 초과했습니다.
-    조명 균일도 95.0%(정상 >98)는 정상 범위에 미달했습니다.
-    """
+FEWSHOT_EXPLANATION_MULTI_1 = (
+    "LOT30012A의 최종 수율이 75.0%로 정상 기준(>90%)보다 낮습니다.\n"
+    "동일 시간대 PHOTO 공정에서 노광량 45.0mJ/cm²(정상 20–40), 초점 위치 80.0nm(정상 ±50), "
+    "스테이지 온도 23.4°C(정상 22.9–23.1°C), 습도 60.0%(정상 40–50)가 정상 범위를 벗어났습니다.\n"
+    "따라서, 이는 공정 조건 불량이 수율 저하의 주요 원인일 가능성이 높습니다."
 )
 
-FEWSHOT_TASK = (
-    """
-    - PHO_001 장비의 노광량 설정을 확인하세요. 
-    - PHO_001 장비의 포커스 위치를 점검하세요.
-    - PHO_001 장비의 스테이지 온도를 점검하세요. 
-    - PHO_001 장비의 기압 센서를 확인하세요.
-    - PHO_001 장비의 습도 조절 시스템을 점검하세요.
-    - PHO_001 장비의 정렬 오차(X/Y)를 확인하세요.
-    - PHO_001 장비의 렌즈 수차를 점검하세요.
-    - PHO_001 장비의 조명 균일도를 확인하세요.
-    - PHO_001 장비의 레티클 온도를 점검하세요.
-    """
+FEWSHOT_TASK_MULTI_1 = (
+    "- LOT30012A, PHOTO 장비의 노광 조건(노광량, 초점 위치)에 대한 예측 분석이 필요합니다.\n"
+    "- PHOTO 장비의 스테이지 온도 및 습도 제어가 수율 저하와 어떤 상관관계가 있는지 분석이 필요합니다."
 )
 
-def _call_api(system_prompt, fewshot_assistant, data):
+FEWSHOT_USER_CASE_MULTI_2 = r"""
+data:
+{"LOT_NO":"LOT30015B","WAFER_ID":"W012","CATEGORY":"THICKNESS","PARAM_NAME":"OXIDE_THK",
+ "MEASURED_VAL":58.0,"TARGET_VAL":50.0,"USL":55.0,"LSL":45.0,
+ "SUSCEPTOR_TEMP":750.0,"CHAMBER_PRESSURE":780.0,"PRECURSOR_FLOW_SILANE":1200.0}
+answer:
+"""
+FEWSHOT_EXPLANATION_MULTI_2 = (
+    "LOT30015B, WAFER W012의 산화막 두께가 58.0nm로 상한(55.0nm)을 초과했습니다.\n"
+    "동일한 CVD 공정에서 서셉터 온도 750°C(정상 300–700), 챔버 압력 780Torr(정상 0.1–760), "
+    "실란 유량 1200sccm(정상 0–1000)도 기준을 벗어났습니다.\n"
+    "따라서, 이는 과도한 증착 조건이 두께 초과의 직접적 원인일 가능성이 높습니다."
+)
+
+FEWSHOT_TASK_MULTI_2 = (
+    "- LOT30015B, CVD 장비의 서셉터 온도와 챔버 압력 이상이 두께 편차에 미치는 영향 분석이 필요합니다.\n"
+    "- 실란 유량 과다 공급이 증착 조건 불안정에 어떤 영향을 주는지 예측 분석이 필요합니다."
+)
+
+# Sensor Only 등 단일 센서 데이터 활용의 예시
+FEWSHOT_USER_CASE_SINGLE_1 = r"""
+data:
+{"RF_POWER_SOURCE":2200.0,"CHAMBER_PRESSURE":250.0,"CHAMBER_TEMP":85.0}
+answer:
+"""
+FEWSHOT_EXPLANATION_SINGLE_1 = (
+    "에칭 장비에서 RF Power Source 2200W(정상 500–2000), "
+    "챔버 압력 250mTorr(정상 5–200), 챔버 온도 85°C(정상 40–80)가 기준을 벗어났습니다.\n"
+    "따라서, 이는 플라즈마 과도 형성과 비정상 식각 속도의 원인일 가능성이 있습니다."
+)
+
+FEWSHOT_TASK_SINGLE_1 = (
+    "- 에칭 장비의 RF Power Source 이상치가 플라즈마 안정성에 미치는 영향 분석이 필요합니다.\n"
+    "- 챔버 압력 및 온도 편차가 식각 균일도에 어떤 영향을 주는지 예측이 필요합니다."
+)
+
+FEWSHOT_USER_CASE_SINGLE_2 = r"""
+data:
+{"HEAD_PRESSURE":9.5,"SLURRY_FLOW_RATE":350.0,"PAD_TEMP":55.0}
+answer:
+"""
+FEWSHOT_EXPLANATION_SINGLE_2 = (
+    "CMP 장비에서 헤드 압력 9.5psi(정상 2–8), 슬러리 유량 350ml/min(정상 100–300), "
+    "패드 온도 55°C(정상 30–50)가 모두 정상 범위를 벗어났습니다.\n"
+    "따라서, 이는 연마 불균일과 과도한 마모를 일으킬 가능성이 있습니다."
+)
+
+FEWSHOT_TASK_SINGLE_2 = (
+    "- CMP 장비의 헤드 압력, 슬러리 유량, 패드 온도 이상치가 연마 균일도에 미치는 영향 분석이 필요합니다.\n"
+    "- CMP 공정의 마모 패턴 변화에 대한 예측 분석이 요구됩니다."
+)
+
+def _call_api(system_prompt, fewshots, data):
     client = OpenAI(
         api_key="EMPTY",
-        base_url="http://0.0.0.0:8001/v1"
+        base_url="http://localhost:8001/v1"
     )
+    
+    messages = [{"role": "system", "content": system_prompt}]
+    # few-shot 예시 추가
+    for user_ex, assistant_ex in fewshots:
+        messages.append({"role": "user", "content": user_ex})
+        messages.append({"role": "assistant", "content": assistant_ex})
+    # 실제 입력
+    messages.append({"role": "user", "content": f"data:\n{data}\n\nanswer:\n"})
     
     response = client.chat.completions.create(
         model="Qwen/Qwen3-0.6B",
-        messages=[
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": FEWSHOT_USER},
-            {"role": "assistant", "content": fewshot_assistant},
-            {"role": "user", "content": f"data:\n{data}\n\nanswer:\n"},
-        ],
+        messages=messages,
         max_tokens=8192,
         temperature=0.8,
         presence_penalty=0.0,
-        extra_body={
-            "top_k": 20, 
-            "chat_template_kwargs": {"enable_thinking": False},
-        },
+        extra_body={"top_k": 20, "chat_template_kwargs": {"enable_thinking": False}},
     )
     return response.choices[0].message.content
 
-def explain(data):
+
+def event_explain(data):
     """이상치 값에 대한 설명을 생성"""
-    # return _call_api(EXPLANATION_SYSTEM_PROMPT, FEWSHOT_EXPLANATION, data)
-    import time
-    time.sleep(5)
-    return (
-            "최근 7일간 설비 A의 온도 센서에서 정상 범위(60~80℃)를 벗어나는 값이 5회 이상 "
-            "감지되었습니다. 해당 시점은 모두 야간 교대 시간대에 발생했으며, "
-            "진동 수치 또한 평균 대비 20% 이상 높게 나타났습니다. "
-            "이러한 패턴은 베어링 마모 또는 냉각 장치 효율 저하 가능성을 시사합니다."
-        )
+    try:
+        parsed = json.loads(data)
+    except Exception:
+        parsed = {}
+    
+    # 데이터 행 개수 판단
+    if isinstance(parsed, dict):
+        row_count = 1
+    elif isinstance(parsed, list):
+        row_count = len(parsed)
+    else:
+        row_count = 1
 
-def cause_candidates(data):
+    if row_count == 1:
+        fewshots = [
+            (FEWSHOT_USER_CASE_SINGLE_1, FEWSHOT_EXPLANATION_SINGLE_1),
+            (FEWSHOT_USER_CASE_SINGLE_2, FEWSHOT_EXPLANATION_SINGLE_2),
+        ]
+    else:
+        fewshots = [
+            (FEWSHOT_USER_CASE_MULTI_1, FEWSHOT_EXPLANATION_MULTI_1),
+            (FEWSHOT_USER_CASE_MULTI_2, FEWSHOT_EXPLANATION_MULTI_2),
+        ]
+    
+    return _call_api(EXPLANATION_SYSTEM_PROMPT, fewshots, data)
+
+def event_cause_candidates(data):
     """이상치 분석을 위한 과업을 생성"""
-    # return _call_api(TASK_SYSTEM_PROMPT, FEWSHOT_TASK, data)
-    import time
-    time.sleep(5)
-    return (
-            "- 야간 근무 시 냉각 장치 가동 불안정\n"
-            "- 베어링 마모로 인한 과열 현상\n"
-            "- 센서 자체 오작동(교정 필요)\n"
-            "- 외부 환경 온도 상승(환기 불충분)"
-        )
+    try:
+        parsed = json.loads(data)
+    except Exception:
+        parsed = {}
+    row_count = 1 if isinstance(parsed, dict) else len(parsed)
+    if row_count == 1:
+        fewshots = [
+            (FEWSHOT_USER_CASE_SINGLE_1, FEWSHOT_TASK_SINGLE_1),
+            (FEWSHOT_USER_CASE_SINGLE_2, FEWSHOT_TASK_SINGLE_2),
+        ]
+    else:
+        fewshots = [
+            (FEWSHOT_USER_CASE_MULTI_1, FEWSHOT_TASK_MULTI_1),
+            (FEWSHOT_USER_CASE_MULTI_2, FEWSHOT_TASK_MULTI_2),
+        ]
+    return _call_api(TASK_SYSTEM_PROMPT, fewshots, data)
 
-def explanation():
-    test_data = '{"PNO":"PS024","EQUIPMENT_ID":"PHO_003","LOT_NO":"LOT24009A","WAFER_ID":"W001","TIMESTAMP":"2024-01-23 08:15:20","EXPOSURE_DOSE":41.2,"FOCUS_POSITION":-25.3,"STAGE_TEMP":23.02,"BAROMETRIC_PRESSURE":1014.1,"HUMIDITY":54.3,"ALIGNMENT_ERROR_X":2.6,"ALIGNMENT_ERROR_Y":2.8,"LENS_ABERRATION":4.5,"ILLUMINATION_UNIFORMITY":97.8,"RETICLE_TEMP":23.06}'
+if __name__ == "__main__":
+    test_data_single = '{"RF_POWER_SOURCE":2200.0,"CHAMBER_PRESSURE":250.0,"CHAMBER_TEMP":85.0}'
+    test_data_multi = '{"LOT_NO":"LOT30012A","PRODUCT_NAME":"DRAM_512","START_QTY":25,"CURRENT_STEP":"PHOTO","FINAL_YIELD":75.0,"EXPOSURE_DOSE":45.0,"FOCUS_POSITION":80.0,"STAGE_TEMP":23.4,"HUMIDITY":60.0}'
     
-    # print("=== 이상치 설명 ===")
-    # explain = event_explain(test_data)
+    print("=== 단일 행 입력 (설명) ===")
+    print(event_explain(test_data_single))
+    print("\n=== 단일 행 입력 (과업) ===")
+    print(event_cause_candidates(test_data_single))
     
-    # print("\n=== 분석 과업 ===")
-    # cause_candidates = event_cause_candidates(test_data)
-    # # return {
-    # #     'explain': explain,
-    # #     'causeCandidates': cause_candidates
-    # # }
-
-    return {
-        'explain': (
-            "최근 7일간 설비 A의 온도 센서에서 정상 범위(60~80℃)를 벗어나는 값이 5회 이상 "
-            "감지되었습니다. 해당 시점은 모두 야간 교대 시간대에 발생했으며, "
-            "진동 수치 또한 평균 대비 20% 이상 높게 나타났습니다. "
-            "이러한 패턴은 베어링 마모 또는 냉각 장치 효율 저하 가능성을 시사합니다."
-        ),
-        'causeCandidates': (
-            "- 야간 근무 시 냉각 장치 가동 불안정\n"
-            "- 베어링 마모로 인한 과열 현상\n"
-            "- 센서 자체 오작동(교정 필요)\n"
-            "- 외부 환경 온도 상승(환기 불충분)"
-        )
-    }
+    print("\n=== 다중 속성 입력 (설명) ===")
+    print(event_explain(test_data_multi))
+    print("\n=== 다중 속성 입력 (과업) ===")
+    print(event_cause_candidates(test_data_multi))
