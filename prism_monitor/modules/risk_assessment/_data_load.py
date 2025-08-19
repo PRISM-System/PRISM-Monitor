@@ -72,68 +72,68 @@ def integrate_sensor_data(datasets):
     else:
         return pd.DataFrame()
 
-def create_unified_dataset(datasets):
-    print("Creating unified dataset...")
+# def create_unified_dataset(datasets):
+#     print("Creating unified dataset...")
     
-    integrated_sensors = integrate_sensor_data(datasets)
+#     integrated_sensors = integrate_sensor_data(datasets)
     
-    if 'lot_manage' in datasets:
-        main_df = datasets['lot_manage'].copy()
-        print(f"LOT data count: {len(main_df)} LOT")
-    else:
-        return pd.DataFrame()
+#     if 'lot_manage' in datasets:
+#         main_df = datasets['lot_manage'].copy()
+#         print(f"LOT data count: {len(main_df)} LOT")
+#     else:
+#         return pd.DataFrame()
     
-    if not integrated_sensors.empty and 'LOT_NO' in integrated_sensors.columns:
-        sensor_stats = integrated_sensors.groupby(['LOT_NO', 'SENSOR_TYPE'])['SENSOR_VALUE'].agg([
-            'mean', 'std', 'min', 'max', 'count'
-        ]).reset_index()
+#     if not integrated_sensors.empty and 'LOT_NO' in integrated_sensors.columns:
+#         sensor_stats = integrated_sensors.groupby(['LOT_NO', 'SENSOR_TYPE'])['SENSOR_VALUE'].agg([
+#             'mean', 'std', 'min', 'max', 'count'
+#         ]).reset_index()
         
-        sensor_features = sensor_stats.pivot_table(
-            index='LOT_NO',
-            columns='SENSOR_TYPE',
-            values=['mean', 'std', 'min', 'max'],
-            fill_value=0
-        )
+#         sensor_features = sensor_stats.pivot_table(
+#             index='LOT_NO',
+#             columns='SENSOR_TYPE',
+#             values=['mean', 'std', 'min', 'max'],
+#             fill_value=0
+#         )
         
-        sensor_features.columns = [f"{stat}_{sensor}" for stat, sensor in sensor_features.columns]
-        sensor_features = sensor_features.reset_index()
+#         sensor_features.columns = [f"{stat}_{sensor}" for stat, sensor in sensor_features.columns]
+#         sensor_features = sensor_features.reset_index()
         
-        main_df = main_df.merge(sensor_features, on='LOT_NO', how='left')
-        print(f"센서 특성 추가 완료: {sensor_features.shape[1]-1}개 특성")
+#         main_df = main_df.merge(sensor_features, on='LOT_NO', how='left')
+#         print(f"센서 특성 추가 완료: {sensor_features.shape[1]-1}개 특성")
     
-    if 'process_history' in datasets:
-        process_df = datasets['process_history']
-        if 'LOT_NO' in process_df.columns:
-            process_stats = process_df.groupby('LOT_NO').agg({
-                'IN_QTY': ['mean', 'sum'],
-                'OUT_QTY': ['mean', 'sum'],
-            }).reset_index()
+#     if 'process_history' in datasets:
+#         process_df = datasets['process_history']
+#         if 'LOT_NO' in process_df.columns:
+#             process_stats = process_df.groupby('LOT_NO').agg({
+#                 'IN_QTY': ['mean', 'sum'],
+#                 'OUT_QTY': ['mean', 'sum'],
+#             }).reset_index()
             
-            process_stats.columns = [f"process_{col[0]}_{col[1]}" if col[1] else col[0] 
-                                        for col in process_stats.columns]
-            process_stats.columns = [col.replace('process_LOT_NO_', 'LOT_NO') for col in process_stats.columns]
+#             process_stats.columns = [f"process_{col[0]}_{col[1]}" if col[1] else col[0] 
+#                                         for col in process_stats.columns]
+#             process_stats.columns = [col.replace('process_LOT_NO_', 'LOT_NO') for col in process_stats.columns]
             
-            main_df = main_df.merge(process_stats, on='LOT_NO', how='left')
+#             main_df = main_df.merge(process_stats, on='LOT_NO', how='left')
     
-    if 'param_measure' in datasets:
-        param_df = datasets['param_measure']
-        if 'LOT_NO' in param_df.columns:
-            param_stats = param_df.groupby('LOT_NO')['MEASURED_VAL'].agg([
-                'mean', 'std', 'min', 'max'
-            ]).reset_index()
+#     if 'param_measure' in datasets:
+#         param_df = datasets['param_measure']
+#         if 'LOT_NO' in param_df.columns:
+#             param_stats = param_df.groupby('LOT_NO')['MEASURED_VAL'].agg([
+#                 'mean', 'std', 'min', 'max'
+#             ]).reset_index()
             
-            param_stats.columns = [f"param_{col}" if col != 'LOT_NO' else col 
-                                        for col in param_stats.columns]
+#             param_stats.columns = [f"param_{col}" if col != 'LOT_NO' else col 
+#                                         for col in param_stats.columns]
             
-            main_df = main_df.merge(param_stats, on='LOT_NO', how='left')
+#             main_df = main_df.merge(param_stats, on='LOT_NO', how='left')
     
-    print(f"최종 통합 데이터셋: {main_df.shape}")
-    return main_df
+#     print(f"최종 통합 데이터셋: {main_df.shape}")
+#     return main_df
 
 
 from functools import reduce
 
-def create_unified_dataset_2(datasets):
+def create_unified_dataset(datasets):
     """
     여러 데이터셋을 'LOT_NO'를 기준으로 병합하여 통합 데이터셋을 생성합니다.
     OUTER JOIN을 사용하여 데이터 손실을 방지합니다.

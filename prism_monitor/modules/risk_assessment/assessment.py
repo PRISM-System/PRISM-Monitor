@@ -2,13 +2,13 @@ import json
 
 # from _data_load import (
 #     load_and_explore_data,
-#     create_unified_dataset_2,
+#     create_unified_dataset,
 #     prepare_features
 # )
 
 from prism_monitor.modules.risk_assessment._data_load import (
     load_and_explore_data,
-    create_unified_dataset_2,
+    create_unified_dataset,
     prepare_features
 )
 
@@ -30,7 +30,7 @@ def main():
     datasets = load_and_explore_data(data_base_path)
     
     # 통합 데이터셋 생성
-    unified_df = create_unified_dataset_2(datasets)
+    unified_df = create_unified_dataset(datasets)
     
     # 특징 준비
     processed_df, feature_cols, scaler = prepare_features(unified_df)

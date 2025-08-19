@@ -13,7 +13,7 @@ warnings.filterwarnings('ignore')
 from openai import OpenAI
 
 from prism_monitor.modules.risk_assessment._data_load import (
-    create_unified_dataset_2,
+    create_unified_dataset,
     prepare_features
 )
 
@@ -262,7 +262,7 @@ def evaluate_event_risk(datasets, event_data, processed_data=None, feature_colum
     print("\n========== 이벤트 위험 평가 시작 ==========")
     
     if processed_data is None:
-        unified_df = create_unified_dataset_2(datasets)
+        unified_df = create_unified_dataset(datasets)
         processed_df, feature_cols, scaler = prepare_features(unified_df)
     
     # 1. 센서 이상 패턴 분석
