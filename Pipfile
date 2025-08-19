@@ -11,6 +11,8 @@ pandas = "*"
 vllm = "*"
 openai = "*"
 psycopg2-binary = "*"
+matplotlib = "*"
+seaborn = "*"
 
 [dev-packages]
 ipykernel = "*"

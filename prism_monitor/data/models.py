@@ -58,11 +58,11 @@ class EventDetectRequest(BaseModel):
     end: str = Field("2023-10-01T12:30:00Z", description="End time in ISO 8601 format")
 
 class EventDetectResponse(BaseModel):
-    class AnomalyPeriod(BaseModel):
-        start: str = Field("2023-10-01T12:00:00Z", description="Start time of the anomaly period in ISO 8601 format")
-        end: str = Field("2023-10-01T12:30:00Z", description="End time of the anomaly period in ISO 8601 format")
-    anomalyPeriods: List[AnomalyPeriod] = [AnomalyPeriod()]
-    value: Union[str, int] = "225C"
+    class Result(BaseModel):
+        status: Literal["complete", "failed"] = "complete"
+        anomalyDetected: bool = True
+        description: str = "SEMI_PHOTO_SENSORS 이상치 탐지"
+    result: Result = Result()
 
 
 #/api/v1/monitoring/event/explain
@@ -73,7 +73,7 @@ class EventExplainRequest(BaseModel):
     anomalyPeriod: AnomalyPeriod = AnomalyPeriod()
 
 class EventExplainResponse(BaseModel):
-    explanation: str = "센서 #2, #5가 다른 센서 대비 급격히 상승 추세를 보였습니다."
+    explain: str
 
 #/api/v1/monitoring/event/cause-candidates
 class CauseCandidatesRequest(BaseModel):
@@ -83,7 +83,7 @@ class CauseCandidatesRequest(BaseModel):
     anomalyPeriod: AnomalyPeriod = AnomalyPeriod()
 
 class CauseCandidatesResponse(BaseModel):
-    candidates: List[str] = ["센서 #2, #5의 상승", "라인 #2의 평균 온도 상승"]
+    causeCandidates: str
 
 #/api/v1/monitoring/event/precursor
 class PrecursorRequest(BaseModel):
