@@ -67,10 +67,7 @@ class EventDetectResponse(BaseModel):
 
 #/api/v1/monitoring/event/explain
 class EventExplainRequest(BaseModel):
-    class AnomalyPeriod(BaseModel):
-        start: str = Field("2023-10-01T12:00:00Z", description="Start time of the anomaly period in ISO 8601 format")
-        end: str = Field("2023-10-01T12:30:00Z", description="End time of the anomaly period in ISO 8601 format")
-    anomalyPeriod: AnomalyPeriod = AnomalyPeriod()
+    eventDetectDesc: str
 
 class EventExplainResponse(BaseModel):
     explain: str

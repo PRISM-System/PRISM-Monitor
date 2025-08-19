@@ -371,12 +371,8 @@ class SemiconductorRealDataDetector:
                 if 'final_yield' in row:
                     print(f"    수율: {row['final_yield']:.1f}%")
         
-        return {
-            'total_lots': total_lots,
-            'detected_anomalies': int(detected_anomalies),
-            'detection_rate': float(detected_anomalies / total_lots),
-            'anomaly_lots': anomaly_lots.to_markdown(index=False)
-        }
+        return anomaly_lots.to_dict("records")
+
 
     def visualize_results(self, df_result):
         """

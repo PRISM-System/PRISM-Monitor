@@ -1,6 +1,8 @@
 from openai import OpenAI
 import json
 
+from prism_monitor.llm.api import llm_generate
+
 # 이상치 설명 생성용 프롬프트
 EXPLANATION_SYSTEM_PROMPT = r"""
 당신은 반도체 제조 공정 내 이상치 값에 대한 설명을 만들어내는 에이전트입니다.
@@ -314,88 +316,105 @@ FEWSHOT_TASK_SINGLE_2 = (
     "- CMP 공정의 마모 패턴 변화에 대한 예측 분석이 요구됩니다."
 )
 
-def _call_api(system_prompt, fewshots, data):
-    client = OpenAI(
-        api_key="EMPTY",
-        base_url="http://localhost:8001/v1"
-    )
+# def _call_api(system_prompt, fewshots, data):
+#     client = OpenAI(
+#         api_key="EMPTY",
+#         base_url="http://localhost:8001/v1"
+#     )
     
-    messages = [{"role": "system", "content": system_prompt}]
-    # few-shot 예시 추가
+#     messages = [{"role": "system", "content": system_prompt}]
+#     # few-shot 예시 추가
+#     for user_ex, assistant_ex in fewshots:
+#         messages.append({"role": "user", "content": user_ex})
+#         messages.append({"role": "assistant", "content": assistant_ex})
+#     # 실제 입력
+#     messages.append({"role": "user", "content": f"data:\n{data}\n\nanswer:\n"})
+    
+#     response = client.chat.completions.create(
+#         model="Qwen/Qwen3-0.6B",
+#         messages=messages,
+#         max_tokens=8192,
+#         temperature=0.8,
+#         presence_penalty=0.0,
+#         extra_body={"top_k": 20, "chat_template_kwargs": {"enable_thinking": False}},
+#     )
+#     return response.choices[0].message.content
+
+def _call_api(url, system_prompt, fewshots, data, max_tokens=256, temperature=0.7, presence_penalty=1.5):
+    # prompt 문자열을 직접 구성
+    prompt = system_prompt + "\n\n"
     for user_ex, assistant_ex in fewshots:
-        messages.append({"role": "user", "content": user_ex})
-        messages.append({"role": "assistant", "content": assistant_ex})
-    # 실제 입력
-    messages.append({"role": "user", "content": f"data:\n{data}\n\nanswer:\n"})
-    
-    response = client.chat.completions.create(
-        model="Qwen/Qwen3-0.6B",
-        messages=messages,
-        max_tokens=8192,
-        temperature=0.8,
-        presence_penalty=0.0,
-        extra_body={"top_k": 20, "chat_template_kwargs": {"enable_thinking": False}},
+        prompt += f"User: {user_ex}\nAssistant: {assistant_ex}\n"
+    prompt += f"User: data:\n{data}\n\nanswer:\nAssistant:"
+
+    response = llm_generate(
+        url=url,
+        prompt=prompt,
+        max_tokens=max_tokens,
+        temperature=temperature,
+        presence_penalty=presence_penalty
     )
-    return response.choices[0].message.content
+    return response['text']
 
 
-def event_explain(data):
-    """이상치 값에 대한 설명을 생성"""
-    try:
-        parsed = json.loads(data)
-    except Exception:
-        parsed = {}
+def event_explain(url, event_detect_desc):
+    # """이상치 값에 대한 설명을 생성"""
+    # try:
+    #     parsed = json.loads(data)
+    # except Exception:
+    #     parsed = {}
     
-    # 데이터 행 개수 판단
-    if isinstance(parsed, dict):
-        row_count = 1
-    elif isinstance(parsed, list):
-        row_count = len(parsed)
-    else:
-        row_count = 1
+    # # 데이터 행 개수 판단
+    # if isinstance(parsed, dict):
+    #     row_count = 1
+    # elif isinstance(parsed, list):
+    #     row_count = len(parsed)
+    # else:
+    #     row_count = 1
 
-    if row_count == 1:
-        fewshots = [
-            (FEWSHOT_USER_CASE_SINGLE_1, FEWSHOT_EXPLANATION_SINGLE_1),
-            (FEWSHOT_USER_CASE_SINGLE_2, FEWSHOT_EXPLANATION_SINGLE_2),
-        ]
-    else:
-        fewshots = [
-            (FEWSHOT_USER_CASE_MULTI_1, FEWSHOT_EXPLANATION_MULTI_1),
-            (FEWSHOT_USER_CASE_MULTI_2, FEWSHOT_EXPLANATION_MULTI_2),
-        ]
+    # if row_count == 1:
+    #     fewshots = [
+    #         (FEWSHOT_USER_CASE_SINGLE_1, FEWSHOT_EXPLANATION_SINGLE_1),
+    #         (FEWSHOT_USER_CASE_SINGLE_2, FEWSHOT_EXPLANATION_SINGLE_2),
+    #     ]
+    # else:
+    fewshots = [
+        (FEWSHOT_USER_CASE_MULTI_1, FEWSHOT_EXPLANATION_MULTI_1),
+        (FEWSHOT_USER_CASE_MULTI_2, FEWSHOT_EXPLANATION_MULTI_2),
+    ]
     
-    return _call_api(EXPLANATION_SYSTEM_PROMPT, fewshots, data)
+    return _call_api(url, EXPLANATION_SYSTEM_PROMPT, fewshots, event_detect_desc)
 
-def event_cause_candidates(data):
-    """이상치 분석을 위한 과업을 생성"""
-    try:
-        parsed = json.loads(data)
-    except Exception:
-        parsed = {}
-    row_count = 1 if isinstance(parsed, dict) else len(parsed)
-    if row_count == 1:
-        fewshots = [
-            (FEWSHOT_USER_CASE_SINGLE_1, FEWSHOT_TASK_SINGLE_1),
-            (FEWSHOT_USER_CASE_SINGLE_2, FEWSHOT_TASK_SINGLE_2),
-        ]
-    else:
-        fewshots = [
-            (FEWSHOT_USER_CASE_MULTI_1, FEWSHOT_TASK_MULTI_1),
-            (FEWSHOT_USER_CASE_MULTI_2, FEWSHOT_TASK_MULTI_2),
-        ]
-    return _call_api(TASK_SYSTEM_PROMPT, fewshots, data)
+def event_cause_candidates(url, event_detect_desc):
+    # """이상치 분석을 위한 과업을 생성"""
+    # try:
+    #     parsed = json.loads(data)
+    # except Exception:
+    #     parsed = {}
+    # row_count = 1 if isinstance(parsed, dict) else len(parsed)
+    # if row_count == 1:
+    #     fewshots = [
+    #         (FEWSHOT_USER_CASE_SINGLE_1, FEWSHOT_TASK_SINGLE_1),
+    #         (FEWSHOT_USER_CASE_SINGLE_2, FEWSHOT_TASK_SINGLE_2),
+    #     ]
+    # else:
+    fewshots = [
+        (FEWSHOT_USER_CASE_MULTI_1, FEWSHOT_TASK_MULTI_1),
+        (FEWSHOT_USER_CASE_MULTI_2, FEWSHOT_TASK_MULTI_2),
+    ]
+    return _call_api(url, TASK_SYSTEM_PROMPT, fewshots, event_detect_desc)
 
 if __name__ == "__main__":
+    url = '0.0.0.0:8888'
     test_data_single = '{"RF_POWER_SOURCE":2200.0,"CHAMBER_PRESSURE":250.0,"CHAMBER_TEMP":85.0}'
     test_data_multi = '{"LOT_NO":"LOT30012A","PRODUCT_NAME":"DRAM_512","START_QTY":25,"CURRENT_STEP":"PHOTO","FINAL_YIELD":75.0,"EXPOSURE_DOSE":45.0,"FOCUS_POSITION":80.0,"STAGE_TEMP":23.4,"HUMIDITY":60.0}'
     
     print("=== 단일 행 입력 (설명) ===")
-    print(event_explain(test_data_single))
+    print(event_explain(url, test_data_single))
     print("\n=== 단일 행 입력 (과업) ===")
-    print(event_cause_candidates(test_data_single))
+    print(event_cause_candidates(url, test_data_single))
     
     print("\n=== 다중 속성 입력 (설명) ===")
-    print(event_explain(test_data_multi))
+    print(event_explain(url, test_data_multi))
     print("\n=== 다중 속성 입력 (과업) ===")
-    print(event_cause_candidates(test_data_multi))
+    print(event_cause_candidates(url, test_data_multi))

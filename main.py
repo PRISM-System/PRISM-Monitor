@@ -28,17 +28,18 @@ from prism_monitor.modules.task import (
     monitoring_output
 )
 from prism_monitor.modules.monitoring import (
-    event_output, 
-    event_detect, 
-    event_explain, 
-    event_cause_candidates,
-    event_precursor,
-    event_evaluate_risk,
-    dashboard_update
+    monitoring_event_output, 
+    monitoring_event_detect, 
+    monitoring_event_explain, 
+    monitoring_event_cause_candidates,
+    monitoring_event_precursor,
+    monitoring_event_evaluate_risk,
+    monitoring_dashboard_update
 )
 
 DATABASE_PATH="my_database.db"
 LOCAL_FILE_DIR='prism_monitor/data/local'
+LLM_URL=os.environ['LLM_URL']
 conn = sqlite3.connect(DATABASE_PATH)
 generate_temp_database(DATABASE_PATH, LOCAL_FILE_DIR)
 prism_core_db = PrismCoreDataBase(os.environ['PRISM_CORE_DATABASE_URL'])
@@ -99,7 +100,7 @@ def get_task_status(
 )
 def receive_monitoring_event(body: EventOutputRequest):
     logger.info(f"Monitoring event received: {body}")
-    res = event_output(
+    res = monitoring_event_output(
         status=body.result.status,
         anomaly_detected=body.result.anomalyDetected,
         description=body.result.description
@@ -133,11 +134,12 @@ def receive_monitoring_output(
 )
 def detect_anomaly_in_period(body: EventDetectRequest):
     logger.info(f"Anomaly detection requested: start={body.start}, end={body.end}")
-    res = event_detect(
+    res = monitoring_event_detect(
         start=body.start,
         end=body.end,
         prism_core_db=prism_core_db
     )
+    print(res)
     return res
 
 @app.post(
@@ -148,8 +150,9 @@ def detect_anomaly_in_period(body: EventDetectRequest):
 )
 def explain_anomaly_event(body: EventExplainRequest):
     logger.info(f"Anomaly explanation requested: {body}")
-    res = event_explain(
-        anomaly_period=body.anomalyPeriod
+    res = monitoring_event_explain(
+        url=LLM_URL,
+        event_detect_desc=body.eventDetectDesc
     )
     return res
 
@@ -161,7 +164,7 @@ def explain_anomaly_event(body: EventExplainRequest):
 )
 def explain_anomaly_event(body: CauseCandidatesRequest):
     logger.info(f"Cause candidates requested: {body}")
-    res = event_cause_candidates(
+    res = monitoring_event_cause_candidates(
         anomaly_period=body.anomalyPeriod
     )
     return res
@@ -174,7 +177,7 @@ def explain_anomaly_event(body: CauseCandidatesRequest):
 )
 def explain_anomaly_event(body: PrecursorRequest):
     logger.info(f"Precursor requested: lineId={body.lineId}, sensors={body.sensors}")
-    res = event_precursor(
+    res = monitoring_event_precursor(
         prism_core_db=prism_core_db
     )
     return res
@@ -187,7 +190,7 @@ def explain_anomaly_event(body: PrecursorRequest):
 )
 def explain_anomaly_event(body: EvaluateRiskRequest):
     logger.info(f"Risk evaluation requested: currentTemp={body.currentTemp}")
-    res = event_evaluate_risk(
+    res = monitoring_event_evaluate_risk(
         current_temp=body.currentTemp
     )
     return res
@@ -200,7 +203,7 @@ def explain_anomaly_event(body: EvaluateRiskRequest):
 )
 def update_dashboard(body: DashboardUpdateRequest):
     logger.info(f"Dashboard update requested: {body}")
-    res = dashboard_update(
+    res = monitoring_dashboard_update(
         field=body.field, 
         type=body.type,
         status=body.status,
