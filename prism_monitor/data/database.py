@@ -2,6 +2,7 @@ import requests
 import pandas as pd
 
 from urllib.parse import urljoin
+from tinydb import TinyDB, Query
 
 class PrismCoreDataBase:
     def __init__(self, base_url):
@@ -49,3 +50,8 @@ class PrismCoreDataBase:
             df[col] = pd.to_numeric(df[col], errors="ignore")  # 숫자로 변환 가능한 건 자동 변환
         return df
 
+
+class MonitorDatabase:
+    def __init__(self, db_path):
+        self.db = TinyDB(db_path)
+    

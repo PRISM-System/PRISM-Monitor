@@ -7,16 +7,16 @@ import os
 def load_and_explore_data(data_base_path):
     print("Data Loading...")
     data_files = {
-        'lot_manage': 'SEMI_LOT_MANAGE.csv',
-        'process_history': 'SEMI_PROCESS_HISTORY.csv', 
-        'param_measure': 'SEMI_PARAM_MEASURE.csv',
-        'equipment_sensor': 'SEMI_EQUIPMENT_SENSOR.csv',
-        'alert_config': 'SEMI_SENSOR_ALERT_CONFIG.csv',
-        'photo_sensors': 'SEMI_PHOTO_SENSORS.csv',
-        'etch_sensors': 'SEMI_ETCH_SENSORS.csv',
-        'cvd_sensors': 'SEMI_CVD_SENSORS.csv',
-        'implant_sensors': 'SEMI_IMPLANT_SENSORS.csv',
-        'cmp_sensors': 'SEMI_CMP_SENSORS.csv'
+        'semi_lot_manage': 'SEMI_LOT_MANAGE.csv',
+        'semi_process_history': 'SEMI_PROCESS_HISTORY.csv', 
+        'semi_param_measure': 'SEMI_PARAM_MEASURE.csv',
+        'semi_equipment_sensor': 'SEMI_EQUIPMENT_SENSOR.csv',
+        'semi_alert_config': 'SEMI_SENSOR_ALERT_CONFIG.csv',
+        'semi_photo_sensors': 'SEMI_PHOTO_SENSORS.csv',
+        'semi_etch_sensors': 'SEMI_ETCH_SENSORS.csv',
+        'semi_cvd_sensors': 'SEMI_CVD_SENSORS.csv',
+        'semi_implant_sensors': 'SEMI_IMPLANT_SENSORS.csv',
+        'semi_cmp_sensors': 'SEMI_CMP_SENSORS.csv'
     }
     
     datasets = {}
@@ -38,29 +38,28 @@ def load_and_explore_data(data_base_path):
 def integrate_sensor_data(datasets):
     print("Integrating sensor data...")
     
-    sensor_tables = ['photo_sensors', 'etch_sensors', 'cvd_sensors', 
-                    'implant_sensors', 'cmp_sensors']
+    sensor_tables = ['semi_photo_sensors', 'semi_etch_sensors', 'semi_cvd_sensors', 
+                    'semi_implant_sensors', 'semi_cmp_sensors']
     
     integrated_sensors = []
     
     for table_name in sensor_tables:
         if table_name in datasets:
             df = datasets[table_name].copy()
-            common_cols = ['PNO', 'EQUIPMENT_ID', 'LOT_NO', 'TIMESTAMP']
+            common_cols = ['pno', 'equipment_id', 'lot_no', 'timestamp']
             available_common = [col for col in common_cols if col in df.columns]
             
             if available_common:
                 numeric_cols = df.select_dtypes(include=[np.number]).columns.tolist()
                 sensor_cols = [col for col in numeric_cols if col != 'PNO']
                 
-                df['SENSOR_TABLE'] = table_name.replace('_sensors', '').upper()
-                
+                df['sensor_table'] = table_name.replace('_sensors', '')
                 if sensor_cols:
                     df_long = df.melt(
-                        id_vars=available_common + ['SENSOR_TABLE'],
+                        id_vars=available_common + ['sensor_table'],
                         value_vars=sensor_cols,
-                        var_name='SENSOR_TYPE',
-                        value_name='SENSOR_VALUE'
+                        var_name='sensor_type',
+                        value_name='sensor_value'
                     )
                     integrated_sensors.append(df_long)
                     print(f"  - {table_name}: Sensor count: {len(sensor_cols)}, Record count: {len(df)}")
@@ -151,15 +150,15 @@ def create_unified_dataset(datasets):
     
     # reduce 함수를 사용하여 리스트의 모든 데이터프레임을 순차적으로 병합
     # how='outer'로 설정하여 공통 LOT_NO가 없는 경우에도 데이터를 보존
-    unified_df = reduce(lambda left, right: pd.merge(left, right, on='LOT_NO', how='outer'), df_list)
+    unified_df = reduce(lambda left, right: pd.merge(left, right, on='lot_no', how='outer'), df_list)
     
     # PNO, TIMESTAMP 등 중복될 수 있는 컬럼 이름 정리
     # 예시: 'PNO_x', 'PNO_y' -> 'PNO_lot', 'PNO_process'
     unified_df = unified_df.rename(columns={
-        'PNO_x': 'PNO_lot', 
-        'PNO_y': 'PNO_process',
-        'TIMESTAMP_x': 'TIMESTAMP_process',
-        'TIMESTAMP_y': 'TIMESTAMP_cmp'
+        'pno_x': 'pno_lot', 
+        'pno_y': 'pno_process',
+        'timestamp_x': 'timestamp_process',
+        'timestamp_y': 'timestamp_cmp'
     })
 
     print(f"Unified dataset created with shape: {unified_df.shape}")
@@ -171,18 +170,18 @@ def prepare_features(df):
     print("Preparing features and preprocessing...")
     
     numeric_cols = df.select_dtypes(include=[np.number]).columns.tolist()
-    exclude_cols = ['PNO']
-    if 'FINAL_YIELD' in numeric_cols:
-        exclude_cols.append('FINAL_YIELD')
+    exclude_cols = ['pno']
+    if 'final_yield' in numeric_cols:
+        exclude_cols.append('final_yield')
     
     feature_cols = [col for col in numeric_cols if col not in exclude_cols]
     
     df_processed = df.copy()
     df_processed[feature_cols] = df_processed[feature_cols].fillna(0)
     
-    if 'FINAL_YIELD' in df.columns:
-        yield_threshold = df['FINAL_YIELD'].quantile(0.1)
-        df_processed['is_anomaly'] = df_processed['FINAL_YIELD'] < yield_threshold
+    if 'final_yield' in df.columns:
+        yield_threshold = df['final_yield'].quantile(0.1)
+        df_processed['is_anomaly'] = df_processed['final_yield'] < yield_threshold
     else:
         feature_data = df_processed[feature_cols]
         z_scores = np.abs((feature_data - feature_data.mean()) / feature_data.std()).mean(axis=1)

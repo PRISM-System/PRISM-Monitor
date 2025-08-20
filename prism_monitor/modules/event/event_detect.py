@@ -371,6 +371,7 @@ class SemiconductorRealDataDetector:
                 if 'final_yield' in row:
                     print(f"    수율: {row['final_yield']:.1f}%")
         
+        anomaly_lots.to_csv('event_detect_analysis.csv',index=False)
         return anomaly_lots.to_dict("records")
 
 

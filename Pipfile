@@ -16,6 +16,7 @@ joblib = "*"
 scikit-learn = "*"
 tensorflow = "*"
 tabulate = "*"
+tinydb = "*"
 
 [dev-packages]
 ipykernel = "*"
