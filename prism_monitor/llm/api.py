@@ -1,6 +1,6 @@
 import requests
 
-def llm_generate(url, prompt, max_tokens=50, temperature=0.7, presence_penalty=1.5):
+def llm_generate(url, prompt, max_tokens=1024, temperature=0.7, presence_penalty=1.5):
     payload = {
         "prompt": prompt,
         "max_tokens": max_tokens,

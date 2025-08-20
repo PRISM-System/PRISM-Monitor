@@ -2,7 +2,6 @@ import requests
 import pandas as pd
 
 from urllib.parse import urljoin
-from tinydb import TinyDB, Query
 
 class PrismCoreDataBase:
     def __init__(self, base_url):
@@ -48,10 +47,9 @@ class PrismCoreDataBase:
         df = pd.DataFrame(all_rows)
         for col in df.columns:
             df[col] = pd.to_numeric(df[col], errors="ignore")  # 숫자로 변환 가능한 건 자동 변환
+        if 'timestamp' in df.columns and not pd.api.types.is_datetime64_any_dtype(df['timestamp']):
+            df['timestamp'] = pd.to_datetime(df['timestamp'], utc=True)
         return df
 
-
-class MonitorDatabase:
-    def __init__(self, db_path):
-        self.db = TinyDB(db_path)
+    
     

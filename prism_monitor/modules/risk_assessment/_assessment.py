@@ -16,6 +16,7 @@ from prism_monitor.modules.risk_assessment._data_load import (
     create_unified_dataset,
     prepare_features
 )
+from prism_monitor.llm.api import llm_generate
 
 
 def analyze_sensor_anomalies(datasets, lot_no):
@@ -185,7 +186,7 @@ def create_llm_prompt_for_event_risk(event_detect_analysis, event_detect_analysi
     """
     return prompt
 
-def create_llm_prompt_for_prediction_risk(task_instructions, task_instructions_history, maintenance_history):
+def create_llm_prompt_for_prediction_risk(task_instructions, task_instructions_history):
     """예측 AI 결과물 위험 평가를 위한 LLM 프롬프트 생성"""
     prompt = f"""
     반도체 제조 장비의 예측 유지보수 계획을 과거의 기록과 비교하여 평가해주세요.
@@ -220,44 +221,29 @@ def create_llm_prompt_for_prediction_risk(task_instructions, task_instructions_h
     """
     return prompt
 
-def get_llm_response(prompt):
-    url = "http://147.47.39.144:8000/api/generate"
-    payload = {
-        "prompt": prompt,
-        "max_tokens": 200,
-        "temperature": 0.3
-    }
-    response = requests.post(url, json=payload)
-    texts = response.json().get("text", "")
-    # print("[LLM 텍스트 생성]", response.status_code, response.json())
-    try:
-        text_json = json.loads(texts)
-        return text_json
-    except:
-        return {"error": "JSON parsing failed", "raw_response": texts}
 
 
-def evaluate_event_risk(event_detect_analysis, event_detect_analysis_history):
+def evaluate_event_risk(llm_url, event_detect_analysis, event_detect_analysis_history):
     prompt = create_llm_prompt_for_event_risk(event_detect_analysis, event_detect_analysis_history)
-    evaluation_result = get_llm_response(prompt)
+    evaluation_result = llm_generate(llm_url, prompt)['text']
     
-    # 5. 결과 후처리 및 검증
-    if 'error' in evaluation_result: # not in
-        # 평가 결과 보강
-        evaluation_result['evaluation_timestamp'] = datetime.now().isoformat()
-        evaluation_result['lot_no'] = event_detect_context['lot_no']
-        evaluation_result['anomaly_count'] = len(event_detect_context)
-        evaluation_result['historical_success_rate'] = historical_context['success_rate']
+    # # 5. 결과 후처리 및 검증
+    # if 'error' in evaluation_result: # not in
+    #     # 평가 결과 보강
+    #     evaluation_result['evaluation_timestamp'] = datetime.now().isoformat()
+    #     evaluation_result['lot_no'] = event_detect_context['lot_no']
+    #     evaluation_result['anomaly_count'] = len(event_detect_context)
+    #     evaluation_result['historical_success_rate'] = historical_context['success_rate']
         
-        # 통과 여부 결정
-        if evaluation_result.get('overall_score', 0) >= 70 and \
-            evaluation_result.get('compliance_status') == 'PASS':
-            evaluation_result['final_decision'] = 'APPROVED'
-        else:
-            evaluation_result['final_decision'] = 'REJECTED'
+    #     # 통과 여부 결정
+    #     if evaluation_result.get('overall_score', 0) >= 70 and \
+    #         evaluation_result.get('compliance_status') == 'PASS':
+    #         evaluation_result['final_decision'] = 'APPROVED'
+    #     else:
+    #         evaluation_result['final_decision'] = 'REJECTED'
     
-    print(f"평가 완료: {evaluation_result.get('final_decision', 'N/A')}")
-    # print(f"전체 점수: {evaluation_result.get('overall_score', 0):.1f}/100")
+    # print(f"평가 완료: {evaluation_result.get('final_decision', 'N/A')}")
+    # # print(f"전체 점수: {evaluation_result.get('overall_score', 0):.1f}/100")
     
     return evaluation_result
 
@@ -323,39 +309,39 @@ def get_maintenance_history(datasets, equipment_id):
     
     return maintenance_history
 
-def evaluate_prediction_risk(task_instructions, task_instructions_history):
+def evaluate_prediction_risk(llm_url, task_instructions, task_instructions_history):
     prompt = create_llm_prompt_for_prediction_risk(task_instructions, task_instructions_history)
     
     # 4. OpenAI API 호출
     print("LLM 평가 진행 중...")
-    evaluation_result = get_llm_response(prompt)
+    evaluation_result = llm_generate(llm_url, prompt)['text']
     
-    # print("evaluation_result:", evaluation_result)
-    # 5. 결과 후처리 및 검증
-    if 'error' in evaluation_result: # not in
-        # 평가 결과 보강
-        evaluation_result['evaluation_timestamp'] = datetime.now().isoformat()
-        evaluation_result['equipment_id'] = equipment_id
-        evaluation_result['sensor_trend_count'] = len(sensor_trends)
-        evaluation_result['days_since_maintenance'] = 'N/A'
+    # # print("evaluation_result:", evaluation_result)
+    # # 5. 결과 후처리 및 검증
+    # if 'error' in evaluation_result: # not in
+    #     # 평가 결과 보강
+    #     evaluation_result['evaluation_timestamp'] = datetime.now().isoformat()
+    #     evaluation_result['equipment_id'] = equipment_id
+    #     evaluation_result['sensor_trend_count'] = len(sensor_trends)
+    #     evaluation_result['days_since_maintenance'] = 'N/A'
         
-        # 마지막 유지보수로부터 경과 일수 계산
-        if maintenance_history['last_maintenance'] != 'Unknown':
-            try:
-                last_maint_date = datetime.strptime(maintenance_history['last_maintenance'], '%Y-%m-%d')
-                days_elapsed = (datetime.now() - last_maint_date).days
-                evaluation_result['days_since_maintenance'] = days_elapsed
-            except:
-                pass
+    #     # 마지막 유지보수로부터 경과 일수 계산
+    #     if maintenance_history['last_maintenance'] != 'Unknown':
+    #         try:
+    #             last_maint_date = datetime.strptime(maintenance_history['last_maintenance'], '%Y-%m-%d')
+    #             days_elapsed = (datetime.now() - last_maint_date).days
+    #             evaluation_result['days_since_maintenance'] = days_elapsed
+    #         except:
+    #             pass
         
-        # 통과 여부 결정
-        if evaluation_result.get('overall_score', 0) >= 75: # and
-            # evaluation_result.get('compliance_status') == 'PASS':
-            evaluation_result['final_decision'] = 'APPROVED'
-        else:
-            evaluation_result['final_decision'] = 'REQUIRES_REVIEW'
+    #     # 통과 여부 결정
+    #     if evaluation_result.get('overall_score', 0) >= 75: # and
+    #         # evaluation_result.get('compliance_status') == 'PASS':
+    #         evaluation_result['final_decision'] = 'APPROVED'
+    #     else:
+    #         evaluation_result['final_decision'] = 'REQUIRES_REVIEW'
     
-    print(f"평가 완료: {evaluation_result.get('final_decision', 'N/A')}")
-    # print(f"전체 점수: {evaluation_result.get('overall_score', 0):.1f}/100")
+    # print(f"평가 완료: {evaluation_result.get('final_decision', 'N/A')}")
+    # # print(f"전체 점수: {evaluation_result.get('overall_score', 0):.1f}/100")
     
     return evaluation_result

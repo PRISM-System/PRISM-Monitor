@@ -54,35 +54,36 @@ class MonitoringOutputResponse(BaseModel):
 
 #/api/v1/monitoring/event/detect
 class EventDetectRequest(BaseModel):
-    start: str = Field("2023-10-01T12:00:00Z", description="Start time in ISO 8601 format")
-    end: str = Field("2023-10-01T12:30:00Z", description="End time in ISO 8601 format")
+    taskId: str = 'TASK_0001'
+    start: str = Field("2024-01-01T12:00:00Z", description="Start time in ISO 8601 format")
+    end: str = Field("2024-02-01T12:30:00Z", description="End time in ISO 8601 format")
 
 class EventDetectResponse(BaseModel):
     class Result(BaseModel):
         status: Literal["complete", "failed"] = "complete"
         anomalies: bool = True
-        description: str = "SEMI_PHOTO_SENSORS 이상치 탐지"
     result: Result = Result()
 
 
 #/api/v1/monitoring/event/explain
 class EventExplainRequest(BaseModel):
-    eventDetectDesc: str ='{"LOT_NO":"LOT30012A","PRODUCT_NAME":"DRAM_512","START_QTY":25,"CURRENT_STEP":"PHOTO","FINAL_YIELD":75.0,"EXPOSURE_DOSE":45.0,"FOCUS_POSITION":80.0,"STAGE_TEMP":23.4,"HUMIDITY":60.0}'
+    taskId: str = 'TASK_0001'
 
 class EventExplainResponse(BaseModel):
     explain: str
 
 #/api/v1/monitoring/event/cause-candidates
 class CauseCandidatesRequest(BaseModel):
-    eventDetectDesc: str = '{"LOT_NO":"LOT30012A","PRODUCT_NAME":"DRAM_512","START_QTY":25,"CURRENT_STEP":"PHOTO","FINAL_YIELD":75.0,"EXPOSURE_DOSE":45.0,"FOCUS_POSITION":80.0,"STAGE_TEMP":23.4,"HUMIDITY":60.0}'
+    taskId: str = 'TASK_0001'
 
 class CauseCandidatesResponse(BaseModel):
     causeCandidates: str
 
 #/api/v1/monitoring/event/precursor
 class PrecursorRequest(BaseModel):
-    lineId: int = 0
-    sensors: List[str] = ['#2', '#3', '#5']
+    taskId: str = 'TASK_0001'
+    start: str = Field("2024-01-01T12:00:00Z", description="Start time in ISO 8601 format")
+    end: str = Field("2024-02-01T12:30:00Z", description="End time in ISO 8601 format")
 
 class PrecursorResponse(BaseModel):
     class Summary(BaseModel):
@@ -92,18 +93,21 @@ class PrecursorResponse(BaseModel):
 
 #/api/v1/monitoring/event/evaluate-risk
 class EvaluateRiskRequest(BaseModel):
-    currentTemp: int = 0
+    taskId: str = 'TASK_0001'
+    topk: int = 5
 
 class EvaluateRiskResponse(BaseModel):
-    totalCandidates: int
-    passedCandidates: int
-    failedCandidates: int
-    riskLevel: Literal["HIGH", "LOW", "MEDIUM"]
-    complianceStatus: bool
-    class recommendedAction(BaseModel):
-        actionName: str
-        TotalScore: float
-    recommendedActions: List[recommendedAction]
+    # totalCandidates: int
+    # passedCandidates: int
+    # failedCandidates: int
+    # riskLevel: Literal["HIGH", "LOW", "MEDIUM"]
+    # complianceStatus: bool
+    # class recommendedAction(BaseModel):
+    #     actionName: str
+    #     TotalScore: float
+    # recommendedActions: List[recommendedAction]
+    eventEvaluation: str
+    predictionEvaluation: str
 
 #/api/v1/monitoring/dashboard/update
 class DashboardUpdateRequest(BaseModel):

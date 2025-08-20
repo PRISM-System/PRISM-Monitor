@@ -1,12 +1,13 @@
 import pandas as pd
 import json
 
+from tinydb import TinyDB, Query
 
 from prism_monitor.data.database import PrismCoreDataBase
-from prism_monitor.modules.event.event_detect import detect_anomalies_in_timerange
+from prism_monitor.modules.event.event_detect import detect_anomalies
 from prism_monitor.modules.event_precursor.precursor import precursor
-from prism_monitor.modules.explanation.explanation import event_explain
-from prism_monitor.modules.explanation.explanation import event_cause_candidates
+from prism_monitor.modules.explanation.explanation import event_explain, event_cause_candidates
+from prism_monitor.modules.risk_assessment.assessment import risk_assessment
 
 
 def monitoring_event_output(status="complete", anomaly_detected=True, description="라인2-5 온도 이상 감지"):
@@ -18,65 +19,138 @@ def monitoring_event_output(status="complete", anomaly_detected=True, descriptio
     return res
 
 
-def monitoring_event_detect(prism_core_db: PrismCoreDataBase, start: str, end: str):
+def monitoring_event_detect(monitor_db: TinyDB, prism_core_db: PrismCoreDataBase, start: str, end: str, task_id: str):
+    start_time = pd.to_datetime(start, utc=True)
+    end_time = pd.to_datetime(end, utc=True)
+
     datasets = {}
     for table_name in prism_core_db.get_tables():
-        datasets[table_name] = prism_core_db.get_table_data(table_name)
-    anomalies, analysis = detect_anomalies_in_timerange(datasets)
+        df = prism_core_db.get_table_data(table_name)
+        if 'timestamp' in df.columns:
+            df['timestamp'] = pd.to_datetime(df['timestamp'], utc=True, errors='coerce')
+            df = df[(df['timestamp'] >= start_time) & (df['timestamp'] <= end_time)]
+        datasets[table_name] = df
+
+    anomalies, analysis = detect_anomalies(datasets)
+
+    # 하나의 문서로 저장: {task_id: ..., records: [...]}
+    event_record = {
+        "task_id": task_id,
+        "records": analysis
+    }
+
+    Event = Query()
+    monitor_db.table('EventDetectHistory').upsert(event_record, Event.task_id == task_id)
+
     return {
-        'result':{
-            'status':'complete',
+        'result': {
+            'status': 'complete',
             'anomalies': True if len(anomalies) else False,
-            'description': json.dumps(analysis)
         }
     }
 
-def monitoring_event_explain(url, event_detect_desc:str):
-    # 실제 설명 분석 로직 대신 더미 응답 제공
-    res = event_explain(
-        url=url,
-        event_detect_desc=event_detect_desc
-    )
-    print(res)
-    return {
-        'explain':res
-    }
 
-def monitoring_event_cause_candidates(url, event_detect_desc:str):
-    res = event_cause_candidates(
-        url=url,
-        event_detect_desc=event_detect_desc
-    )
-    return {
-        "causeCandidates": res
-    }
+def monitoring_event_explain(llm_url, monitor_db: TinyDB, task_id: str):
+    # task_id에 해당하는 이벤트 분석 데이터 조회
+    Event = Query()
+    event_record = monitor_db.table('EventDetectHistory').get(Event.task_id == task_id)
 
-def monitoring_event_precursor(prism_core_db: PrismCoreDataBase):
+    if not event_record:
+        return {'error': f'No record found for task_id: {task_id}'}
+
+    # 'records' 키에 담긴 분석 데이터 전달
+    event_detect_analysis = event_record.get('records', [])
+
+    explain = event_explain(
+        llm_url=llm_url,
+        event_detect_analysis=event_detect_analysis
+    )
+    res = {
+        'explain': explain
+    }
+    Event = Query()
+    monitor_db.table('EventExplainHistory').upsert(res, Event.task_id == task_id)
+
+    return res
+
+
+def monitoring_event_cause_candidates(llm_url, monitor_db: TinyDB, task_id: str):
+    # task_id에 해당하는 이벤트 분석 데이터 조회
+    Event = Query()
+    event_record = monitor_db.table('EventDetectHistory').get(Event.task_id == task_id)
+
+    if not event_record:
+        return {'error': f'No record found for task_id: {task_id}'}
+
+    # 'records' 키에 담긴 분석 데이터 전달
+    event_detect_analysis = event_record.get('records', [])
+
+    cause_candidates = event_cause_candidates(
+        llm_url=llm_url,
+        event_detect_analysis=event_detect_analysis
+    )
+    res = {
+        "causeCandidates": cause_candidates
+    }
+    Event = Query()
+    monitor_db.table('EventCauseCandidatesHistory').upsert(res, Event.task_id == task_id)
+
+    return res
+
+def monitoring_event_precursor(monitor_db: TinyDB, prism_core_db: PrismCoreDataBase, start: str, end: str, task_id: str):
+    start_time = pd.to_datetime(start, utc=True)
+    end_time = pd.to_datetime(end, utc=True)
+
     datasets = {}
     for table_name in prism_core_db.get_tables():
-        datasets[table_name] = prism_core_db.get_table_data(table_name)
-    return precursor(datasets)
+        df = prism_core_db.get_table_data(table_name)
+        if 'timestamp' in df.columns:
+            df['timestamp'] = pd.to_datetime(df['timestamp'], utc=True, errors='coerce')
+            df = df[(df['timestamp'] >= start_time) & (df['timestamp'] <= end_time)]
+        datasets[table_name] = df
+    res = precursor(datasets)
+    print(res)
+    Event = Query()
+    monitor_db.table('EventPrecursorHistory').upsert(res, Event.task_id == task_id)
+
+    return res
 
 
-def monitoring_event_evaluate_risk(current_temp):
-    # 실제 위험 평가 로직 대신 더미 응답 제공
-    from prism_monitor.modules.evaluate_risk.evaluate_risk import evaluate_risk
-    evaluated = evaluate_risk()
-    result = {
-        'totalCandidates': evaluated['total_candidates'],
-        'passedCandidates': evaluated['passed_candidates'],
-        'failedCandidates': evaluated['failed_candidates'],
-        'riskLevel': evaluated['risk_level'],
-        'complianceStatus':evaluated['compliance_status']
+def monitoring_event_evaluate_risk(llm_url, monitor_db: TinyDB, task_id, topk=5):
+    Event = Query()
+
+    # 1. 현재 task_id에 해당하는 분석 결과
+    event_detect_analysis = monitor_db.table('EventDetectHistory').get(Event.task_id == task_id)
+
+    # 2. 과거 task_id 중 현재 task_id가 아닌 것만 상위 topk개
+    event_detect_all = monitor_db.table('EventDetectHistory').all()
+    event_detect_analysis_history = [
+        r for r in event_detect_all if r.get('task_id') != task_id
+    ][:topk]  # 정렬 기준 필요 시 추가
+
+    # 3. 현재 task_id의 원인 후보 데이터
+    task_instructions = monitor_db.table('EventCauseCandidatesHistory').get(Event.task_id == task_id)
+
+    # 4. 과거 task_id의 원인 후보 데이터
+    cause_all = monitor_db.table('EventCauseCandidatesHistory').all()
+    task_instructions_history = [
+        r for r in cause_all if r.get('task_id') != task_id
+    ][:topk]
+
+    # 위험 평가 수행
+    event_evaluation, prediction_evaluation = risk_assessment(
+        llm_url=llm_url,
+        event_detect_analysis=event_detect_analysis,
+        event_detect_analysis_history=event_detect_analysis_history,
+        task_instructions=task_instructions,
+        task_instructions_history=task_instructions_history
+    )
+    return {
+        'eventEvaluation':event_evaluation,
+        'predictionEvaluation':prediction_evaluation,
     }
-    recommended_actions = []
-    for recommended_action in evaluated.get('recommended_actions',[]):
-        recommended_actions.append({
-            'actionName': recommended_action['action_name'],
-            'totalScore': recommended_action['total_score']/50
-        })
-    result['recommendedActions'] = recommended_actions
-    return result
+
+
 
 def monitoring_dashboard_update(field: str = "line_id", type: str = "LINE", status: str = "비정상", anomaly_detected: bool = True, anomaly_type: str = "temperature_spike", updated_at: str = "2025-07-17T12:01:03Z"):
     return {

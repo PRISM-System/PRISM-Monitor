@@ -77,7 +77,7 @@ def precursor(datasets):
     anomaly_status = run_real_time_monitoring_scenario(trained_model, model_scaler, feature_cols, test_df)
     return {
         'summary': {
-            'predicted_value': pred_value,
+            'predicted_value': float(pred_value[0]),
             'is_anomaly': anomaly_status
         }
     }

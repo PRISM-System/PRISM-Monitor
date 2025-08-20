@@ -371,7 +371,6 @@ class SemiconductorRealDataDetector:
                 if 'final_yield' in row:
                     print(f"    수율: {row['final_yield']:.1f}%")
         
-        anomaly_lots.to_csv('event_detect_analysis.csv',index=False)
         return anomaly_lots.to_dict("records")
 
 
@@ -428,20 +427,8 @@ class SemiconductorRealDataDetector:
         plt.tight_layout()
         plt.show()
 
-    def detect_anomalies_in_timerange(self, df_result, start_time=None, end_time=None):
-        """
-        특정 시간 구간의 이상탐지 결과 조회
-        """
-        if start_time is None and end_time is None:
-            print("전체 기간 이상탐지 결과:")
-            filtered_df = df_result
-        else:
-            print(f"시간 구간 ({start_time} ~ {end_time}) 이상탐지 결과:")
-            # 실제 시간 컬럼이 있다면 필터링 적용
-            # 여기서는 LOT_NO 기준으로 간단히 필터링
-            filtered_df = df_result
-        
-        anomalies = filtered_df[filtered_df['predicted_anomaly']]
+    def detect_anomalies(self, df_result):
+        anomalies = df_result[df_result['predicted_anomaly']]
         
         print(f"조회 기간 내 이상 LOT: {len(anomalies)}개")
         
@@ -455,7 +442,7 @@ class SemiconductorRealDataDetector:
         return anomalies
     
 
-def detect_anomalies_in_timerange(datasets=None, local_data_path=None):
+def detect_anomalies(datasets=None, local_data_path=None):
     assert datasets is not None or local_data_path is not None, "datasets와 loca_data_path 중 적어도 하나는 None이 아니어야 합니다."
     detector = SemiconductorRealDataDetector()
     if datasets is None and local_data_path:
@@ -464,7 +451,7 @@ def detect_anomalies_in_timerange(datasets=None, local_data_path=None):
     processed_df, feature_cols = detector.prepare_features(unified_df)
     result_df = detector.train_and_detect(processed_df, feature_cols)
     analysis = detector.analyze_results(result_df)
-    anomalies = detector.detect_anomalies_in_timerange(result_df)
+    anomalies = detector.detect_anomalies(result_df)
     return anomalies, analysis
 
 

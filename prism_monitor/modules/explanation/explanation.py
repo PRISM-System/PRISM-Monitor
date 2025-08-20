@@ -496,7 +496,7 @@ FEWSHOT_TASK_2 = (
 #     )
 #     return response.choices[0].message.content
 
-def _call_api(url, system_prompt, fewshots, data, max_tokens=256, temperature=0.7, presence_penalty=1.5):
+def _call_api(llm_url, system_prompt, fewshots, data, max_tokens=256, temperature=0.7, presence_penalty=1.5):
     # prompt 문자열을 직접 구성
     prompt = system_prompt + "\n\n"
     for user_ex, assistant_ex in fewshots:
@@ -504,7 +504,7 @@ def _call_api(url, system_prompt, fewshots, data, max_tokens=256, temperature=0.
     prompt += f"User: data:\n{data}\n\nanswer:\nAssistant:"
 
     response = llm_generate(
-        url=url,
+        url=llm_url,
         prompt=prompt,
         max_tokens=max_tokens,
         temperature=temperature,
@@ -513,7 +513,7 @@ def _call_api(url, system_prompt, fewshots, data, max_tokens=256, temperature=0.
     return response['text']
 
 
-def event_explain(url, event_detect_desc):
+def event_explain(llm_url, event_detect_analysis):
     # """이상치 값에 대한 설명을 생성"""
     # try:
     #     parsed = json.loads(data)
@@ -539,9 +539,9 @@ def event_explain(url, event_detect_desc):
         (FEWSHOT_USER_CASE_2, FEWSHOT_EXPLANATION_2),
     ]
     
-    return _call_api(url, EXPLANATION_SYSTEM_PROMPT, fewshots, event_detect_desc)
+    return _call_api(llm_url, EXPLANATION_SYSTEM_PROMPT, fewshots, event_detect_analysis)
 
-def event_cause_candidates(url, event_detect_desc):
+def event_cause_candidates(llm_url, event_detect_analysis):
     # """이상치 분석을 위한 과업을 생성"""
     # try:
     #     parsed = json.loads(data)
@@ -558,7 +558,7 @@ def event_cause_candidates(url, event_detect_desc):
         (FEWSHOT_USER_CASE_1, FEWSHOT_TASK_1),
         (FEWSHOT_USER_CASE_2, FEWSHOT_TASK_2),
     ]
-    return _call_api(url, TASK_SYSTEM_PROMPT, fewshots, event_detect_desc)
+    return _call_api(llm_url, TASK_SYSTEM_PROMPT, fewshots, event_detect_analysis)
 
 if __name__ == "__main__":
     url = '0.0.0.0:8888'
