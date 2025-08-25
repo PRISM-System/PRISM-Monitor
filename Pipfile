@@ -17,8 +17,9 @@ scikit-learn = "*"
 tensorflow = "*"
 tabulate = "*"
 tinydb = "*"
-pydantic-settings = "*"
 weaviate = "*"
+pydantic-settings = "*"
+weaviate-client = "*"
 
 [dev-packages]
 ipykernel = "*"
