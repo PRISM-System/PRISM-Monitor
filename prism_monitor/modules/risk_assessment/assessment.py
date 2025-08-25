@@ -27,8 +27,15 @@ def evaluate_event_and_prediction_risk(datasets):
     processed_df, feature_cols, scaler = prepare_features(unified_df)
 
     
-
+#위험 평가
 def risk_assessment(llm_url, event_detect_analysis, event_detect_analysis_history, task_instructions, task_instructions_history):
+    '''
+    llm_url: llm 서버주소
+    event_detect_analysis: 현재 task_id에 해당하는 분석 결과
+    event_detect_analysis_history: 과거 task_id 중 현재 task_id가 아닌 것만 상위 topk개
+    task_instructions: 현재 task_id의 원인 후보 데이터
+    task_instructions_history: 과거 task_id의 원인 후보 데이터
+    '''
     event_evaluation = evaluate_event_risk(
         llm_url,
         event_detect_analysis,

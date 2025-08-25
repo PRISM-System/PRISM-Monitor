@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "a9e95d913a61738826c4cbaf9d02534c0994d9d1bfc3fdf601240fe3358a9326"
+            "sha256": "fad35fd510d9a969991419eb37fc6f4062a32b2b03a41b6bac77dd5b8ddd7a40"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -1304,9 +1304,6 @@
             "version": "==2.9.10"
         },
         "pydantic": {
-            "extras": [
-                "email"
-            ],
             "hashes": [
                 "sha256:d989c3c6cb79469287b1569f7447a17848c998458d49ebe294e975b9baf0f0db",
                 "sha256:dde5df002701f6de26248661f6835bbe296a47bf73990135c7d07ce741b9623b"
@@ -1420,6 +1417,15 @@
             "markers": "python_version >= '3.9'",
             "version": "==2.33.2"
         },
+        "pydantic-settings": {
+            "hashes": [
+                "sha256:06f0062169818d0f5524420a360d632d5857b83cffd4d42fe29597807a1614ee",
+                "sha256:a60952460b99cf661dc25c29c0ef171721f98bfcb52ef8d9ea4c943d7c8cc796"
+            ],
+            "index": "pypi",
+            "markers": "python_version >= '3.9'",
+            "version": "==2.10.1"
+        },
         "pygments": {
             "hashes": [
                 "sha256:636cb2477cec7f8952536970bc533bc43743542f70392ae026374600add5b887",
@@ -1443,6 +1449,14 @@
             ],
             "markers": "python_version >= '2.7' and python_version not in '3.0, 3.1, 3.2'",
             "version": "==2.9.0.post0"
+        },
+        "python-dotenv": {
+            "hashes": [
+                "sha256:31f23644fe2602f88ff55e1f5c79ba497e01224ee7737937930c448e4d0e24dc",
+                "sha256:a8a6399716257f45be6a007360200409fce5cda2661e3dec71d23dc15f6189ab"
+            ],
+            "markers": "python_version >= '3.9'",
+            "version": "==1.1.1"
         },
         "pytz": {
             "hashes": [
@@ -1730,6 +1744,14 @@
             "index": "pypi",
             "markers": "python_version >= '3.9'",
             "version": "==0.35.0"
+        },
+        "weaviate": {
+            "hashes": [
+                "sha256:40f1c1cf0b769036315d2b6026c8cd823a3a6e951c90d4e70a001a770ba8a444",
+                "sha256:a381b8bb0eb236bd10256def8612953ed9024e6738b8a259e7ec11e626ae0665"
+            ],
+            "index": "pypi",
+            "version": "==0.1.2"
         },
         "werkzeug": {
             "hashes": [
