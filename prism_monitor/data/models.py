@@ -54,59 +54,60 @@ class MonitoringOutputResponse(BaseModel):
 
 #/api/v1/monitoring/event/detect
 class EventDetectRequest(BaseModel):
-    start: str = Field("2023-10-01T12:00:00Z", description="Start time in ISO 8601 format")
-    end: str = Field("2023-10-01T12:30:00Z", description="End time in ISO 8601 format")
+    taskId: str = 'TASK_0001'
+    start: str = Field("2024-01-01T12:00:00Z", description="Start time in ISO 8601 format")
+    end: str = Field("2024-02-01T12:30:00Z", description="End time in ISO 8601 format")
 
 class EventDetectResponse(BaseModel):
-    class AnomalyPeriod(BaseModel):
-        start: str = Field("2023-10-01T12:00:00Z", description="Start time of the anomaly period in ISO 8601 format")
-        end: str = Field("2023-10-01T12:30:00Z", description="End time of the anomaly period in ISO 8601 format")
-    anomalyPeriods: List[AnomalyPeriod] = [AnomalyPeriod()]
-    value: Union[str, int] = "225C"
+    class Result(BaseModel):
+        status: Literal["complete", "failed"] = "complete"
+        anomalies: bool = True
+    result: Result = Result()
 
 
 #/api/v1/monitoring/event/explain
 class EventExplainRequest(BaseModel):
-    class AnomalyPeriod(BaseModel):
-        start: str = Field("2023-10-01T12:00:00Z", description="Start time of the anomaly period in ISO 8601 format")
-        end: str = Field("2023-10-01T12:30:00Z", description="End time of the anomaly period in ISO 8601 format")
-    anomalyPeriod: AnomalyPeriod = AnomalyPeriod()
+    taskId: str = 'TASK_0001'
 
 class EventExplainResponse(BaseModel):
-    explanation: str = "센서 #2, #5가 다른 센서 대비 급격히 상승 추세를 보였습니다."
+    explain: str
 
 #/api/v1/monitoring/event/cause-candidates
 class CauseCandidatesRequest(BaseModel):
-    class AnomalyPeriod(BaseModel):
-        start: str = Field("2023-10-01T12:00:00Z", description="Start time of the anomaly period in ISO 8601 format")
-        end: str = Field("2023-10-01T12:30:00Z", description="End time of the anomaly period in ISO 8601 format")
-    anomalyPeriod: AnomalyPeriod = AnomalyPeriod()
+    taskId: str = 'TASK_0001'
 
 class CauseCandidatesResponse(BaseModel):
-    candidates: List[str] = ["센서 #2, #5의 상승", "라인 #2의 평균 온도 상승"]
+    causeCandidates: str
 
 #/api/v1/monitoring/event/precursor
 class PrecursorRequest(BaseModel):
-    lineId: int = 0
-    sensors: List[str] = ['#2', '#3', '#5']
+    taskId: str = 'TASK_0001'
+    start: str = Field("2024-01-01T12:00:00Z", description="Start time in ISO 8601 format")
+    end: str = Field("2024-02-01T12:30:00Z", description="End time in ISO 8601 format")
 
 class PrecursorResponse(BaseModel):
-    percursor: str = "10분 후 215도 이상이 되어서 기준이 초과할 예상이 된다."
+    class Summary(BaseModel):
+        predicted_value: float = 0.0
+        is_anomaly: bool = False
+    summary: Summary = Summary()
 
 #/api/v1/monitoring/event/evaluate-risk
 class EvaluateRiskRequest(BaseModel):
-    currentTemp: int = 0
+    taskId: str = 'TASK_0001'
+    topk: int = 5
 
 class EvaluateRiskResponse(BaseModel):
-    totalCandidates: int
-    passedCandidates: int
-    failedCandidates: int
-    riskLevel: Literal["HIGH", "LOW", "MEDIUM"]
-    complianceStatus: bool
-    class recommendedAction(BaseModel):
-        actionName: str
-        TotalScore: float
-    recommendedActions: List[recommendedAction]
+    # totalCandidates: int
+    # passedCandidates: int
+    # failedCandidates: int
+    # riskLevel: Literal["HIGH", "LOW", "MEDIUM"]
+    # complianceStatus: bool
+    # class recommendedAction(BaseModel):
+    #     actionName: str
+    #     TotalScore: float
+    # recommendedActions: List[recommendedAction]
+    eventEvaluation: str
+    predictionEvaluation: str
 
 #/api/v1/monitoring/dashboard/update
 class DashboardUpdateRequest(BaseModel):

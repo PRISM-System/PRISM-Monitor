@@ -1,10 +1,14 @@
-import logging
-import sqlite3
+from dotenv import load_dotenv
+load_dotenv()
 
+import os
+import logging
+
+from tinydb import TinyDB, Query
 from fastapi import FastAPI, Query, Path
 from typing import Union, Literal
 
-from database import generate_temp_database
+from prism_monitor.data.database import PrismCoreDataBase
 from prism_monitor.data.models import (
     DashboardResponse,
     StatusPendingResponse,
@@ -23,19 +27,20 @@ from prism_monitor.modules.task import (
     monitoring_output
 )
 from prism_monitor.modules.monitoring import (
-    event_output, 
-    event_detect, 
-    event_explain, 
-    event_cause_candidates,
-    event_precursor,
-    event_evaluate_risk,
-    dashboard_update
+    monitoring_event_output, 
+    monitoring_event_detect, 
+    monitoring_event_explain, 
+    monitoring_event_cause_candidates,
+    monitoring_event_precursor,
+    monitoring_event_evaluate_risk,
+    monitoring_dashboard_update
 )
 
-DATABASE_PATH="my_database.db"
+DATABASE_PATH="monitor_db.json"
 LOCAL_FILE_DIR='prism_monitor/data/local'
-conn = sqlite3.connect(DATABASE_PATH)
-generate_temp_database(DATABASE_PATH, LOCAL_FILE_DIR)
+LLM_URL=os.environ['LLM_URL']
+MONITOR_DB = TinyDB(DATABASE_PATH)
+PRISM_CORE_DB = PrismCoreDataBase(os.environ['PRISM_CORE_DATABASE_URL'])
 
 # Logger 설정
 logger = logging.getLogger("prism_monitor")
@@ -93,7 +98,7 @@ def get_task_status(
 )
 def receive_monitoring_event(body: EventOutputRequest):
     logger.info(f"Monitoring event received: {body}")
-    res = event_output(
+    res = monitoring_event_output(
         status=body.result.status,
         anomaly_detected=body.result.anomalyDetected,
         description=body.result.description
@@ -126,11 +131,15 @@ def receive_monitoring_output(
     tags=["Monitoring"]
 )
 def detect_anomaly_in_period(body: EventDetectRequest):
-    logger.info(f"Anomaly detection requested: start={body.start}, end={body.end}")
-    res = event_detect(
+    logger.info(f"Anomaly detection requested: taskId={body.taskId}, start={body.start}, end={body.end}")
+    res = monitoring_event_detect(
+        task_id=body.taskId,
         start=body.start,
-        end=body.end
+        end=body.end,
+        prism_core_db=PRISM_CORE_DB,
+        monitor_db=MONITOR_DB
     )
+    print(res)
     return res
 
 @app.post(
@@ -141,8 +150,10 @@ def detect_anomaly_in_period(body: EventDetectRequest):
 )
 def explain_anomaly_event(body: EventExplainRequest):
     logger.info(f"Anomaly explanation requested: {body}")
-    res = event_explain(
-        anomaly_period=body.anomalyPeriod
+    res = monitoring_event_explain(
+        llm_url=LLM_URL,
+        monitor_db=MONITOR_DB,
+        task_id=body.taskId
     )
     return res
 
@@ -154,8 +165,10 @@ def explain_anomaly_event(body: EventExplainRequest):
 )
 def explain_anomaly_event(body: CauseCandidatesRequest):
     logger.info(f"Cause candidates requested: {body}")
-    res = event_cause_candidates(
-        anomaly_period=body.anomalyPeriod
+    res = monitoring_event_cause_candidates(
+        llm_url=LLM_URL,
+        monitor_db=MONITOR_DB,
+        task_id=body.taskId
     )
     return res
 
@@ -166,10 +179,13 @@ def explain_anomaly_event(body: CauseCandidatesRequest):
     tags=["Monitoring"]
 )
 def explain_anomaly_event(body: PrecursorRequest):
-    logger.info(f"Precursor requested: lineId={body.lineId}, sensors={body.sensors}")
-    res = event_precursor(
-        line_id=body.lineId,
-        sensors=body.sensors
+    logger.info(f"Precursor requested: taskId={body.taskId}, start={body.start}, end={body.end}")
+    res = monitoring_event_precursor(
+        monitor_db=MONITOR_DB,
+        prism_core_db=PRISM_CORE_DB,
+        start=body.start,
+        end=body.end,
+        task_id=body.taskId
     )
     return res
 
@@ -180,9 +196,12 @@ def explain_anomaly_event(body: PrecursorRequest):
     tags=["Monitoring"]
 )
 def explain_anomaly_event(body: EvaluateRiskRequest):
-    logger.info(f"Risk evaluation requested: currentTemp={body.currentTemp}")
-    res = event_evaluate_risk(
-        current_temp=body.currentTemp
+    logger.info(f"Risk evaluation requested: taskId={body.taskId}, topk={body.topk}")
+    res = monitoring_event_evaluate_risk(
+        llm_url=LLM_URL,
+        monitor_db=MONITOR_DB,
+        task_id=body.taskId,
+        topk=body.topk
     )
     return res
 
@@ -194,7 +213,7 @@ def explain_anomaly_event(body: EvaluateRiskRequest):
 )
 def update_dashboard(body: DashboardUpdateRequest):
     logger.info(f"Dashboard update requested: {body}")
-    res = dashboard_update(
+    res = monitoring_dashboard_update(
         field=body.field, 
         type=body.type,
         status=body.status,
