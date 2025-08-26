@@ -4,3 +4,4 @@ pydantic>=2.0
 pydantic_settings
 pandas
 weaviate-client
+tinydb
