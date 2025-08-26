@@ -44,8 +44,18 @@ class AnomalyDetectTool(BaseTool):
     def execute(self, request: ToolRequest) -> ToolResponse:
         """Tool 실행"""
         try:
-            pass
-                
+            params = request.parameters
+            unified_df = params["rows"]
+            anomaly_records, svg_content, analysis_results = self._detector.fast_anomaly_detection(unified_df=unified_df)
+            
+            return ToolResponse(
+                success=True,
+                data={
+                    "anomaly_records": anomaly_records,
+                    "svg_content": svg_content,
+                    "analysis_results": analysis_results
+                }
+            )
         except Exception as e:
             return ToolResponse(
                 success=False,

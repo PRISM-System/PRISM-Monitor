@@ -1443,73 +1443,73 @@ class EnhancedSemiconductorRealTimeMonitor:
         
         return anomaly_records, svg_content, analysis_results, drift_results
     
-    def fast_anomaly_detection(self, test_data_path: str = None, test_datasets: Dict = None):
-        """
-        시나리오 B: 저장된 모델로 빠른 이상탐지 수행 (기존 메서드 - 호환성 유지)
-        """
-        print("=== 시나리오 B: 빠른 이상탐지 수행 ===")
+    # def fast_anomaly_detection(self, test_data_path: str = None, test_datasets: Dict = None):
+    #     """
+    #     시나리오 B: 저장된 모델로 빠른 이상탐지 수행 (기존 메서드 - 호환성 유지)
+    #     """
+    #     print("=== 시나리오 B: 빠른 이상탐지 수행 ===")
         
-        # 1. 저장된 모델 로드
-        print("1. 저장된 모델 로딩 중...")
-        model, scaler, metadata = self.model_manager.load_model()
+    #     # 1. 저장된 모델 로드
+    #     print("1. 저장된 모델 로딩 중...")
+    #     model, scaler, metadata = self.model_manager.load_model()
         
-        if model is None:
-            print("저장된 모델이 없습니다. setup_and_train_model()을 먼저 실행하세요.")
-            return None, "", []
+    #     if model is None:
+    #         print("저장된 모델이 없습니다. setup_and_train_model()을 먼저 실행하세요.")
+    #         return None, "", []
         
-        self.detector.models['autoencoder'] = model
-        self.detector.scaler = scaler
-        self.detector.threshold = metadata['threshold']
-        feature_cols = metadata['feature_columns']
+    #     self.detector.models['autoencoder'] = model
+    #     self.detector.scaler = scaler
+    #     self.detector.threshold = metadata['threshold']
+    #     feature_cols = metadata['feature_columns']
         
-        print(f"모델 로드 완료: {metadata['model_version']}")
-        print(f"특성 수: {len(feature_cols)}")
-        print(f"임계값: {metadata['threshold']}")
+    #     print(f"모델 로드 완료: {metadata['model_version']}")
+    #     print(f"특성 수: {len(feature_cols)}")
+    #     print(f"임계값: {metadata['threshold']}")
         
-        # 2. 테스트 데이터 준비
-        if test_datasets is None:
-            if test_data_path:
-                print("2. 테스트 데이터 로딩 중...")
-                test_datasets = self.detector.load_local_data_and_explore(test_data_path)
-            else:
-                print("테스트 데이터가 제공되지 않았습니다.")
-                return None, "", []
+    #     # 2. 테스트 데이터 준비
+    #     if test_datasets is None:
+    #         if test_data_path:
+    #             print("2. 테스트 데이터 로딩 중...")
+    #             test_datasets = self.detector.load_local_data_and_explore(test_data_path)
+    #         else:
+    #             print("테스트 데이터가 제공되지 않았습니다.")
+    #             return None, "", []
         
-        # 3. 빠른 이상탐지 수행
-        print("3. 이상탐지 수행 중...")
-        result_df = self.detector.predict_with_trained_model(test_datasets, feature_cols)
+    #     # 3. 빠른 이상탐지 수행
+    #     print("3. 이상탐지 수행 중...")
+    #     result_df = self.detector.predict_with_trained_model(test_datasets, feature_cols)
         
-        if result_df is None:
-            return [], "", []
+    #     if result_df is None:
+    #         return [], "", []
         
-        # 4. 결과 분석 및 시각화
-        print("4. 결과 분석 및 시각화 중...")
-        analysis_results = self.detector.analyze_results(result_df)
-        svg_content = self.detector.visualize_results(result_df)
+    #     # 4. 결과 분석 및 시각화
+    #     print("4. 결과 분석 및 시각화 중...")
+    #     analysis_results = self.detector.analyze_results(result_df)
+    #     svg_content = self.detector.visualize_results(result_df)
         
-        # 5. 이상 LOT 추출
-        anomalies = result_df[result_df['predicted_anomaly']] if 'predicted_anomaly' in result_df.columns else pd.DataFrame()
-        anomaly_records = anomalies.to_dict('records') if len(anomalies) > 0 else []
+    #     # 5. 이상 LOT 추출
+    #     anomalies = result_df[result_df['predicted_anomaly']] if 'predicted_anomaly' in result_df.columns else pd.DataFrame()
+    #     anomaly_records = anomalies.to_dict('records') if len(anomalies) > 0 else []
         
-        print(f"빠른 이상탐지 완료!")
-        print(f"- 총 {len(result_df)}개 LOT 분석")
-        print(f"- {len(anomaly_records)}개 이상 LOT 탐지")
+    #     print(f"빠른 이상탐지 완료!")
+    #     print(f"- 총 {len(result_df)}개 LOT 분석")
+    #     print(f"- {len(anomaly_records)}개 이상 LOT 탐지")
         
-        return anomaly_records, svg_content, analysis_results
-        model_status = self.get_model_status()
-        normal_state_summary = self.normal_state_manager.get_all_profiles_summary()
+    #     return anomaly_records, svg_content, analysis_results
+    #     model_status = self.get_model_status()
+    #     normal_state_summary = self.normal_state_manager.get_all_profiles_summary()
         
-        return {
-            'model_status': model_status,
-            'normal_state_profiles': normal_state_summary,
-            'data_quality_summary': {
-                'total_validations': len(self.validation_results),
-                'average_quality_score': np.mean([r['data_quality_score'] for r in self.validation_results]) if self.validation_results else 0,
-                'critical_issues': sum(len(r['anomalies']) for r in self.validation_results),
-                'last_validation': self.validation_results[-1]['validation_timestamp'] if self.validation_results else None
-            },
-            'system_timestamp': datetime.now().isoformat()
-        }
+    #     return {
+    #         'model_status': model_status,
+    #         'normal_state_profiles': normal_state_summary,
+    #         'data_quality_summary': {
+    #             'total_validations': len(self.validation_results),
+    #             'average_quality_score': np.mean([r['data_quality_score'] for r in self.validation_results]) if self.validation_results else 0,
+    #             'critical_issues': sum(len(r['anomalies']) for r in self.validation_results),
+    #             'last_validation': self.validation_results[-1]['validation_timestamp'] if self.validation_results else None
+    #         },
+    #         'system_timestamp': datetime.now().isoformat()
+    #     }
 
 # 편의 함수들
 def setup_model_training(data_path: str, model_dir: str = "models"):
