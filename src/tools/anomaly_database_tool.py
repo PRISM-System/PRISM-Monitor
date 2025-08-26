@@ -2,7 +2,6 @@ import requests
 import json
 import numpy as np
 import pandas as pd
-import pandasql as psql
 
 from typing import Dict, Any, List, Optional
 from requests.adapters import HTTPAdapter
@@ -56,13 +55,14 @@ class AnomalyDataBaseTool(BaseTool):
             
             # 1. 관련 규정 검색
             datasets = self.get_datasets()
-            df = self.create_unified_dataset(datasets)
-            result = psql.sqldf(sql_query, locals())
+            unified_df = self.create_unified_dataset(datasets)
+            lot_no_list = self.get_lot_no_list(sql_query)
+            selected_df = unified_df[unified_df['lot_no'].isin(lot_no_list)]
             
             return ToolResponse(
                 success=True,
                 data={
-                    "result": result
+                    "result": selected_df
                 }
             )
                 
@@ -243,4 +243,15 @@ class AnomalyDataBaseTool(BaseTool):
 
         return datasets
     
-    def get_lot_no_list
+    def get_lot_no_list(self, sql_query: str) -> List[str]:
+        """LOT 번호 목록 조회"""
+        url = urljoin(self._database_url, 'api/db/query')
+        req_data = {
+            "query": sql_query,
+            "params": []
+        }
+        response = self.session.post(url, json=req_data, timeout=60, verify=False)
+        response.raise_for_status()
+        res = response.json()['data']
+        lot_no_list = [row['lot_no'] for row in res if 'lot_no' in row]
+        return lot_no_list
