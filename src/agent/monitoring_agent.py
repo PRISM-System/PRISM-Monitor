@@ -89,16 +89,7 @@ class MonitoringAgent:
         self.workflow_manager.set_tool_registry(self.tool_registry)
 
     def connect_llm_service(self):
-        """LLM 서비스 연결"""
-        # OpenAI 또는 기타 LLM 서비스 연결
-        self.llm = PrismLLMService(
-            model_name=self.llm_model_name,
-            tool_registry=self.tool_registry,
-            agent_name=self.agent_name,
-            llm_service_url=self.prism_server_url,
-            openai_base_url=self.prism_server_llm_url,
-            api_key=self.api_key
-        )
+        pass
 
     def register_agent(self) -> None:
         """모니터링 에이전트를 등록합니다."""

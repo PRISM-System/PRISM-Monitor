@@ -8,6 +8,7 @@ from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 from urllib.parse import urljoin
 
+from models.anomaly_detect import SemiconductorRealDataDetector
 from prism_core.core.tools.base import BaseTool
 from prism_core.core.tools.schemas import ToolRequest, ToolResponse
 
@@ -34,6 +35,7 @@ class AnomalyDataBaseTool(BaseTool):
         # 에이전트별 설정 또는 기본값 사용
         self._database_url = database_url
         self._client_id = client_id
+        self._detector = SemiconductorRealDataDetector()
 
         # 공용 세션 (재시도 전략 적용)
         retry_strategy = Retry(
@@ -55,7 +57,7 @@ class AnomalyDataBaseTool(BaseTool):
             
             # 1. 관련 규정 검색
             datasets = self.get_datasets()
-            unified_df = self.create_unified_dataset(datasets)
+            unified_df = self._detector.create_unified_dataset(datasets)
             lot_no_list = self.get_lot_no_list(sql_query)
             selected_df = unified_df[unified_df['lot_no'].isin(lot_no_list)]
             
@@ -123,117 +125,6 @@ class AnomalyDataBaseTool(BaseTool):
         if 'timestamp' in df.columns and not pd.api.types.is_datetime64_any_dtype(df['timestamp']):
             df['timestamp'] = pd.to_datetime(df['timestamp'], utc=True)
         return df
-    
-    def integrate_sensor_data(self, datasets):
-        """
-        여러 센서 테이블을 통합하여 하나의 센서 데이터셋 생성
-        """
-        print("센서 데이터 통합 중...")
-        
-        sensor_tables = ['semi_photo_sensors', 'semi_etch_sensors', 'semi_cvd_sensors', 
-                        'semi_implant_sensors', 'semi_cmp_sensors']
-        
-        integrated_sensors = []
-        
-        for table_name in sensor_tables:
-            df = datasets[table_name].copy()
-            
-            common_cols = ['pno', 'equipment_id', 'lot_no', 'timestamp']
-
-            # 실제 존재하는 컬럼만 선택
-            available_common = [col for col in common_cols if col in df.columns]
-            
-            # 수치형 센서 컬럼들 찾기
-            numeric_cols = df.select_dtypes(include=[np.number]).columns.tolist()
-            # PNO 제외 (ID라서)
-            sensor_cols = [col for col in numeric_cols if col != 'pno']
-            
-            # 테이블 정보 추가
-            df['sensor_table'] = table_name.replace('_sensors', '')
-            
-            # 센서값들을 하나의 컬럼으로 변환 (Long format)
-            df_long = df.melt(
-                id_vars=available_common + ['sensor_table'],
-                value_vars=sensor_cols,
-                var_name='sensor_type',
-                value_name='sensor_value'
-            )
-            integrated_sensors.append(df_long)
-            print(f"  - {table_name}: {len(sensor_cols)}개 센서, {len(df)}개 레코드")
-        
-        result = pd.concat(integrated_sensors, ignore_index=True)
-        print(f"통합 완료: 총 {len(result)}개 센서 레코드")
-        return result
-
-        
-    def create_unified_dataset(self, datasets):
-        """
-        모든 테이블을 통합하여 분석용 데이터셋 생성
-        """
-        print("통합 데이터셋 생성 중...")
-        
-        # 1. 센서 데이터 통합
-        integrated_sensors = self.integrate_sensor_data(datasets)
-        
-        # 2. LOT 관리 데이터 기준으로 통합
-
-        main_df = datasets['lot_manage'].copy()
-        print(f"기본 LOT 데이터: {len(main_df)}개 LOT")
-
-        
-        # 3. 각 LOT별 센서 통계 생성
-        # LOT별 센서 통계 계산
-        sensor_stats = integrated_sensors.groupby(['lot_no', 'sensor_type'])['sensor_value'].agg([
-            'mean', 'std', 'min', 'max', 'count'
-        ]).reset_index()
-        
-        # Wide format으로 변환
-        sensor_features = sensor_stats.pivot_table(
-            index='lot_no',
-            columns='sensor_type',
-            values=['mean', 'std', 'min', 'max'],
-            fill_value=0
-        )
-        
-        # 컬럼명 정리
-        sensor_features.columns = [f"{stat}_{sensor}" for stat, sensor in sensor_features.columns]
-        sensor_features = sensor_features.reset_index()
-        
-        # LOT 데이터와 조인
-        main_df = main_df.merge(sensor_features, on='lot_no', how='left')
-        print(f"센서 특성 추가 완료: {sensor_features.shape[1]-1}개 특성")
-        
-        # 4. 공정 이력 데이터 통합
-        process_df = datasets['process_history']
-
-        # LOT별 공정 통계
-        process_stats = process_df.groupby('lot_no').agg({
-            'in_qty': ['mean', 'sum'],
-            'out_qty': ['mean', 'sum'],
-        }).reset_index()
-        
-        process_stats.columns = [f"process_{col[0]}_{col[1]}" if col[1] else col[0] 
-                                for col in process_stats.columns]
-        process_stats.columns = [col.replace('process_lot_no_', 'lot_no') for col in process_stats.columns]
-        
-        main_df = main_df.merge(process_stats, on='lot_no', how='left')
-        print(f"공정 이력 특성 추가 완료")
-    
-    # 5. 파라미터 측정 데이터 통합
-        param_df = datasets['param_measure']
-        # LOT별 파라미터 통계
-        param_stats = param_df.groupby('lot_no')['measured_val'].agg([
-            'mean', 'std', 'min', 'max'
-        ]).reset_index()
-        
-        param_stats.columns = [f"param_{col}" if col != 'lot_no' else col 
-                                for col in param_stats.columns]
-        
-        main_df = main_df.merge(param_stats, on='lot_no', how='left')
-        print(f"파라미터 측정 특성 추가 완료")
-        
-        print(f"최종 통합 데이터셋: {main_df.shape}")
-        return main_df
     
     def get_datasets(self) -> Dict[str, pd.DataFrame]:
         datasets = {}

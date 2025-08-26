@@ -53,16 +53,26 @@ class MonitoringToolSetup:
     
     def setup_tools(self) -> ToolRegistry:
         """MPA 전용 도구들을 설정하고 등록"""
-        self.database_tool = self.create_data_query_tool()
+        self.database_tool = self.create_anomaly_database_tool()
         self.tool_registry.register_tool(self.database_tool)
+        self.query_to_sql_tool = self.create_query_to_sql_tool()
+        self.tool_registry.register_tool(self.query_to_sql_tool)
         
         return self.tool_registry
         
     
-    def create_data_query_tool(self):
+    def create_anomaly_database_tool(self):
         """데이터 조회 도구 생성"""
         from src.tools.anomaly_database_tool import AnomalyDataBaseTool
         return AnomalyDataBaseTool(
+            database_url=self.prism_server_url,
+            client_id=self.client_id
+        )
+    
+    def create_query_to_sql_tool(self):
+        """쿼리 -> SQL 도구 생성"""
+        from src.tools.query_to_sql import QueryToLLMTool
+        return QueryToLLMTool(
             database_url=self.prism_server_url,
             client_id=self.client_id
         )
