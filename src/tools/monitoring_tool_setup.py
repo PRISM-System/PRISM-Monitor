@@ -86,11 +86,6 @@ class MonitoringToolSetup:
             client_id=self.client_id
         )
     
-    def create_anomaly_detect_tool(self):
-        """모델 성능 측정 도구 생성"""
-        # 모델 로드
-        # 성능 메트릭 계산
-        # 결과 비교
     
     def create_prediction_tool(self):
         """예측 도구 생성"""

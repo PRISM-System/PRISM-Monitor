@@ -117,18 +117,15 @@ class MonitoringAgent:
         url = urljoin(self.prism_server_url, 'api/agents')
         self.session.post(url, json=agent_config)
 
-        
-
-
-    async def monitor(
+    def invoke(
         self, 
         prompt: str, 
         user_id: Optional[str] = None,
-        max_tokens: int = 1024,
+        max_tokens: int = 2048,
         temperature: float = 0.7,
         stop: Optional[List[str]] = None,
         use_tools: bool = True,
-        max_tool_calls: int = 3,
+        max_tool_calls: int = 1,
         extra_body: Optional[Dict[str, Any]] = None
     ) -> AgentResponse:
         """
@@ -148,39 +145,25 @@ class MonitoringAgent:
             AgentResponse: 오케스트레이션 결과
         """
         # Ensure agent is registered
-        if not getattr(self, '_agent', None):
-            self.register_agent()
-
-        # Prepare context
-        context = {
-            "user_id": user_id,
+        url = urljoin(self.prism_server_url, f'api/agents/{self.agent_name}/invoke')
+        data = {
             "prompt": prompt,
-            "timestamp": self._get_timestamp()
+            "max_tokens": max_tokens,
+            "temperature": temperature,
+            "stop": [] if stop is None else stop,
+            "use_tools": use_tools,
+            "max_tool_calls": max_tool_calls,
+            "extra_body": {"additionalProp1": {} } if extra_body is None else extra_body,
+            "user_id": user_id
         }
-
-        # Create agent invoke request with all parameters
-        request = AgentInvokeRequest(
-            prompt=prompt,
-            user_id=user_id,
-            max_tokens=max_tokens,
-            temperature=temperature,
-            stop=stop,
-            use_tools=use_tools,
-            max_tool_calls=max_tool_calls,
-            extra_body=extra_body
-        )
-
-        # Invoke agent with tools using the correct method
-        response = await self.llm.invoke_agent(self._agent, request)
+        r = self.session.post(url, json=data)
+        if r.status_code != 200:
+            raise Exception(f"Failed to invoke agent: {r.text}")
+        response_data = r.json()
+        text = response_data['text']
+        tools_used = response_data.get('tools_used', [])
         
-        # Add context information to metadata
-        if response.metadata is None:
-            response.metadata = {}
-        response.metadata.update(context)
-        
-        # Save conversation to memory if user_id is provided
-        
-        return response
+        return tools_used
 
         
     
