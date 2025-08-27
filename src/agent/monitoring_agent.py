@@ -76,14 +76,7 @@ class MonitoringAgent:
         self.tool_registry = self.monitoring_tool_setup.setup_tools()
 
     def setup_agent_tools(self):
-        """에이전트 전용 도구 설정"""
-        # 1. 데이터 조회 도구 (DataQueryTool)
-        # 2. 모델 성능 측정 도구 (ModelPerformanceTool)
-        # 3. 예측 도구 (PredictionTool)
-        # 4. 이상 탐지 도구 (AnomalyDetectionTool)
-        # 5. Compliance 검증 도구 (ComplianceTool)
         tool_register_url = urljoin(self.prism_server_url, 'api/tools')
-        
         for tool_name, tool in self.tool_registry._tools.items():
             tool_info = tool.get_info()
             tool_info['tool_type'] = 'custom'
@@ -92,8 +85,9 @@ class MonitoringAgent:
                 print(f"Tool '{tool_name}' registered successfully.")
             else:
                 print(f"Failed to register tool '{tool_name}': {r.text}")
-        agent_tool_assign_url = urljoin(self.prism_server_url, f'api/agents/{self.agent_name}/tools')
+
         tool_names = ["data_view_tool", "anomaly_detect_tool"]
+        agent_tool_assign_url = urljoin(self.prism_server_url, f'api/agents/{self.agent_name}/tools')
         r = self.session.post(agent_tool_assign_url, json={"agent_name":self.agent_name ,"tool_names": tool_names})
         if r.status_code == 200:
             print(f"Tools assigned to agent '{self.agent_name}' successfully.")
@@ -163,7 +157,7 @@ class MonitoringAgent:
         text = response_data['text']
         tools_used = response_data.get('tools_used', [])
         
-        return tools_used
+        return response_data
 
         
     

@@ -24,13 +24,13 @@ class AnomalyDetectTool(BaseTool):
                 ):
         super().__init__(
             name="anomaly_detect_tool",
-            description="주어진 제조 공정 데이터의 이상 여부 탐지 및 분석",
+            description="주어진 제조 공정 데이터의 이상 여부 탐지 및 분석. '이상치', '비정상', '이상 이벤트' 등과 관련된 사용자 입력을 다루어야 한다",
             parameters_schema={
                 "type": "object",
                 "properties": {
                     "query": {"type": "string", "description": "오케스트레이션 에이전트를 거친 후의 사용자 입력"}
                 },
-                "required": ["rows"]
+                "required": ["query"]
             }
         )
         # 에이전트별 설정 또는 기본값 사용

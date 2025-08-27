@@ -23,7 +23,7 @@ class DataViewTool(BaseTool):
     ):
         super().__init__(
             name="data_view_tool",
-            description="오케스트레이션 에이전트를 거친 후의 사용자 입력을 바탕으로 사용자가 원하는 데이터를 반환",
+            description="오케스트레이션 에이전트를 거친 후의 사용자 입력을 바탕으로 사용자가 원하는 데이터를 반환. '이상치'와 관련 없는 단순 검색 쿼리만 다루어야 한다",
             parameters_schema={
                 "type": "object",
                 "properties": {
