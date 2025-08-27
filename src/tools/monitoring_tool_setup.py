@@ -53,31 +53,40 @@ class MonitoringToolSetup:
     
     def setup_tools(self) -> ToolRegistry:
         """MPA 전용 도구들을 설정하고 등록"""
-        self.database_tool = self.create_anomaly_database_tool()
-        self.tool_registry.register_tool(self.database_tool)
-        self.query_to_sql_tool = self.create_query_to_sql_tool()
-        self.tool_registry.register_tool(self.query_to_sql_tool)
+        self.anomaly_detect_tool = self.create_anomaly_detect_tool()
+        self.tool_registry.register_tool(self.anomaly_detect_tool)
+        self.anomaly_database_tool = self.create_anomaly_database_tool()
+        self.tool_registry.register_tool(self.anomaly_database_tool)
+        self.data_view_tool = self.create_data_view_tool()
+        self.tool_registry.register_tool(self.data_view_tool)
         
         return self.tool_registry
         
     
-    def create_anomaly_database_tool(self):
+    def create_anomaly_detect_tool(self):
         """데이터 조회 도구 생성"""
+        from src.tools.anomaly_detect_tool import AnomalyDetectTool
+        return AnomalyDetectTool(
+            client_id=self.client_id
+        )
+    
+    def create_anomaly_database_tool(self):
+        """이상치 탐지 데이터베이스 도구 생성"""
         from src.tools.anomaly_database_tool import AnomalyDataBaseTool
         return AnomalyDataBaseTool(
             database_url=self.prism_server_url,
             client_id=self.client_id
         )
     
-    def create_query_to_sql_tool(self):
+    def create_data_view_tool(self):
         """쿼리 -> SQL 도구 생성"""
-        from src.tools.query_to_sql import QueryToLLMTool
-        return QueryToLLMTool(
+        from src.tools.data_view_tool import DataViewTool
+        return DataViewTool(
             database_url=self.prism_server_url,
             client_id=self.client_id
         )
     
-    def create_model_performance_tool(self):
+    def create_anomaly_detect_tool(self):
         """모델 성능 측정 도구 생성"""
         # 모델 로드
         # 성능 메트릭 계산

@@ -45,7 +45,7 @@ class MonitoringAgent:
         # 성능 임계값 등
         from dotenv import load_dotenv
         load_dotenv()
-        self.agent_name = 'Monitoring-Agent'
+        self.agent_name = 'monitoring_agent'
         self.openai_base_url = os.getenv("LLM_URL")
         self.api_key = os.getenv("PRISM_CORE_SERVER_LLM_API_KEY", "EMPTY")
         self.prism_server_url = os.getenv("PRISM_CORE_SERVER_URL")
@@ -82,9 +82,24 @@ class MonitoringAgent:
         # 3. 예측 도구 (PredictionTool)
         # 4. 이상 탐지 도구 (AnomalyDetectionTool)
         # 5. Compliance 검증 도구 (ComplianceTool)
-        url = urljoin(self.prism_server_url, 'api/tools/register')
-        for tool_name, tool in self.tool_registry.tools.items():
-            self.session.post(url, json=tool.info())
+        tool_register_url = urljoin(self.prism_server_url, 'api/tools')
+        
+        for tool_name, tool in self.tool_registry._tools.items():
+            tool_info = tool.get_info()
+            tool_info['tool_type'] = 'custom'
+            r = self.session.post(tool_register_url, json=tool_info)
+            if r.status_code == 200:
+                print(f"Tool '{tool_name}' registered successfully.")
+            else:
+                print(f"Failed to register tool '{tool_name}': {r.text}")
+        agent_tool_assign_url = urljoin(self.prism_server_url, f'api/agents/{self.agent_name}/tools')
+        tool_names = ["data_view_tool", "anomaly_detect_tool"]
+        r = self.session.post(agent_tool_assign_url, json={"agent_name":self.agent_name ,"tool_names": tool_names})
+        if r.status_code == 200:
+            print(f"Tools assigned to agent '{self.agent_name}' successfully.")
+        else:
+            print(f"Failed to assign tools to agent '{self.agent_name}': {r.text}")
+        
         self.agent_manager.set_tool_registry(self.tool_registry)
         self.workflow_manager.set_tool_registry(self.tool_registry)
 

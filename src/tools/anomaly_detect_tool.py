@@ -20,40 +20,33 @@ class AnomalyDetectTool(BaseTool):
     """
     
     def __init__(self, 
-                 model_dir: str = "pretrained_models/anomaly_detect",
-                 model_metadata_file: str = "anomaly_model_metadata",
                  client_id: str = "monitoring",
                 ):
         super().__init__(
-            name="anomaly_detect",
+            name="anomaly_detect_tool",
             description="주어진 제조 공정 데이터의 이상 여부 탐지 및 분석",
             parameters_schema={
                 "type": "object",
                 "properties": {
-                    "rows": {"type": "array", "items": {"type": "object"}, "description": "이상 탐지를 수행할 제조 공정 데이터의 일부 (데이터프레임 형식)"},
+                    "query": {"type": "string", "description": "오케스트레이션 에이전트를 거친 후의 사용자 입력"}
                 },
                 "required": ["rows"]
             }
         )
         # 에이전트별 설정 또는 기본값 사용
-        self._model_metadata_file = model_metadata_file
         self._client_id = client_id
-        self._detector = EnhancedSemiconductorRealTimeMonitor(model_dir=model_dir)
         
         
     def execute(self, request: ToolRequest) -> ToolResponse:
         """Tool 실행"""
         try:
             params = request.parameters
-            unified_df = params["rows"]
-            anomaly_records, svg_content, analysis_results = self._detector.fast_anomaly_detection(unified_df=unified_df)
+            query = params["query"]
             
             return ToolResponse(
                 success=True,
                 data={
-                    "anomaly_records": anomaly_records,
-                    "svg_content": svg_content,
-                    "analysis_results": analysis_results
+                    "query": query,
                 }
             )
         except Exception as e:

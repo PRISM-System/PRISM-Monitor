@@ -13,7 +13,7 @@ from prism_core.core.tools.base import BaseTool
 from prism_core.core.tools.schemas import ToolRequest, ToolResponse
 
 
-class QueryToLLMTool(BaseTool):
+class DataViewTool(BaseTool):
     """
     사용자 쿼리를 바탕으로 SQL 쿼리를 생성하는 도구
     """
@@ -22,8 +22,8 @@ class QueryToLLMTool(BaseTool):
                  client_id: str = "monitoring",
     ):
         super().__init__(
-            name="query_raw_data",
-            description="오케스트레이션 에이전트를 거친 후의 사용자 입력을 바탕으로 SQL을 추출",
+            name="data_view_tool",
+            description="오케스트레이션 에이전트를 거친 후의 사용자 입력을 바탕으로 사용자가 원하는 데이터를 반환",
             parameters_schema={
                 "type": "object",
                 "properties": {
@@ -53,32 +53,13 @@ class QueryToLLMTool(BaseTool):
         try:
             params = request.parameters
             query = params["query"]
-            url = urljoin(self._database_url, 'api/agents/monitoring_agent/invoke')
-            prompt = self.query_to_sql_prompt(query)
-            req_data = {
-                "prompt": prompt,
-                "max_tokens": 1024,
-                "temperature": 0.7,
-                "stop": [
-                    "string"
-                ],
-                "use_tools": False,
-                "max_tool_calls": 3,
-                "extra_body": {
-                    "additionalProp1": {}
-                },
-                "user_id": "string"
-            }
-            response = self.session.post(url, json=req_data, timeout=60, verify=False)
-            response.raise_for_status()
-            res = response.json()['text']
-            print(res)
-            sql_query = json.loads(res.split('</think>\n\n')[-1])['sql_query']
+            sql = self.get_sql_from_query(query)
+            data = self.execute_sql(sql)
             
             return ToolResponse(
                 success=True,
                 data={
-                    "sql_query": sql_query
+                    "data": data
                 }
             )
                 
@@ -100,6 +81,37 @@ json 형식으로 응답해 주세요:
 """
         return prompt.strip()
     
+    def get_sql_from_query(self, query: str) -> str:
+        """사용자 쿼리로부터 SQL 쿼리 생성"""
+        url = urljoin(self._database_url, 'api/agents/monitoring_agent/invoke')
+        prompt = self.query_to_sql_prompt(query)
+        req_data = {
+            "prompt": prompt,
+            "max_tokens": 1024,
+            "temperature": 0.7,
+            "stop": [
+                "string"
+            ],
+            "use_tools": False,
+            "max_tool_calls": 3,
+            "extra_body": {
+                "additionalProp1": {}
+            },
+            "user_id": "string"
+        }
+        response = self.session.post(url, json=req_data, timeout=60, verify=False)
+        response.raise_for_status()
+        res = response.json()['text']
+        print(res)
+        sql_query = json.loads(res.split('</think>\n\n')[-1])['sql_query']
+        return sql_query
+    
+    def execute_sql(self, sql_query: str):
+        url = urljoin(self._database_url, 'api/db/query')
+        response = self.session.post(url, json={"query": sql_query, "params":[]}, timeout=60, verify=False)
+        response.raise_for_status()
+        res = response.json()['data']
+        return res
 
 TABLE_SCHEMAS = """반도체 공정 이상탐지 DB Schema
 핵심 테이블 구조
@@ -257,3 +269,4 @@ INTERLOCK_LOWER	DECIMAL	인터락 하한값 (장비 정지)
 MOVING_AVG_WINDOW	INT	이동평균 윈도우 크기 (초)
 ALERT_TYPE	VARCHAR	알람 타입 (INSTANT/AVERAGE/TREND)
 ENABLED	BOOLEAN	알람 활성화 여부""".lower()
+

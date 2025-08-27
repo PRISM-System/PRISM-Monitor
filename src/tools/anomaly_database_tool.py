@@ -22,7 +22,7 @@ class AnomalyDataBaseTool(BaseTool):
                  client_id: str = "monitoring",
     ):
         super().__init__(
-            name="query_data_for_anomaly_detection",
+            name="anomaly_database_tool",
             description="주어진 SQL 쿼리를 실행하여 이상치 탐지에 필요한 데이터를 조회",
             parameters_schema={
                 "type": "object",
