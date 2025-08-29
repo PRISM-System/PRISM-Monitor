@@ -13,7 +13,7 @@ from prism_core.core.tools.base import BaseTool
 from prism_core.core.tools.schemas import ToolRequest, ToolResponse
 
 
-class DataViewTool(BaseTool):
+class AnomalyDataViewTool(BaseTool):
     """
     사용자 쿼리를 바탕으로 SQL 쿼리를 생성하는 도구
     """
@@ -22,8 +22,8 @@ class DataViewTool(BaseTool):
                  client_id: str = "monitoring",
     ):
         super().__init__(
-            name="data_view_tool",
-            description="오케스트레이션 에이전트를 거친 후의 사용자 입력을 바탕으로 사용자가 원하는 데이터를 반환. '이상치'와 관련 없는 단순 검색 쿼리만 다루어야 한다",
+            name="anomaly_data_view_tool",
+            description="오케스트레이션 에이전트를 거친 후의 사용자 입력을 바탕으로 사용자가 원하는 데이터를 반환. '이상치'와 관련된 검색 쿼리만 다루어야 한다",
             parameters_schema={
                 "type": "object",
                 "properties": {
@@ -72,13 +72,13 @@ class DataViewTool(BaseTool):
     def query_to_sql_prompt(self, user_query: str) -> str:
         prompt = f"""
 당신은 반도체 제조 공정 데이터베이스 전문가입니다. 아래에 제공된 데이터베이스 스키마를 참고하여, SQL 쿼리를 생성해 주세요.
-쿼리는 간결해야 하며, 너무 복잡한 쿼리는 피해야 합니다. 그렇게 생성할 수 없는 경우엔 빈 쿼리를 반환해 주세요.
+지침 : lot_no를 포함하는 쿼리를 생성해야 합니다. 생성할 수 없는 경우엔 빈 쿼리를 반환해 주세요.
 응답은 반드시 json 형식으로 응답해 주세요.
 사용자 쿼리: "{user_query}"
 데이터베이스 스키마:
 {TABLE_SCHEMAS}
 json 형식으로 응답해 주세요:
-{{"sql_query": "여기에 생성된 SQL 쿼리 입력"}}
+{{"sql_query": "여기에 생성된 SQL 쿼리 입력"}}ㅉ
 """
         return prompt.strip()
     

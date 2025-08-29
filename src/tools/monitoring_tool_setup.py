@@ -55,6 +55,8 @@ class MonitoringToolSetup:
         """MPA 전용 도구들을 설정하고 등록"""
         self.anomaly_detect_tool = self.create_anomaly_detect_tool()
         self.tool_registry.register_tool(self.anomaly_detect_tool)
+        self.anomaly_data_view_tool = self.create_anomaly_data_view_tool()
+        self.tool_registry.register_tool(self.anomaly_data_view_tool)
         self.anomaly_database_tool = self.create_anomaly_database_tool()
         self.tool_registry.register_tool(self.anomaly_database_tool)
         self.data_view_tool = self.create_data_view_tool()
@@ -67,6 +69,14 @@ class MonitoringToolSetup:
         """데이터 조회 도구 생성"""
         from src.tools.anomaly_detect_tool import AnomalyDetectTool
         return AnomalyDetectTool(
+            client_id=self.client_id
+        )
+    
+    def create_anomaly_data_view_tool(self):
+        """이상치 탐지 쿼리 -> SQL 도구 생성"""
+        from src.tools.anomaly_data_view_tool import AnomalyDataViewTool
+        return AnomalyDataViewTool(
+            database_url=self.prism_server_url,
             client_id=self.client_id
         )
     

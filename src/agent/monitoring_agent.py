@@ -12,6 +12,7 @@ from prism_core.core.agents import AgentManager, WorkflowManager
 from prism_core.core.tools import ToolRegistry
 from prism_core.core.llm import PrismLLMService
 from prism_core.core.llm.schemas import Agent, AgentInvokeRequest, AgentResponse, LLMGenerationRequest
+from prism_core.core.tools.schemas import ToolRequest, ToolResponse
 
 class MonitoringAgent:
     """
@@ -86,13 +87,13 @@ class MonitoringAgent:
             else:
                 print(f"Failed to register tool '{tool_name}': {r.text}")
 
-        tool_names = ["data_view_tool", "anomaly_detect_tool"]
-        agent_tool_assign_url = urljoin(self.prism_server_url, f'api/agents/{self.agent_name}/tools')
-        r = self.session.post(agent_tool_assign_url, json={"agent_name":self.agent_name ,"tool_names": tool_names})
-        if r.status_code == 200:
-            print(f"Tools assigned to agent '{self.agent_name}' successfully.")
-        else:
-            print(f"Failed to assign tools to agent '{self.agent_name}': {r.text}")
+        # tool_names = ["data_view_tool", "anomaly_detect_tool"]
+        # agent_tool_assign_url = urljoin(self.prism_server_url, f'api/agents/{self.agent_name}/tools')
+        # r = self.session.post(agent_tool_assign_url, json={"agent_name":self.agent_name ,"tool_names": tool_names})
+        # if r.status_code == 200:
+        #     print(f"Tools assigned to agent '{self.agent_name}' successfully.")
+        # else:
+        #     print(f"Failed to assign tools to agent '{self.agent_name}': {r.text}")
         
         self.agent_manager.set_tool_registry(self.tool_registry)
         self.workflow_manager.set_tool_registry(self.tool_registry)
@@ -106,7 +107,7 @@ class MonitoringAgent:
             "name": "monitoring_agent",
             "description": "제조 공정 이상 탐지 및 모니터링 에이전트",
             "role_prompt": "당신은 제조 공정의 이상 탐지 및 모니터링을 담당하는 에이전트입니다. 실시간 데이터 분석과 이상 탐지를 통해 제조 공정의 안정성을 유지하는 것이 당신의 주요 임무입니다.",
-            "tools": []  # 초기에는 빈 리스트
+            "tools": ["data_view_tool", "anomaly_detect_tool"]  # 초기에는 빈 리스트
         }
         url = urljoin(self.prism_server_url, 'api/agents')
         self.session.post(url, json=agent_config)
@@ -154,9 +155,50 @@ class MonitoringAgent:
         if r.status_code != 200:
             raise Exception(f"Failed to invoke agent: {r.text}")
         response_data = r.json()
-        text = response_data['text']
-        tools_used = response_data.get('tools_used', [])
+        tool_used = response_data.get('tools_used', [])[0]
+        tool_results = response_data.get('tool_results', [])[0]
+        print(f"Tool used: {tool_used}, Tool results: {tool_results}")
+        if tool_used == 'anomaly_detect_tool':
+            response_data = self.execute_tool(
+                tool_name='anomaly_detect_tool',
+                parameters={
+                    "query": tool_results.get('result', {}).get('parameters', {}).get('query', '')
+                }
+            )
+            print('anomaly_detect_tool')
+            print(response_data)
+            response_data = self.execute_tool(
+                tool_name='anomaly_data_view_tool',
+                parameters={
+                    "query": tool_results.get('result', {}).get('parameters', {}).get('query', '')
+                }
+            )
+            print('anomaly_data_view_tool')
+            print(response_data)
+            response_data = self.execute_tool(
+                tool_name='anomaly_database_tool',
+                parameters={
+                    "sql_query": tool_results.get('result', {}).get('parameters', {}).get('query', '')
+                }
+            )
+            print('anomaly_database_tool')
+            print(response_data)
+        elif tool_used == 'data_view_tool':
+            url = urljoin(self.prism_server_url, f'api/tools/execute')
+
         
+        return response_data    
+    
+    def execute_tool(self, tool_name: str, parameters: Dict[str, Any]) -> ToolResponse:
+        url = urljoin(self.prism_server_url, f'api/tools/execute')
+        data = {
+            "tool_name": tool_name,
+            "parameters": parameters
+        }
+        r = self.session.post(url, json=data)
+        if r.status_code != 200:
+            raise Exception(f"Failed to execute tool: {r.text}")
+        response_data = r.json()
         return response_data
 
         
