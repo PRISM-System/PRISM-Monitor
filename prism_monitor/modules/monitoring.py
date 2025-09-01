@@ -24,10 +24,14 @@ def monitoring_event_detect(monitor_db: TinyDB, prism_core_db: PrismCoreDataBase
 
     event_record = {
         "task_id": task_id,
-        "records": analysis
+        "records": analysis,
+        "validation": {
+            "anomalies": anomalies,
+            "drift_results": drift_results
+        }
     }
     print(analysis)
-
+    
     Event = Query()
     monitor_db.table('EventDetectHistory').upsert(event_record, Event.task_id == task_id)
 

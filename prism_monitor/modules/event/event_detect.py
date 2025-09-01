@@ -659,7 +659,7 @@ class SemiconductorRealDataDetector:
     def build_autoencoder(self, input_dim):
         """
         Autoencoder 모델 구축
-        """
+        """ 
         input_layer = layers.Input(shape=(input_dim,))
         
         encoded = layers.Dense(128, activation='relu')(input_layer)
@@ -844,47 +844,57 @@ class SemiconductorRealDataDetector:
         return svg_content
 
     def analyze_results(self, df_result):
-        """
-        결과 분석 및 요약
-        """
-        print("결과 분석 중...")
-        
-        total_lots = len(df_result)
-        detected_anomalies = df_result['predicted_anomaly'].sum() if 'predicted_anomaly' in df_result.columns else 0
-        actual_anomalies = df_result['is_anomaly'].sum() if 'is_anomaly' in df_result.columns else 0
-        
-        print(f"\n=== 이상탐지 결과 요약 ===")
-        print(f"전체 LOT 수: {total_lots}")
-        if 'is_anomaly' in df_result.columns:
-            print(f"실제 이상 LOT: {actual_anomalies} ({actual_anomalies/total_lots:.1%})")
-        print(f"탐지된 이상 LOT: {detected_anomalies} ({detected_anomalies/total_lots:.1%})")
-        
-        # 성능 평가
-        if 'is_anomaly' in df_result.columns and 'predicted_anomaly' in df_result.columns:
-            from sklearn.metrics import precision_score, recall_score, f1_score
+            """
+            결과 분석 및 요약
+            """
+            print("결과 분석 중...")
             
-            precision = precision_score(df_result['is_anomaly'], df_result['predicted_anomaly'])
-            recall = recall_score(df_result['is_anomaly'], df_result['predicted_anomaly'])
-            f1 = f1_score(df_result['is_anomaly'], df_result['predicted_anomaly'])
+            # 시간 관련 컬럼들을 string으로 변환
+            time_columns = ['timestamp', 'TIMESTAMP', 'credate', 'CREDATE', 
+                        'start_time', 'START_TIME', 'end_time', 'END_TIME',
+                        'measure_time', 'MEASURE_TIME']
             
-            print(f"\n=== 성능 지표 ===")
-            print(f"정밀도 (Precision): {precision:.3f}")
-            print(f"재현율 (Recall): {recall:.3f}")
-            print(f"F1 점수: {f1:.3f}")
-        
-        # 이상 LOT 상세 분석
-        if 'predicted_anomaly' in df_result.columns:
-            anomaly_lots = df_result[df_result['predicted_anomaly']]
-            if len(anomaly_lots) > 0:
-                print(f"\n=== 이상 LOT 분석 ===")
-                print("이상 점수가 높은 상위 5개 LOT:")
-                top_anomalies = anomaly_lots.nlargest(5, 'anomaly_score')
-                for _, row in top_anomalies.iterrows():
-                    print(f"  LOT {row['lot_no']}: 점수 {row['anomaly_score']:.4f}")
-                    if 'final_yield' in row:
-                        print(f"    수율: {row['final_yield']:.1f}%")
-        
-        return df_result[df_result['predicted_anomaly']].to_dict("records") if 'predicted_anomaly' in df_result.columns else []
+            for col in time_columns:
+                if col in df_result.columns:
+                    df_result[col] = df_result[col].astype(str)
+                    print(f"컬럼 '{col}'을 string으로 변환했습니다.")
+            
+            total_lots = len(df_result)
+            detected_anomalies = df_result['predicted_anomaly'].sum() if 'predicted_anomaly' in df_result.columns else 0
+            actual_anomalies = df_result['is_anomaly'].sum() if 'is_anomaly' in df_result.columns else 0
+            
+            print(f"\n=== 이상탐지 결과 요약 ===")
+            print(f"전체 LOT 수: {total_lots}")
+            if 'is_anomaly' in df_result.columns:
+                print(f"실제 이상 LOT: {actual_anomalies} ({actual_anomalies/total_lots:.1%})")
+            print(f"탐지된 이상 LOT: {detected_anomalies} ({detected_anomalies/total_lots:.1%})")
+            
+            # 성능 평가
+            if 'is_anomaly' in df_result.columns and 'predicted_anomaly' in df_result.columns:
+                from sklearn.metrics import precision_score, recall_score, f1_score
+                
+                precision = precision_score(df_result['is_anomaly'], df_result['predicted_anomaly'])
+                recall = recall_score(df_result['is_anomaly'], df_result['predicted_anomaly'])
+                f1 = f1_score(df_result['is_anomaly'], df_result['predicted_anomaly'])
+                
+                print(f"\n=== 성능 지표 ===")
+                print(f"정밀도 (Precision): {precision:.3f}")
+                print(f"재현율 (Recall): {recall:.3f}")
+                print(f"F1 점수: {f1:.3f}")
+            
+            # 이상 LOT 상세 분석
+            if 'predicted_anomaly' in df_result.columns:
+                anomaly_lots = df_result[df_result['predicted_anomaly']]
+                if len(anomaly_lots) > 0:
+                    print(f"\n=== 이상 LOT 분석 ===")
+                    print("이상 점수가 높은 상위 5개 LOT:")
+                    top_anomalies = anomaly_lots.nlargest(5, 'anomaly_score')
+                    for _, row in top_anomalies.iterrows():
+                        print(f"  LOT {row['lot_no']}: 점수 {row['anomaly_score']:.4f}")
+                        if 'final_yield' in row:
+                            print(f"    수율: {row['final_yield']:.1f}%")
+            
+            return df_result[df_result['predicted_anomaly']].to_dict("records") if 'predicted_anomaly' in df_result.columns else []
 
 def load_data_from_database(prism_core_db, start: str, end: str) -> Dict[str, pd.DataFrame]:
     """
