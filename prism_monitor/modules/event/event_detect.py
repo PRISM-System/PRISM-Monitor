@@ -87,8 +87,8 @@ class ModelManager:
                 print(f"모델 파일이 존재하지 않음: {model_file}")
                 return None, None, None
             
-            # 모델 로드
-            model = keras.models.load_model(model_file)
+            from tensorflow.keras.metrics import MeanSquaredError
+            model = keras.models.load_model(model_file, custom_objects={"mse": MeanSquaredError()})
             
             # 스케일러 로드
             scaler = None
@@ -708,8 +708,8 @@ class SemiconductorRealDataDetector:
         normal_data = processed_df[~processed_df['is_anomaly']]
         X_normal = normal_data[feature_cols].values
         
-        if len(X_normal) < 50:
-            print("훈련용 정상 데이터가 부족합니다.")
+        if len(X_normal) < 5:
+            print(f"훈련용 정상 데이터가 부족합니다. {len(X_normal)}개 샘플")
             return None, feature_cols
         
         print(f"학습 데이터: {len(X_normal)}개 정상 샘플")

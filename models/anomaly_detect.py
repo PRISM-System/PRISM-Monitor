@@ -88,7 +88,8 @@ class ModelManager:
                 return None, None, None
             
             # 모델 로드
-            model = keras.models.load_model(model_file)
+            from tensorflow.keras.metrics import MeanSquaredError
+            model = keras.models.load_model(model_file, custom_objects={"mse": MeanSquaredError()})
             
             # 스케일러 로드
             scaler = None
