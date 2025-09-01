@@ -4,7 +4,7 @@ import json
 from tinydb import TinyDB, Query
 
 from prism_monitor.data.database import PrismCoreDataBase
-from prism_monitor.modules.event.event_detect import detect_anomalies, load_data_from_database
+from prism_monitor.modules.event.event_detect import detect_anomalies_realtime
 from prism_monitor.modules.event_precursor.precursor import precursor
 from prism_monitor.modules.explanation.explanation import event_explain, event_cause_candidates
 from prism_monitor.modules.risk_assessment.assessment import risk_assessment
@@ -21,8 +21,8 @@ def monitoring_event_output(status="complete", anomaly_detected=True, descriptio
 
 def monitoring_event_detect(monitor_db: TinyDB, prism_core_db: PrismCoreDataBase, start: str, end: str, task_id: str):
     print("이부분 새로 개발했당")
-    datasets = load_data_from_database(prism_core_db=prism_core_db, start=start, end=end)
-    anomalies, svg, analysis = detect_anomalies(datasets)
+    anomalies, svg, analysis, drift_results = detect_anomalies_realtime(prism_core_db, start=start, end=end)
+    print(anomalies)
     # start_time = pd.to_datetime(start, utc=True)
     # end_time = pd.to_datetime(end, utc=True)
 

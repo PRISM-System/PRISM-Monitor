@@ -1200,7 +1200,11 @@ class EnhancedSemiconductorRealTimeMonitor:
                 'training_info': metadata['training_data_info']
             }
         else:
-        def load_real_time_data_from_database(self, prism_core_db, start: str, end: str) -> Dict[str, pd.DataFrame]:
+            return {
+                'model_available': False,
+                'message': '저장된 모델이 없습니다.'
+            }
+    def load_real_time_data_from_database(self, prism_core_db, start: str, end: str) -> Dict[str, pd.DataFrame]:
         """
         데이터베이스에서 실시간 데이터 로딩 및 정상 상태 프로파일 업데이트
         
