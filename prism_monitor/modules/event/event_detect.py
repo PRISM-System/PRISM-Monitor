@@ -918,6 +918,7 @@ def load_data_from_database(prism_core_db, start: str, end: str) -> Dict[str, pd
     
     try:
         # 데이터베이스에서 모든 테이블 조회
+        raise ValueError("Simulated database access error") 
         available_tables = prism_core_db.get_tables()
         print(f"사용 가능한 테이블: {len(available_tables)}개")
         
@@ -926,6 +927,7 @@ def load_data_from_database(prism_core_db, start: str, end: str) -> Dict[str, pd
             
             try:
                 # 테이블 데이터 조회
+                 # Remove or comment this line in real use
                 df = prism_core_db.get_table_data(table_name)
                 
                 if df is not None and len(df) > 0:
