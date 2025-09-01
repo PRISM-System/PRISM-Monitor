@@ -1,3 +1,5 @@
+import os
+from glob import glob
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -248,61 +250,61 @@ class DataValidityChecker:
     def __init__(self):
         # 각 공정별 정상 범위 정의 (스키마 기반)
         self.normal_ranges = {
-            'SEMI_PHOTO_SENSORS': {
-                'EXPOSURE_DOSE': (20, 40),
-                'FOCUS_POSITION': (-50, 50),
-                'STAGE_TEMP': (22.9, 23.1),
-                'HUMIDITY': (40, 50),
-                'ALIGNMENT_ERROR_X': (0, 3),
-                'ALIGNMENT_ERROR_Y': (0, 3),
-                'LENS_ABERRATION': (0, 5),
-                'ILLUMINATION_UNIFORMITY': (98, 100),
-                'RETICLE_TEMP': (22.95, 23.05)
+            'semi_photo_sensors': {
+                'exposure_dose': (20, 40),
+                'focus_position': (-50, 50),
+                'stage_temp': (22.9, 23.1),
+                'humidity': (40, 50),
+                'alignment_error_x': (0, 3),
+                'alignment_error_y': (0, 3),
+                'lens_aberration': (0, 5),
+                'illumination_uniformity': (98, 100),
+                'reticle_temp': (22.95, 23.05)
             },
-            'SEMI_ETCH_SENSORS': {
-                'RF_POWER_SOURCE': (500, 2000),
-                'RF_POWER_BIAS': (50, 500),
-                'CHAMBER_PRESSURE': (5, 200),
-                'GAS_FLOW_CF4': (0, 200),
-                'GAS_FLOW_O2': (0, 100),
-                'GAS_FLOW_AR': (0, 500),
-                'GAS_FLOW_CL2': (0, 200),
-                'ELECTRODE_TEMP': (40, 80),
-                'CHAMBER_WALL_TEMP': (60, 80),
-                'HELIUM_PRESSURE': (5, 20),
-                'PLASMA_DENSITY': (1e10, 1e12)
+            'semi_etch_sensors': {
+                'rf_power_source': (500, 2000),
+                'rf_power_bias': (50, 500),
+                'chamber_pressure': (5, 200),
+                'gas_flow_cf4': (0, 200),
+                'gas_flow_o2': (0, 100),
+                'gas_flow_ar': (0, 500),
+                'gas_flow_cl2': (0, 200),
+                'electrode_temp': (40, 80),
+                'chamber_wall_temp': (60, 80),
+                'helium_pressure': (5, 20),
+                'plasma_density': (1e10, 1e12)
             },
-            'SEMI_CVD_SENSORS': {
-                'SUSCEPTOR_TEMP': (300, 700),
-                'CHAMBER_PRESSURE': (0.1, 760),
-                'PRECURSOR_FLOW_TEOS': (0, 500),
-                'PRECURSOR_FLOW_SILANE': (0, 1000),
-                'PRECURSOR_FLOW_WF6': (0, 100),
-                'CARRIER_GAS_N2': (0, 20),
-                'CARRIER_GAS_H2': (0, 10),
-                'SHOWERHEAD_TEMP': (150, 250),
-                'LINER_TEMP': (100, 200)
+            'semi_cvd_sensors': {
+                'susceptor_temp': (300, 700),
+                'chamber_pressure': (0.1, 760),
+                'precursor_flow_teos': (0, 500),
+                'precursor_flow_silane': (0, 1000),
+                'precursor_flow_wf6': (0, 100),
+                'carrier_gas_n2': (0, 20),
+                'carrier_gas_h2': (0, 10),
+                'showerhead_temp': (150, 250),
+                'liner_temp': (100, 200)
             },
-            'SEMI_IMPLANT_SENSORS': {
-                'BEAM_CURRENT': (0.1, 5000),
-                'BEAM_ENERGY': (0.2, 3000),
-                'TOTAL_DOSE': (1e11, 1e16),
-                'IMPLANT_ANGLE': (0, 45),
-                'WAFER_ROTATION': (0, 1200),
-                'SOURCE_PRESSURE': (1e-6, 1e-4),
-                'ANALYZER_PRESSURE': (1e-7, 1e-5),
-                'END_STATION_PRESSURE': (1e-7, 1e-6),
-                'BEAM_UNIFORMITY': (98, 100)
+            'semi_implant_sensors': {
+                'beam_current': (0.1, 5000),
+                'beam_energy': (0.2, 3000),
+                'total_dose': (1e11, 1e16),
+                'implant_angle': (0, 45),
+                'wafer_rotation': (0, 1200),
+                'source_pressure': (1e-6, 1e-4),
+                'analyzer_pressure': (1e-7, 1e-5),
+                'end_station_pressure': (1e-7, 1e-6),
+                'beam_uniformity': (98, 100)
             },
-            'SEMI_CMP_SENSORS': {
-                'HEAD_PRESSURE': (2, 8),
-                'RETAINER_PRESSURE': (2, 6),
-                'PLATEN_ROTATION': (20, 150),
-                'HEAD_ROTATION': (20, 150),
-                'SLURRY_FLOW_RATE': (100, 300),
-                'SLURRY_TEMP': (20, 25),
-                'PAD_TEMP': (30, 50),
-                'CONDITIONER_PRESSURE': (5, 9)
+            'semi_cmp_sensors': {
+                'head_pressure': (2, 8),
+                'retainer_pressure': (2, 6),
+                'platen_rotation': (20, 150),
+                'head_rotation': (20, 150),
+                'slurry_flow_rate': (100, 300),
+                'slurry_temp': (20, 25),
+                'pad_temp': (30, 50),
+                'conditioner_pressure': (5, 9)
             }
         }
     
@@ -956,7 +958,46 @@ def load_data_from_database(prism_core_db, start: str, end: str) -> Dict[str, pd
                 continue
                 
     except Exception as e:
-        print(f"데이터베이스 접근 오류: {e}")
+        print(f"데이터베이스 접근 오류: {e}. 로컬환경에서 접근")
+        
+        data_paths = glob('prism_monitor/data/Industrial_DB_sample/*.csv')
+        for data_path in data_paths:
+            df = pd.read_csv(data_path)
+            table_name = os.path.basename(data_path).split('.csv')[0].lower()
+            if df is not None and len(df) > 0:
+                # 시간 컬럼이 있는 경우 필터링
+                time_columns = ['timestamp', 'TIMESTAMP', 'credate', 'CREDATE', 
+                                'start_time', 'START_TIME', 'end_time', 'END_TIME',
+                                'measure_time', 'MEASURE_TIME']
+                
+                time_col = None
+                for col in time_columns:
+                    if col in df.columns:
+                        time_col = col
+                        break
+                
+                if time_col:
+                    # 시간 컬럼 변환 및 필터링
+                    df[time_col] = pd.to_datetime(df[time_col], utc=True, errors='coerce')
+                    
+                    # 시간 범위 필터링
+                    before_filter = len(df)
+                    df = df[(df[time_col] >= start_time) & (df[time_col] <= end_time)]
+                    after_filter = len(df)
+                    
+                    print(f"  - 시간 필터링: {before_filter} → {after_filter}개 레코드")
+                
+                if len(df) > 0:
+                    # 데이터 정합성 검증 및 전처리
+                    df_clean = preprocess_table(df, table_name)
+                    datasets[table_name] = df_clean
+                    
+                    print(f"  - 최종 데이터: {len(df_clean)}개 레코드")
+                else:
+                    print(f"  - 해당 기간 데이터 없음")
+                    
+            else:
+                print(f"  - 테이블이 비어있음")
         
     print(f"총 {len(datasets)}개 테이블 로딩 완료")
     return datasets
@@ -1330,7 +1371,7 @@ class EnhancedSemiconductorRealTimeMonitor:
                             str(equipment_id), str(process_step), equipment_data
                         )
                         
-                        if drift_result['drift_detected']:
+                        if drift_result.get('drift_detected'):
                             drift_results.append(drift_result)
         
         print(f"프로파일 드리프트 감지 완료: {len(drift_results)}개 드리프트 발견")

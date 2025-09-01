@@ -62,6 +62,7 @@ class EventDetectResponse(BaseModel):
     class Result(BaseModel):
         status: Literal["complete", "failed"] = "complete"
         anomalies: bool = True
+        svg: str = ''
     result: Result = Result()
 
 

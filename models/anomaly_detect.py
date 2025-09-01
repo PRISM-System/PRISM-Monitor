@@ -1349,7 +1349,7 @@ class EnhancedSemiconductorRealTimeMonitor:
                             str(equipment_id), str(process_step), equipment_data
                         )
                         
-                        if drift_result['drift_detected']:
+                        if drift_result.get('drift_detected'):
                             drift_results.append(drift_result)
         
         print(f"프로파일 드리프트 감지 완료: {len(drift_results)}개 드리프트 발견")

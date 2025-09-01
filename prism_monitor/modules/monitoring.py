@@ -20,28 +20,13 @@ def monitoring_event_output(status="complete", anomaly_detected=True, descriptio
 
 
 def monitoring_event_detect(monitor_db: TinyDB, prism_core_db: PrismCoreDataBase, start: str, end: str, task_id: str):
-    print("이부분 새로 개발했당")
     anomalies, svg, analysis, drift_results = detect_anomalies_realtime(prism_core_db, start=start, end=end)
-    print(anomalies)
-    # start_time = pd.to_datetime(start, utc=True)
-    # end_time = pd.to_datetime(end, utc=True)
 
-    # datasets = {}
-    # for table_name in prism_core_db.get_tables():
-    #     df = prism_core_db.get_table_data(table_name)
-    #     if 'timestamp' in df.columns:
-    #         df['timestamp'] = pd.to_datetime(df['timestamp'], utc=True, errors='coerce')
-    #         df = df[(df['timestamp'] >= start_time) & (df['timestamp'] <= end_time)]
-    #         df = do_valid_check(df)
-    #     datasets[table_name] = df
-
-    
-
-    # 하나의 문서로 저장: {task_id: ..., records: [...]}
     event_record = {
         "task_id": task_id,
         "records": analysis
     }
+    print(analysis)
 
     Event = Query()
     monitor_db.table('EventDetectHistory').upsert(event_record, Event.task_id == task_id)
@@ -50,6 +35,7 @@ def monitoring_event_detect(monitor_db: TinyDB, prism_core_db: PrismCoreDataBase
         'result': {
             'status': 'complete',
             'anomalies': True if len(anomalies) else False,
+            'svg': svg
         }
     }
 
