@@ -1,6 +1,8 @@
+import os
 import pandas as pd
 import json
 
+from glob import glob
 from tinydb import TinyDB, Query
 
 from prism_monitor.data.database import PrismCoreDataBase
@@ -96,12 +98,24 @@ def monitoring_event_precursor(monitor_db: TinyDB, prism_core_db: PrismCoreDataB
     end_time = pd.to_datetime(end, utc=True)
 
     datasets = {}
-    for table_name in prism_core_db.get_tables():
-        df = prism_core_db.get_table_data(table_name)
-        if 'timestamp' in df.columns:
-            df['timestamp'] = pd.to_datetime(df['timestamp'], utc=True, errors='coerce')
-            df = df[(df['timestamp'] >= start_time) & (df['timestamp'] <= end_time)]
-        datasets[table_name] = df
+    try:
+        for table_name in prism_core_db.get_tables():
+            df = prism_core_db.get_table_data(table_name)
+            if 'timestamp' in df.columns:
+                df['timestamp'] = pd.to_datetime(df['timestamp'], utc=True, errors='coerce')
+                df = df[(df['timestamp'] >= start_time) & (df['timestamp'] <= end_time)]
+            datasets[table_name] = df
+    except Exception as e:
+        print(f"dataset error raised {e}, use local data")
+        data_paths = glob('prism_monitor/data/Industrial_DB_sample/*.csv')
+        for data_path in data_paths:
+            df = pd.read_csv(data_path)
+            table_name = os.path.basename(data_path).split('.csv')[0].lower()
+            if 'timestamp' in df.columns:
+                df['timestamp'] = pd.to_datetime(df['timestamp'], utc=True, errors='coerce')
+                df = df[(df['timestamp'] >= start_time) & (df['timestamp'] <= end_time)]
+            datasets[table_name] = df
+
     res = precursor(datasets)
     print(res)
     Event = Query()
