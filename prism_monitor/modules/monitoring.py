@@ -62,8 +62,8 @@ def monitoring_event_detect(monitor_db: TinyDB, prism_core_db, start: str, end: 
     print(analysis)
     
     Event = Query()
-    monitor_db.table('EventDetectHistory').upsert(event_record, Event.task_id == task_id)
-
+    monitor_db.table('EventDetectHistory').upsert({'task_id':task_id, 'records':analysis}, Event.task_id == task_id)
+    print(event_record)
     return {
         'result': {
             'status': 'complete',

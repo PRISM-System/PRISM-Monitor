@@ -732,6 +732,7 @@ class RealtimeAnomalyDetector:
                 'processing_time': datetime.now().isoformat(),
                 'status': 'error'
             }
+<<<<<<< HEAD
             vis_json = {
                 "anomalies": [],
                 "drift_results": [],
@@ -741,6 +742,33 @@ class RealtimeAnomalyDetector:
             return [], [], error_analysis, vis_json
 
 
+=======
+            return [], self._create_error_svg(str(e)), error_analysis, [], self._create_empty_drift_svg()
+    
+    def _fetch_data_from_database(self, prism_core_db, start: str, end: str) -> Dict[str, pd.DataFrame]:
+        start_time = pd.to_datetime(start, utc=True)
+        end_time = pd.to_datetime(end, utc=True)
+        datasets = {}
+        try:
+            raise ValueError('use local data')
+            for table_name in prism_core_db.get_tables():
+                df = prism_core_db.get_table_data(table_name)
+                if 'timestamp' in df.columns:
+                    df['timestamp'] = pd.to_datetime(df['timestamp'], utc=True, errors='coerce')
+                    df = df[(df['timestamp'] >= start_time) & (df['timestamp'] <= end_time)]
+                datasets[table_name] = df
+        except Exception as e:
+            print(f"dataset error raised {e}, use local data")
+            data_paths = glob('prism_monitor/data/Industrial_DB_sample/*.csv')
+            for data_path in data_paths:
+                df = pd.read_csv(data_path)
+                table_name = os.path.basename(data_path).split('.csv')[0].lower()
+                if 'timestamp' in df.columns:
+                    df['timestamp'] = pd.to_datetime(df['timestamp'], utc=True, errors='coerce')
+                    df = df[(df['timestamp'] >= start_time) & (df['timestamp'] <= end_time)]
+                datasets[table_name] = df
+        return datasets
+>>>>>>> 98cc7a04675effca0cc3933fa80a608d5c606a2c
     
     def _detect_anomalies_in_data(self, data: pd.DataFrame, table_name: str) -> List[Dict]:
         """데이터에서 이상 감지"""

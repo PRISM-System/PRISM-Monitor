@@ -42,14 +42,17 @@ if st.button("입력"):
         detect_res = requests.post(urljoin(BACKEND_URL, '/api/v1/monitoring/event/detect'), json=detect_data).json()['result']
 
         st.success("1️⃣ 이상치 탐지 완료")
+        Event = Query()
+        event_record = MONITOR_DB.table('EventDetectHistory').get(Event.task_id == detect_data['taskId'])['records']
+        st.write(event_record)
         with st.expander("🔎 탐지 결과 보기"):
             st.write('**Anomalies:**', str(detect_res['anomalies']))
             st.write(detect_res['svg'], unsafe_allow_html=True)
 
-        Event = Query()
-        event_record = MONITOR_DB.table('EventDetectHistory').get(Event.task_id == detect_data['taskId'])['records']
-        record_df = pd.DataFrame(event_record)
-        st.dataframe(record_df, use_container_width=True)
+        with st.expander("🔎 데이터 검증 결과 보기"):
+            st.write('**Drift Detected:**', str(detect_res['drift_detected']))
+            st.write(detect_res['drift_svg'], unsafe_allow_html=True)
+
 
     with st.spinner("🧠 이상치 설명 생성 중..."):
         # Step 2: Explain Anomalies
