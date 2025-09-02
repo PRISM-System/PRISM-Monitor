@@ -52,8 +52,7 @@ if st.button("입력"):
 
         Event = Query()
         event_record = MONITOR_DB.table('EventDetectHistory').get(Event.task_id == detect_data['taskId'])['records']
-        record_df = pd.DataFrame(event_record)
-        st.dataframe(record_df, use_container_width=True)
+        st.write(event_record)
 
     with st.spinner("🧠 이상치 설명 생성 중..."):
         # Step 2: Explain Anomalies
