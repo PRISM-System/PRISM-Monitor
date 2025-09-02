@@ -62,6 +62,8 @@ class EventDetectResponse(BaseModel):
     class Result(BaseModel):
         status: Literal["complete", "failed"] = "complete"
         anomalies: bool = True
+        drift_detected: bool = False
+        drift_svg: str = True
         svg: str = ''
     result: Result = Result()
 

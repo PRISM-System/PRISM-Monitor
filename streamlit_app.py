@@ -46,6 +46,10 @@ if st.button("입력"):
             st.write('**Anomalies:**', str(detect_res['anomalies']))
             st.write(detect_res['svg'], unsafe_allow_html=True)
 
+        with st.expander("🔎 데이터 검증 결과 보기"):
+            st.write('**Drift Detected:**', str(detect_res['drift_detected']))
+            st.write(detect_res['drift_svg'], unsafe_allow_html=True)
+
         Event = Query()
         event_record = MONITOR_DB.table('EventDetectHistory').get(Event.task_id == detect_data['taskId'])['records']
         record_df = pd.DataFrame(event_record)

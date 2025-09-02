@@ -695,44 +695,28 @@ class EnhancedSemiconductorRealTimeMonitor:
             return [], self._create_error_svg(str(e)), error_analysis, [], self._create_empty_drift_svg()
     
     def _fetch_data_from_database(self, prism_core_db, start: str, end: str) -> Dict[str, pd.DataFrame]:
-        """데이터베이스에서 데이터 수집"""
-        all_data = {}
-        
-        # 반도체 센서 테이블들
-        sensor_tables = [
-            'semi_photo_sensors',
-            'semi_etch_sensors', 
-            'semi_cvd_sensors',
-            'semi_implant_sensors',
-            'semi_cmp_sensors'
-        ]
-        
+        start_time = pd.to_datetime(start, utc=True)
+        end_time = pd.to_datetime(end, utc=True)
+        datasets = {}
         try:
-            for table_name in sensor_tables:
-                try:
-                    # 데이터베이스에서 데이터 조회
-                    query = f"""
-                    SELECT * FROM {table_name} 
-                    WHERE timestamp BETWEEN '{start}' AND '{end}'
-                    ORDER BY timestamp DESC
-                    LIMIT 10000
-                    """
-                    
-                    data = prism_core_db.execute_query(query)
-                    if data is not None and len(data) > 0:
-                        all_data[table_name] = data
-                        print(f"{table_name}: {len(data)} 레코드 수집됨")
-                    else:
-                        print(f"{table_name}: 데이터 없음")
-                        
-                except Exception as e:
-                    print(f"{table_name} 데이터 수집 실패: {e}")
-                    continue
-                    
+            raise ValueError('use local data')
+            for table_name in prism_core_db.get_tables():
+                df = prism_core_db.get_table_data(table_name)
+                if 'timestamp' in df.columns:
+                    df['timestamp'] = pd.to_datetime(df['timestamp'], utc=True, errors='coerce')
+                    df = df[(df['timestamp'] >= start_time) & (df['timestamp'] <= end_time)]
+                datasets[table_name] = df
         except Exception as e:
-            print(f"데이터베이스 연결 오류: {e}")
-            
-        return all_data
+            print(f"dataset error raised {e}, use local data")
+            data_paths = glob('prism_monitor/data/Industrial_DB_sample/*.csv')
+            for data_path in data_paths:
+                df = pd.read_csv(data_path)
+                table_name = os.path.basename(data_path).split('.csv')[0].lower()
+                if 'timestamp' in df.columns:
+                    df['timestamp'] = pd.to_datetime(df['timestamp'], utc=True, errors='coerce')
+                    df = df[(df['timestamp'] >= start_time) & (df['timestamp'] <= end_time)]
+                datasets[table_name] = df
+        return datasets
     
     def _detect_anomalies_in_data(self, data: pd.DataFrame, table_name: str) -> List[Dict]:
         """데이터에서 이상 감지"""
