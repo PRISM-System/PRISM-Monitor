@@ -96,6 +96,6 @@ if st.button("입력"):
         st.success("5️⃣ 위험도 평가 완료")
         st.subheader("⚠ 현재 상태 위험도 평가")
         st.markdown("**Event Evaluation:**")
-        st.write(risk_res['summary']['eventEvaluation'])
+        st.write(risk_res['eventEvaluation'])
         st.markdown("**Prediction Evaluation:**")
-        st.write(risk_res['summary']['predictionEvaluation'])
+        st.write(risk_res['predictionEvaluation'])
