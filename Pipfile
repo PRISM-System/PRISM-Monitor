@@ -21,6 +21,7 @@ weaviate = "*"
 pydantic-settings = "*"
 weaviate-client = "*"
 pandasql = "*"
+streamlit = "*"
 
 [dev-packages]
 ipykernel = "*"
