@@ -248,14 +248,12 @@ def start_workflow(body: WorkflowStartRequest):
 # real time monitoring visualization
 @app.get(
     "/api/v1/monitoring/real-time",
-    response_model=RealTimeMonitoringResponse,
     summary="실시간 모니터링 데이터 조회",
     tags=["Monitoring"]
 )
 def get_real_time_monitoring_data():
     logger.info("Real-time monitoring data requested")
-    res = monitoring_real_time()
-    return res
+    return monitoring_real_time(PRISM_CORE_DB)  # 직접 반환
 
 if __name__ == "__main__":
     import uvicorn

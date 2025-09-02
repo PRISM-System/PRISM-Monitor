@@ -195,14 +195,30 @@ def monitoring_dashboard_update(field: str = "line_id", type: str = "LINE", stat
         "message": "대시보드 업데이트 완료"
     }
 
+# 아래 코드가 원래 코드 이 부분 주석 지우면 됨
+# def monitoring_real_time(prism_core_db):
+#     """모니터링 이벤트 감지 함수"""
+#     # detect_anomalies_realtime가 이제 5개 값을 반환 (drift_svg 추가)
+#     end = time.now()
+#     start = time.now() - pd.Timedelta(minutes=10)
+#     anomalies, drift_results, analysis, vis_json = detect_anomalies_realtime(prism_core_db, start=start, end=end)
+#     result = vis_json
+
+#     return {
+#         'result': result
+#     }
+
+
+# 민주: 임의로 코드 수정해봄
 def monitoring_real_time(prism_core_db):
     """모니터링 이벤트 감지 함수"""
-    # detect_anomalies_realtime가 이제 5개 값을 반환 (drift_svg 추가)
-    end = time.now()
-    start = time.now() - pd.Timedelta(minutes=10)
-    anomalies, drift_results, analysis, vis_json = detect_anomalies_realtime(prism_core_db, start=start, end=end)
-    result = vis_json
-
-    return {
-        'result': result
-    }
+    end = pd.Timestamp.now()
+    start = end - pd.Timedelta(minutes=10)
+    
+    anomalies, drift_results, analysis, vis_json = detect_anomalies_realtime(
+        prism_core_db,
+        start=start.isoformat(),  # 문자열로 변환
+        end=end.isoformat()       # 문자열로 변환
+    )
+    
+    return vis_json  # vis_json 직접 반환
