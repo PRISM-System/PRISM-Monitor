@@ -45,7 +45,8 @@ def monitoring_event_output(status="complete", anomaly_detected=True, descriptio
 #         }
 #     }
 
-def monitoring_event_detect(monitor_db: TinyDB, prism_core_db: PrismCoreDataBase, start: str, end: str, task_id: str):
+def monitoring_event_detect(monitor_db: TinyDB, prism_core_db, start: str, end: str, task_id: str):
+    """모니터링 이벤트 감지 함수"""
     # detect_anomalies_realtime가 이제 5개 값을 반환 (drift_svg 추가)
     anomalies, svg, analysis, drift_results, drift_svg = detect_anomalies_realtime(prism_core_db, start=start, end=end)
 
@@ -72,7 +73,6 @@ def monitoring_event_detect(monitor_db: TinyDB, prism_core_db: PrismCoreDataBase
             'drift_svg': drift_svg  # 드리프트 시각화 SVG 추가
         }
     }
-
 
 
 def monitoring_event_explain(llm_url, monitor_db: TinyDB, task_id: str):
