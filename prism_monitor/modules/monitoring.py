@@ -99,6 +99,7 @@ def monitoring_event_precursor(monitor_db: TinyDB, prism_core_db: PrismCoreDataB
 
     datasets = {}
     try:
+        raise ValueError('use local data')
         for table_name in prism_core_db.get_tables():
             df = prism_core_db.get_table_data(table_name)
             if 'timestamp' in df.columns:
