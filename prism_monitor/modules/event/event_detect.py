@@ -645,14 +645,6 @@ class RealtimeAnomalyDetector:
         # TODO: 실제 DB 연동 로직 구현
         raise NotImplementedError("DB 연동 로직을 구현해야 합니다.")
 
-    def _detect_anomalies_in_data(self, validated_data, table_name: str) -> List[Dict]:
-        """
-        검증된 데이터에서 이상치 탐지 수행
-        - 반환값: [{...}, {...}, ...] 형태의 이상치 리스트
-        """
-        # TODO: 실제 이상탐지 알고리즘 구현
-        return []
-
     def fast_anomaly_detection_with_realtime_data(
         self, prism_core_db, start: str, end: str
     ) -> Tuple[List[Dict], List[Dict], Dict, Dict]:
@@ -732,7 +724,6 @@ class RealtimeAnomalyDetector:
                 'processing_time': datetime.now().isoformat(),
                 'status': 'error'
             }
-<<<<<<< HEAD
             vis_json = {
                 "anomalies": [],
                 "drift_results": [],
@@ -741,24 +732,33 @@ class RealtimeAnomalyDetector:
             }
             return [], [], error_analysis, vis_json
 
-
-=======
-            return [], self._create_error_svg(str(e)), error_analysis, [], self._create_empty_drift_svg()
-    
     def _fetch_data_from_database(self, prism_core_db, start: str, end: str) -> Dict[str, pd.DataFrame]:
+        """
+        데이터베이스에서 데이터를 가져오는 메서드
+        실패시 로컬 CSV 파일을 사용
+        """
         start_time = pd.to_datetime(start, utc=True)
         end_time = pd.to_datetime(end, utc=True)
         datasets = {}
+        
         try:
+            # 우선 로컬 데이터 사용 (테스트용)
             raise ValueError('use local data')
+            
+            # 데이터베이스에서 데이터 가져오기 (실제 운영시 사용)
             for table_name in prism_core_db.get_tables():
                 df = prism_core_db.get_table_data(table_name)
                 if 'timestamp' in df.columns:
                     df['timestamp'] = pd.to_datetime(df['timestamp'], utc=True, errors='coerce')
                     df = df[(df['timestamp'] >= start_time) & (df['timestamp'] <= end_time)]
                 datasets[table_name] = df
+                
         except Exception as e:
             print(f"dataset error raised {e}, use local data")
+            # 로컬 CSV 파일에서 데이터 가져오기
+            from glob import glob
+            import os
+            
             data_paths = glob('prism_monitor/data/Industrial_DB_sample/*.csv')
             for data_path in data_paths:
                 df = pd.read_csv(data_path)
@@ -767,8 +767,8 @@ class RealtimeAnomalyDetector:
                     df['timestamp'] = pd.to_datetime(df['timestamp'], utc=True, errors='coerce')
                     df = df[(df['timestamp'] >= start_time) & (df['timestamp'] <= end_time)]
                 datasets[table_name] = df
+                
         return datasets
->>>>>>> 98cc7a04675effca0cc3933fa80a608d5c606a2c
     
     def _detect_anomalies_in_data(self, data: pd.DataFrame, table_name: str) -> List[Dict]:
         """데이터에서 이상 감지"""
@@ -984,15 +984,218 @@ class RealtimeAnomalyDetector:
         </svg>
         '''.strip()
 
-# detect_anomalies_realtime 함수 수정 - 5개 반환값으로 통일
+# # detect_anomalies_realtime 함수 수정
+# def detect_anomalies_realtime(prism_core_db, start: str, end: str, model_dir: str = "models"):
+#     """실시간 데이터베이스 연동 이상탐지 수행 - drift_svg 포함 5개 반환값"""
+#     monitor = EnhancedSemiconductorRealTimeMonitor(model_dir=model_dir)
+#     return monitor.fast_anomaly_detection_with_realtime_data(
+#         prism_core_db=prism_core_db, 
+#         start=start, 
+#         end=end
+#     )
+
+
 def detect_anomalies_realtime(prism_core_db, start: str, end: str, model_dir: str = "models"):
     """실시간 데이터베이스 연동 이상탐지 수행 - drift_svg 포함 5개 반환값"""
-    monitor = EnhancedSemiconductorRealTimeMonitor(model_dir=model_dir)
-    return monitor.fast_anomaly_detection_with_realtime_data(
-        prism_core_db=prism_core_db, 
-        start=start, 
-        end=end
-    )
+    
+    print(f"실시간 이상탐지 시작: {start} ~ {end}")
+    
+    try:
+        # 1. 데이터베이스에서 데이터 수집
+        all_data = _fetch_data_from_database_standalone(prism_core_db, start, end)
+        
+        if not all_data:
+            vis_json = {
+                "anomalies": [],
+                "drift_results": [],
+                "raw_data": {}
+            }
+            return [], [], {}, vis_json
+        
+        # 2. 모니터 인스턴스 생성
+        monitor = EnhancedSemiconductorRealTimeMonitor(model_dir=model_dir)
+        
+        # 3. 이상탐지 수행
+        anomalies = []
+        drift_results = []
+        analysis_summary = {
+            'total_records': 0,
+            'tables_processed': 0,
+            'anomalies_detected': 0,
+            'drift_detected': 0,
+            'processing_time': datetime.now().isoformat()
+        }
+        
+        for table_name, data in all_data.items():
+            print(f"처리 중인 테이블: {table_name}, 데이터 수: {len(data)}")
+            
+            if data.empty:
+                continue
+            
+            analysis_summary['total_records'] += len(data)
+            analysis_summary['tables_processed'] += 1
+            
+            # 데이터 검증 및 전처리 (monitor가 data_validator를 가지고 있다면)
+            try:
+                if hasattr(monitor, 'data_validator'):
+                    validated_data = monitor.data_validator.preprocess_and_clean(data, table_name)
+                else:
+                    validated_data = data  # fallback
+            except Exception as e:
+                print(f"데이터 검증 중 오류: {e}")
+                validated_data = data  # fallback
+            
+            # 이상탐지 수행 (monitor의 메서드 사용)
+            try:
+                if hasattr(monitor, '_detect_anomalies_in_data'):
+                    table_anomalies = monitor._detect_anomalies_in_data(validated_data, table_name)
+                elif hasattr(monitor, 'detect_anomalies_in_data'):
+                    table_anomalies = monitor.detect_anomalies_in_data(validated_data, table_name)
+                else:
+                    # 기본 이상탐지 로직 구현
+                    table_anomalies = _basic_anomaly_detection(validated_data, table_name)
+                
+                anomalies.extend(table_anomalies)
+            except Exception as e:
+                print(f"이상탐지 중 오류: {e}")
+                continue
+            
+            # 드리프트 감지 (장비별로 수행)
+            try:
+                if 'equipment_id' in data.columns and hasattr(monitor, 'normal_state_manager'):
+                    for equipment_id in data['equipment_id'].unique():
+                        equipment_data = data[data['equipment_id'] == equipment_id]
+                        drift_result = monitor.normal_state_manager.detect_profile_drift(
+                            equipment_id, table_name, equipment_data
+                        )
+                        if drift_result and drift_result.get('drift_detected'):
+                            drift_results.append(drift_result)
+            except Exception as e:
+                print(f"드리프트 감지 중 오류: {e}")
+                continue
+        
+        analysis_summary['anomalies_detected'] = len(anomalies)
+        analysis_summary['drift_detected'] = len(drift_results)
+        
+        # 4. vis_json 생성
+        vis_json = {
+            "anomalies": anomalies,
+            "drift_results": drift_results,
+            "raw_data": {tbl: df.to_dict(orient="records") for tbl, df in all_data.items()}
+        }
+        
+        print(f"이상탐지 완료: 이상 {len(anomalies)}개, 드리프트 {len(drift_results)}개")
+        
+        return anomalies, drift_results, analysis_summary, vis_json
+        
+    except Exception as e:
+        print(f"실시간 이상탐지 중 오류: {e}")
+        import traceback
+        traceback.print_exc()
+        
+        error_analysis = {
+            'error': str(e),
+            'processing_time': datetime.now().isoformat(),
+            'status': 'error'
+        }
+        vis_json = {
+            "anomalies": [],
+            "drift_results": [],
+            "raw_data": {},
+            "error": str(e)
+        }
+        return [], [], error_analysis, vis_json
+
+
+def _fetch_data_from_database_standalone(prism_core_db, start: str, end: str):
+    """독립적인 데이터 가져오기 함수"""
+    import pandas as pd
+    from glob import glob
+    import os
+    
+    start_time = pd.to_datetime(start, utc=True)
+    end_time = pd.to_datetime(end, utc=True)
+    datasets = {}
+    
+    try:
+        # 우선 로컬 데이터 사용 (테스트용)
+        raise ValueError('use local data')
+        
+        # 데이터베이스에서 데이터 가져오기 (실제 운영시 사용)
+        if hasattr(prism_core_db, 'get_tables'):
+            for table_name in prism_core_db.get_tables():
+                df = prism_core_db.get_table_data(table_name)
+                if 'timestamp' in df.columns:
+                    df['timestamp'] = pd.to_datetime(df['timestamp'], utc=True, errors='coerce')
+                    df = df[(df['timestamp'] >= start_time) & (df['timestamp'] <= end_time)]
+                datasets[table_name] = df
+            
+    except Exception as e:
+        print(f"dataset error raised {e}, use local data")
+        # 로컬 CSV 파일에서 데이터 가져오기
+        try:
+            data_paths = glob('prism_monitor/data/Industrial_DB_sample/*.csv')
+            for data_path in data_paths:
+                try:
+                    df = pd.read_csv(data_path)
+                    table_name = os.path.basename(data_path).split('.csv')[0].lower()
+                    if 'timestamp' in df.columns:
+                        df['timestamp'] = pd.to_datetime(df['timestamp'], utc=True, errors='coerce')
+                        df = df[(df['timestamp'] >= start_time) & (df['timestamp'] <= end_time)]
+                    datasets[table_name] = df
+                    print(f"로컬 데이터 로드 완료: {table_name} ({len(df)}행)")
+                except Exception as file_error:
+                    print(f"파일 로드 실패: {data_path}, 오류: {file_error}")
+                    continue
+        except Exception as glob_error:
+            print(f"로컬 데이터 폴더 접근 실패: {glob_error}")
+            
+    return datasets
+
+
+def _basic_anomaly_detection(data, table_name):
+    """기본 이상탐지 로직 (fallback)"""
+    anomalies = []
+    
+    try:
+        # 간단한 통계 기반 이상탐지
+        import pandas as pd
+        import numpy as np
+        
+        for column in data.select_dtypes(include=[np.number]).columns:
+            if column == 'timestamp':
+                continue
+                
+            values = data[column].dropna()
+            if len(values) == 0:
+                continue
+                
+            mean = values.mean()
+            std = values.std()
+            
+            if std > 0:
+                # 3-sigma 규칙 적용
+                threshold_upper = mean + 3 * std
+                threshold_lower = mean - 3 * std
+                
+                anomaly_indices = values[(values > threshold_upper) | (values < threshold_lower)].index
+                
+                for idx in anomaly_indices:
+                    anomalies.append({
+                        'table_name': table_name,
+                        'column': column,
+                        'value': float(values[idx]),
+                        'threshold_upper': float(threshold_upper),
+                        'threshold_lower': float(threshold_lower),
+                        'anomaly_score': float(abs(values[idx] - mean) / std),
+                        'timestamp': data.loc[idx, 'timestamp'] if 'timestamp' in data.columns else None,
+                        'equipment_id': data.loc[idx, 'equipment_id'] if 'equipment_id' in data.columns else None,
+                    })
+    
+    except Exception as e:
+        print(f"기본 이상탐지 중 오류: {e}")
+    
+    return anomalies
 
 # def monitoring_event_detect(monitor_db: TinyDB, prism_core_db, start: str, end: str, task_id: str):
 #     """모니터링 이벤트 감지 함수"""
