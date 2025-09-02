@@ -21,15 +21,41 @@ def monitoring_event_output(status="complete", anomaly_detected=True, descriptio
     return res
 
 
+# def monitoring_event_detect(monitor_db: TinyDB, prism_core_db: PrismCoreDataBase, start: str, end: str, task_id: str):
+#     anomalies, svg, analysis, drift_results = detect_anomalies_realtime(prism_core_db, start=start, end=end)
+
+#     event_record = {
+#         "task_id": task_id,
+#         "records": analysis,
+#         "validation": {
+#             "anomalies": anomalies,
+#             "drift_results": drift_results
+#         }
+#     }
+#     print(analysis)
+    
+#     Event = Query()
+#     monitor_db.table('EventDetectHistory').upsert(event_record, Event.task_id == task_id)
+
+#     return {
+#         'result': {
+#             'status': 'complete',
+#             'anomalies': True if len(anomalies) else False,
+#             'svg': svg
+#         }
+#     }
+
 def monitoring_event_detect(monitor_db: TinyDB, prism_core_db: PrismCoreDataBase, start: str, end: str, task_id: str):
-    anomalies, svg, analysis, drift_results = detect_anomalies_realtime(prism_core_db, start=start, end=end)
+    # detect_anomalies_realtime가 이제 5개 값을 반환 (drift_svg 추가)
+    anomalies, svg, analysis, drift_results, drift_svg = detect_anomalies_realtime(prism_core_db, start=start, end=end)
 
     event_record = {
         "task_id": task_id,
         "records": analysis,
         "validation": {
             "anomalies": anomalies,
-            "drift_results": drift_results
+            "drift_results": drift_results,
+            "drift_visualization": drift_svg  # 드리프트 시각화 추가
         }
     }
     print(analysis)
@@ -41,9 +67,12 @@ def monitoring_event_detect(monitor_db: TinyDB, prism_core_db: PrismCoreDataBase
         'result': {
             'status': 'complete',
             'anomalies': True if len(anomalies) else False,
-            'svg': svg
+            'drift_detected': True if len(drift_results) else False,  # 드리프트 감지 여부 추가
+            'svg': svg,
+            'drift_svg': drift_svg  # 드리프트 시각화 SVG 추가
         }
     }
+
 
 
 def monitoring_event_explain(llm_url, monitor_db: TinyDB, task_id: str):

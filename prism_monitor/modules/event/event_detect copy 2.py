@@ -4,11 +4,9 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
-from sklearn.preprocessing import StandardScaler, RobustScaler
+from sklearn.preprocessing import StandardScaler, MinMaxScaler
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import classification_report, confusion_matrix, precision_recall_curve
-from sklearn.feature_selection import SelectKBest, mutual_info_classif
-from sklearn.ensemble import IsolationForest
+from sklearn.metrics import classification_report, confusion_matrix
 import tensorflow as tf
 from tensorflow import keras
 from tensorflow.keras import layers
@@ -21,13 +19,13 @@ from datetime import datetime, timedelta
 from typing import Dict, List, Tuple, Optional
 from tinydb import TinyDB, Query
 import matplotlib
-matplotlib.use('Agg')
+matplotlib.use('Agg')  # GUI 없는 환경에서 사용
 
 warnings.filterwarnings('ignore')
 
 class ModelManager:
     """
-    모델 저장, 로딩, 관리 클래스 (개선된 버전)
+    모델 저장, 로딩, 관리 클래스
     """
     
     def __init__(self, model_dir: str = "models"):
@@ -39,27 +37,23 @@ class ModelManager:
     def save_model(self, model, scaler, feature_cols: List[str], threshold: float, 
                    training_data_info: Dict, performance_metrics: Dict):
         """
-        모델과 관련 정보 저장 (다중 임계값 지원으로 개선)
+        모델과 관련 정보 저장
         """
         try:
+            # 모델 저장
             model_file = os.path.join(self.model_dir, "autoencoder_model.h5")
             model.save(model_file)
             
+            # 스케일러 저장
             with open(self.scaler_file, 'wb') as f:
                 pickle.dump(scaler, f)
             
-            # 임계값이 dict인 경우 처리
-            if isinstance(threshold, dict):
-                thresholds = threshold
-            else:
-                thresholds = {'default': threshold, 'legacy': threshold}
-            
+            # 메타데이터 저장
             metadata = {
                 'model_version': datetime.now().strftime('%Y%m%d_%H%M%S'),
                 'training_timestamp': datetime.now().isoformat(),
                 'feature_columns': feature_cols,
-                'threshold': threshold,  # 기존 호환성
-                'thresholds': thresholds,  # 새로운 다중 임계값
+                'threshold': threshold,
                 'training_data_info': training_data_info,
                 'performance_metrics': performance_metrics,
                 'model_file': model_file,
@@ -69,11 +63,7 @@ class ModelManager:
             with open(self.model_metadata_file, 'w') as f:
                 json.dump(metadata, f, indent=2, default=str)
             
-            print(f"개선된 모델 저장 완료: {model_file}")
-            if isinstance(threshold, dict):
-                print(f"다중 임계값: {threshold}")
-            else:
-                print(f"임계값: {threshold}")
+            print(f"모델 저장 완료: {model_file}")
             return True
             
         except Exception as e:
@@ -89,9 +79,11 @@ class ModelManager:
                 print("저장된 모델이 없습니다.")
                 return None, None, None
             
+            # 메타데이터 로드
             with open(self.model_metadata_file, 'r') as f:
                 metadata = json.load(f)
             
+            # 모델 파일 존재 확인
             model_file = metadata.get('model_file')
             if not os.path.exists(model_file):
                 print(f"모델 파일이 존재하지 않음: {model_file}")
@@ -100,6 +92,7 @@ class ModelManager:
             from tensorflow.keras.metrics import MeanSquaredError
             model = keras.models.load_model(model_file, custom_objects={"mse": MeanSquaredError()})
             
+            # 스케일러 로드
             scaler = None
             if os.path.exists(self.scaler_file):
                 with open(self.scaler_file, 'rb') as f:
@@ -248,88 +241,10 @@ class NormalStateManager:
                 for key, profile in self.normal_profiles.items()
             ]
         }
-        
-    def visualize_drift_results(self, drift_results: List[Dict]) -> str:
-        """
-        프로파일 드리프트 결과 시각화 (SVG)
-        """
-        if not drift_results:
-            return "<svg><text x='10' y='30'>드리프트가 감지되지 않았습니다.</text></svg>"
-        
-        fig, axes = plt.subplots(2, 2, figsize=(15, 10))
-        
-        # 1. 장비별 드리프트 점수
-        equipment_scores = {}
-        for drift in drift_results:
-            equipment_id = drift['equipment_id']
-            if equipment_id not in equipment_scores:
-                equipment_scores[equipment_id] = []
-            equipment_scores[equipment_id].append(drift['drift_score'])
-        
-        if equipment_scores:
-            equipment_names = list(equipment_scores.keys())
-            avg_scores = [np.mean(scores) for scores in equipment_scores.values()]
-            
-            axes[0, 0].bar(equipment_names, avg_scores, color='orange', alpha=0.7)
-            axes[0, 0].set_title('Equipment Drift Scores')
-            axes[0, 0].set_ylabel('Average Drift Score (%)')
-            axes[0, 0].tick_params(axis='x', rotation=45)
-        
-        # 2. 심각도별 분포
-        severity_counts = {'HIGH': 0, 'MEDIUM': 0}
-        for drift in drift_results:
-            for param in drift['drift_parameters']:
-                severity_counts[param['severity']] += 1
-        
-        if sum(severity_counts.values()) > 0:
-            axes[0, 1].pie(severity_counts.values(), labels=severity_counts.keys(), 
-                          autopct='%1.1f%%', colors=['red', 'orange'])
-            axes[0, 1].set_title('Drift Severity Distribution')
-        
-        # 3. 시간별 드리프트 발생 추이
-        drift_times = [pd.to_datetime(drift['check_timestamp']) for drift in drift_results]
-        if drift_times:
-            time_counts = pd.Series(drift_times).groupby(
-                pd.Series(drift_times).dt.floor('H')
-            ).count()
-            
-            axes[1, 0].plot(time_counts.index, time_counts.values, marker='o', color='red')
-            axes[1, 0].set_title('Drift Detection Over Time')
-            axes[1, 0].set_xlabel('Time')
-            axes[1, 0].set_ylabel('Number of Drifts')
-            axes[1, 0].tick_params(axis='x', rotation=45)
-        
-        # 4. 파라미터별 Z-score 분포
-        z_scores = []
-        param_names = []
-        for drift in drift_results:
-            for param in drift['drift_parameters']:
-                z_scores.append(param['z_score'])
-                param_names.append(param['parameter'][:15])  # 파라미터명 축약
-        
-        if z_scores:
-            axes[1, 1].scatter(range(len(z_scores)), z_scores, 
-                              c=['red' if z > 5 else 'orange' for z in z_scores], alpha=0.6)
-            axes[1, 1].axhline(y=3, color='orange', linestyle='--', label='3-sigma')
-            axes[1, 1].axhline(y=5, color='red', linestyle='--', label='5-sigma') 
-            axes[1, 1].set_title('Parameter Z-scores')
-            axes[1, 1].set_ylabel('Z-score')
-            axes[1, 1].legend()
-        
-        plt.tight_layout()
-        
-        # SVG 생성
-        svg_buffer = io.StringIO()
-        plt.savefig(svg_buffer, format='svg')
-        svg_content = svg_buffer.getvalue()
-        svg_buffer.close()
-        plt.close(fig)
-        
-        return svg_content
 
 class DataValidityChecker:
     """
-    실시간 데이터 정합성 검증 모듈 (개선된 버전)
+    실시간 데이터 정합성 검증 모듈
     """
     
     def __init__(self):
@@ -450,37 +365,27 @@ class DataValidityChecker:
     
     def preprocess_and_clean(self, df: pd.DataFrame, table_name: str) -> pd.DataFrame:
         """
-        데이터 정제 및 전처리 (개선된 버전)
+        데이터 정제 및 전처리
         """
         df_clean = df.copy()
         
         # 1. 수치형 컬럼 식별
         numeric_cols = df_clean.select_dtypes(include=[np.number]).columns
         
-        # 2. 개선된 결측치 처리
+        # 2. 결측치 처리
         for col in numeric_cols:
             if df_clean[col].isnull().any():
-                # Median 사용 (평균보다 이상치에 강건)
-                median_val = df_clean[col].median()
-                df_clean[col] = df_clean[col].fillna(median_val)
+                # 센서 데이터는 이전 값으로 채우기 (forward fill)
+                df_clean[col] = df_clean[col].fillna(method='ffill')
+                # 여전히 NaN이 있으면 median으로 채우기
+                df_clean[col] = df_clean[col].fillna(df_clean[col].median())
         
-        # 3. IQR 기반 이상치 처리 (개선된 방법)
-        for col in numeric_cols:
-            Q1 = df_clean[col].quantile(0.25)
-            Q3 = df_clean[col].quantile(0.75)
-            IQR = Q3 - Q1
-            
-            if IQR > 0:
-                # 3×IQR 범위로 클리핑 (더 강건한 방법)
-                lower_bound = Q1 - 3 * IQR
-                upper_bound = Q3 + 3 * IQR
-                df_clean[col] = df_clean[col].clip(lower_bound, upper_bound)
-        
-        # 4. 정상 범위 기반 클리핑
+        # 3. 이상치 처리 (정상 범위 기반)
         if table_name in self.normal_ranges:
             ranges = self.normal_ranges[table_name]
             for col, (min_val, max_val) in ranges.items():
                 if col in df_clean.columns:
+                    # 범위를 벗어나는 값들을 경계값으로 클리핑
                     df_clean[col] = df_clean[col].clip(lower=min_val, upper=max_val)
         
         return df_clean
@@ -546,19 +451,15 @@ class DataSplitter:
 
 class SemiconductorRealDataDetector:
     """
-    실제 반도체 공정 데이터를 활용한 이상탐지 딥러닝 모듈 (개선된 버전)
+    실제 반도체 공정 데이터를 활용한 이상탐지 딥러닝 모듈
     """
     
     def __init__(self, config=None):
         self.config = config or self._default_config()
-        self.scaler = RobustScaler()  # StandardScaler 대신 RobustScaler 사용
+        self.scaler = StandardScaler()
         self.models = {}
         self.history = {}
         self.threshold = None
-        self.thresholds = {}  # 다중 임계값 저장
-        self.selected_features = []  # 선택된 특성 저장
-        self.feature_selector = None
-        
         self.data_files = {
             'semi_lot_manage': 'SEMI_LOT_MANAGE.csv',
             'semi_process_history': 'SEMI_PROCESS_HISTORY.csv', 
@@ -573,17 +474,14 @@ class SemiconductorRealDataDetector:
         }
         
     def _default_config(self):
-        """기본 설정 (개선됨)"""
+        """기본 설정"""
         return {
             'sequence_length': 60,
-            'contamination': 0.1,  # 이상치 비율 증가
+            'contamination': 0.05,
             'threshold_percentile': 95,
-            'batch_size': 64,      # 배치 크기 증가
-            'epochs': 100,         # 에폭 수 증가
+            'batch_size': 32,
+            'epochs': 50,
             'validation_split': 0.2,
-            'learning_rate': 0.0005,  # 학습률 감소
-            'max_features': 100,      # 최대 특성 수 제한
-            'early_stopping_patience': 20  # 조기 종료 patience 증가
         }
 
     def load_local_data_and_explore(self, data_base_path):
@@ -659,7 +557,7 @@ class SemiconductorRealDataDetector:
 
     def create_unified_dataset(self, datasets):
         """
-        모든 테이블을 통합하여 분석용 데이터셋 생성 (개선된 버전)
+        모든 테이블을 통합하여 분석용 데이터셋 생성
         """
         print("통합 데이터셋 생성 중...")
         
@@ -674,7 +572,7 @@ class SemiconductorRealDataDetector:
             print("LOT 관리 데이터가 없습니다.")
             return pd.DataFrame()
         
-        # 3. 각 LOT별 센서 통계 생성 (더 다양한 통계)
+        # 3. 각 LOT별 센서 통계 생성
         if not integrated_sensors.empty and 'lot_no' in integrated_sensors.columns:
             sensor_stats = integrated_sensors.groupby(['lot_no', 'sensor_type'])['sensor_value'].agg([
                 'mean', 'std', 'min', 'max', 'count'
@@ -693,13 +591,13 @@ class SemiconductorRealDataDetector:
             main_df = main_df.merge(sensor_features, on='lot_no', how='left')
             print(f"센서 특성 추가 완료: {sensor_features.shape[1]-1}개 특성")
         
-        # 4. 공정 이력 데이터 통합 (개선된 통계)
+        # 4. 공정 이력 데이터 통합
         if 'semi_process_history' in datasets:
             process_df = datasets['semi_process_history']
             if 'lot_no' in process_df.columns:
                 process_stats = process_df.groupby('lot_no').agg({
-                    'in_qty': ['mean', 'sum', 'std'],
-                    'out_qty': ['mean', 'sum', 'std'],
+                    'in_qty': ['mean', 'sum'],
+                    'out_qty': ['mean', 'sum'],
                 }).reset_index()
                 
                 process_stats.columns = [f"process_{col[0]}_{col[1]}" if col[1] else col[0] 
@@ -726,118 +624,11 @@ class SemiconductorRealDataDetector:
         print(f"최종 통합 데이터셋: {main_df.shape}")
         return main_df
 
-    def _calculate_adaptive_thresholds(self, reconstruction_errors: np.array, true_labels: np.array = None) -> Dict:
-        """
-        적응적 임계값 계산 (새로운 메서드)
-        """
-        thresholds = {}
-        
-        # 1. 통계적 방법들
-        thresholds['percentile_95'] = np.percentile(reconstruction_errors, 95)
-        thresholds['percentile_99'] = np.percentile(reconstruction_errors, 99)
-        thresholds['mean_3std'] = np.mean(reconstruction_errors) + 3 * np.std(reconstruction_errors)
-        thresholds['median_iqr'] = np.median(reconstruction_errors) + 1.5 * (
-            np.percentile(reconstruction_errors, 75) - np.percentile(reconstruction_errors, 25)
-        )
-        
-        # 2. Isolation Forest 기반
-        try:
-            iso_forest = IsolationForest(contamination=0.1, random_state=42)
-            iso_predictions = iso_forest.fit_predict(reconstruction_errors.reshape(-1, 1))
-            anomaly_indices = np.where(iso_predictions == -1)[0]
-            if len(anomaly_indices) > 0:
-                thresholds['isolation_forest'] = np.min(reconstruction_errors[anomaly_indices])
-            else:
-                thresholds['isolation_forest'] = thresholds['percentile_95']
-        except:
-            thresholds['isolation_forest'] = thresholds['percentile_95']
-        
-        # 3. 레이블이 있는 경우 F1 최적화
-        if true_labels is not None:
-            try:
-                precision, recall, pr_thresholds = precision_recall_curve(true_labels, reconstruction_errors)
-                f1_scores = 2 * (precision * recall) / (precision + recall + 1e-10)
-                best_f1_idx = np.argmax(f1_scores)
-                if best_f1_idx < len(pr_thresholds):
-                    thresholds['f1_optimal'] = pr_thresholds[best_f1_idx]
-                else:
-                    thresholds['f1_optimal'] = thresholds['percentile_95']
-            except:
-                thresholds['f1_optimal'] = thresholds['percentile_95']
-        
-        # 기본값 설정
-        if 'f1_optimal' in thresholds:
-            thresholds['default'] = thresholds['f1_optimal']
-        else:
-            thresholds['default'] = thresholds['isolation_forest']
-        
-        return thresholds
-
-    def _advanced_feature_selection(self, X: np.array, y: np.array = None) -> Tuple[np.array, List[int]]:
-        """
-        고급 특성 선택 (새로운 메서드)
-        """
-        print(f"고급 특성 선택 시작: {X.shape[1]}개 특성")
-        
-        # 1. 분산이 너무 낮은 특성 제거
-        feature_vars = np.var(X, axis=0)
-        low_var_mask = feature_vars > 1e-6
-        X_filtered = X[:, low_var_mask]
-        low_var_indices = np.where(low_var_mask)[0]
-        
-        print(f"저분산 특성 제거 후: {X_filtered.shape[1]}개 특성")
-        
-        # 2. 상관관계가 너무 높은 특성 제거
-        if X_filtered.shape[1] > 1:
-            corr_matrix = np.corrcoef(X_filtered.T)
-            upper_tri = np.triu(np.ones_like(corr_matrix, dtype=bool), k=1)
-            high_corr_pairs = np.where((np.abs(corr_matrix) > 0.95) & upper_tri)
-            
-            features_to_drop = set()
-            for i, j in zip(high_corr_pairs[0], high_corr_pairs[1]):
-                if np.var(X_filtered[:, i]) < np.var(X_filtered[:, j]):
-                    features_to_drop.add(i)
-                else:
-                    features_to_drop.add(j)
-            
-            keep_mask = np.ones(X_filtered.shape[1], dtype=bool)
-            keep_mask[list(features_to_drop)] = False
-            X_filtered = X_filtered[:, keep_mask]
-            high_corr_indices = np.where(keep_mask)[0]
-            
-            print(f"고상관 특성 제거 후: {X_filtered.shape[1]}개 특성")
-        else:
-            high_corr_indices = np.arange(X_filtered.shape[1])
-        
-        # 3. Mutual Information 기반 특성 선택
-        final_indices = low_var_indices[high_corr_indices]
-        
-        if y is not None and X_filtered.shape[1] > self.config['max_features']:
-            try:
-                self.feature_selector = SelectKBest(
-                    score_func=mutual_info_classif, 
-                    k=min(self.config['max_features'], X_filtered.shape[1])
-                )
-                X_filtered = self.feature_selector.fit_transform(X_filtered, y)
-                selected_mask = self.feature_selector.get_support()
-                final_indices = final_indices[selected_mask]
-                print(f"Mutual Information 기반 선택 후: {X_filtered.shape[1]}개 특성")
-            except:
-                # 실패 시 분산 기반으로 선택
-                if X_filtered.shape[1] > self.config['max_features']:
-                    feature_vars_filtered = np.var(X_filtered, axis=0)
-                    top_var_indices = np.argsort(feature_vars_filtered)[-self.config['max_features']:]
-                    X_filtered = X_filtered[:, top_var_indices]
-                    final_indices = final_indices[top_var_indices]
-                    print(f"분산 기반 선택 후: {X_filtered.shape[1]}개 특성")
-        
-        return X_filtered, final_indices.tolist()
-
     def prepare_features(self, df):
         """
-        특성 준비 및 전처리 (개선된 버전)
+        특성 준비 및 전처리
         """
-        print("개선된 특성 준비 및 전처리 중...")
+        print("특성 준비 및 전처리 중...")
         
         numeric_cols = df.select_dtypes(include=[np.number]).columns.tolist()
         
@@ -848,90 +639,53 @@ class SemiconductorRealDataDetector:
         feature_cols = [col for col in numeric_cols if col not in exclude_cols]
         
         df_processed = df.copy()
+        df_processed[feature_cols] = df_processed[feature_cols].fillna(0)
         
-        # 개선된 결측치 처리
-        for col in feature_cols:
-            if col in df_processed.columns:
-                if df_processed[col].isnull().sum() > 0:
-                    # Median 사용 (평균보다 이상치에 강건)
-                    median_val = df_processed[col].median()
-                    df_processed[col] = df_processed[col].fillna(median_val)
-        
-        # 이상치 라벨 생성 (개선된 방법)
+        # 이상치 라벨 생성
         if 'final_yield' in df.columns:
-            # 더 엄격한 기준: 하위 5% 또는 상위 95%를 벗어나는 경우
-            yield_threshold_low = df['final_yield'].quantile(0.05)
-            df_processed['is_anomaly'] = df_processed['final_yield'] < yield_threshold_low
-            
-            # 추가 조건: 수율은 높지만 센서 값에 극단적 이상이 있는 경우
-            feature_data = df_processed[feature_cols].fillna(0)
-            if len(feature_data.columns) > 0:
-                # Isolation Forest로 극단 이상치 탐지
-                try:
-                    iso_forest = IsolationForest(contamination=0.05, random_state=42)
-                    outlier_labels = iso_forest.fit_predict(feature_data)
-                    extreme_outliers = outlier_labels == -1
-                    df_processed['is_anomaly'] = df_processed['is_anomaly'] | extreme_outliers
-                except:
-                    pass
+            yield_threshold = df['final_yield'].quantile(0.1)
+            df_processed['is_anomaly'] = df_processed['final_yield'] < yield_threshold
         else:
-            # 수율 데이터가 없는 경우 Isolation Forest만 사용
-            feature_data = df_processed[feature_cols].fillna(0)
-            if len(feature_data) > 10:
-                iso_forest = IsolationForest(contamination=0.1, random_state=42)
-                outlier_labels = iso_forest.fit_predict(feature_data)
-                df_processed['is_anomaly'] = outlier_labels == -1
-            else:
-                df_processed['is_anomaly'] = False
+            feature_data = df_processed[feature_cols]
+            z_scores = np.abs((feature_data - feature_data.mean()) / feature_data.std()).mean(axis=1)
+            threshold = np.percentile(z_scores, 90)
+            df_processed['is_anomaly'] = z_scores > threshold
         
         print(f"전처리 완료: {len(feature_cols)}개 특성")
-        print(f"개선된 이상 LOT 비율: {df_processed['is_anomaly'].mean():.2%}")
+        print(f"이상 LOT 비율: {df_processed['is_anomaly'].mean():.2%}")
         
         return df_processed, feature_cols
 
     def build_autoencoder(self, input_dim):
         """
-        Autoencoder 모델 구축 (개선된 구조)
+        Autoencoder 모델 구축
         """ 
         input_layer = layers.Input(shape=(input_dim,))
         
-        # 더 깊고 점진적인 인코더
-        encoded = layers.Dense(256, activation='relu')(input_layer)
-        encoded = layers.BatchNormalization()(encoded)
-        encoded = layers.Dropout(0.3)(encoded)
-        
-        encoded = layers.Dense(128, activation='relu')(encoded)
+        encoded = layers.Dense(128, activation='relu')(input_layer)
         encoded = layers.BatchNormalization()(encoded)
         encoded = layers.Dropout(0.2)(encoded)
         
         encoded = layers.Dense(64, activation='relu')(encoded)
         encoded = layers.BatchNormalization()(encoded)
-        encoded = layers.Dropout(0.1)(encoded)
+        encoded = layers.Dropout(0.2)(encoded)
         
-        # 병목층
         encoded = layers.Dense(32, activation='relu')(encoded)
         
-        # 점진적인 디코더
         decoded = layers.Dense(64, activation='relu')(encoded)
         decoded = layers.BatchNormalization()(decoded)
-        decoded = layers.Dropout(0.1)(decoded)
+        decoded = layers.Dropout(0.2)(decoded)
         
         decoded = layers.Dense(128, activation='relu')(decoded)
         decoded = layers.BatchNormalization()(decoded)
         decoded = layers.Dropout(0.2)(decoded)
         
-        decoded = layers.Dense(256, activation='relu')(decoded)
-        decoded = layers.BatchNormalization()(decoded)
-        decoded = layers.Dropout(0.3)(decoded)
-        
         decoded = layers.Dense(input_dim, activation='linear')(decoded)
         
         autoencoder = keras.Model(input_layer, decoded)
-        
-        # 개선된 컴파일 설정
         autoencoder.compile(
-            optimizer=keras.optimizers.Adam(learning_rate=self.config['learning_rate']),
-            loss='huber',  # MSE 대신 Huber loss (이상치에 강건)
+            optimizer=keras.optimizers.Adam(learning_rate=0.001),
+            loss='mse',
             metrics=['mae']
         )
         
@@ -939,9 +693,9 @@ class SemiconductorRealDataDetector:
 
     def train_model(self, train_datasets):
         """
-        Train 데이터로 모델 훈련 (개선된 버전)
+        Train 데이터로 모델 훈련
         """
-        print("개선된 Train 데이터로 모델 훈련 시작...")
+        print("Train 데이터로 모델 훈련 시작...")
         
         # 통합 데이터셋 생성
         unified_df = self.create_unified_dataset(train_datasets)
@@ -950,86 +704,54 @@ class SemiconductorRealDataDetector:
             return None, []
         
         # 특성 준비
-        processed_df, initial_feature_cols = self.prepare_features(unified_df)
-        
-        # 고급 특성 선택 적용
-        print("고급 특성 선택 수행 중...")
-        X_all = processed_df[initial_feature_cols].fillna(0).values
-        y_labels = processed_df['is_anomaly'].values.astype(int)
-        
-        X_selected, selected_indices = self._advanced_feature_selection(X_all, y_labels)
-        
-        # 선택된 특성 컬럼명 저장
-        self.selected_features = [initial_feature_cols[i] for i in selected_indices]
-        print(f"최종 선택된 특성: {len(self.selected_features)}개")
+        processed_df, feature_cols = self.prepare_features(unified_df)
         
         # 정상 데이터만 사용하여 학습
-        normal_mask = ~processed_df['is_anomaly']
-        X_normal = X_selected[normal_mask]
+        normal_data = processed_df[~processed_df['is_anomaly']]
+        X_normal = normal_data[feature_cols].values
         
-        if len(X_normal) < 10:
+        if len(X_normal) < 5:
             print(f"훈련용 정상 데이터가 부족합니다. {len(X_normal)}개 샘플")
-            return None, self.selected_features
+            return None, feature_cols
         
         print(f"학습 데이터: {len(X_normal)}개 정상 샘플")
         
-        # 스케일링 (RobustScaler 사용)
+        # 스케일링
         X_normal_scaled = self.scaler.fit_transform(X_normal)
         
         # Autoencoder 학습
-        model = self.build_autoencoder(len(self.selected_features))
+        model = self.build_autoencoder(len(feature_cols))
         
-        # 개선된 콜백 설정
-        callbacks = [
-            keras.callbacks.EarlyStopping(
-                monitor='val_loss', 
-                patience=self.config['early_stopping_patience'], 
-                restore_best_weights=True
-            ),
-            keras.callbacks.ReduceLROnPlateau(
-                monitor='val_loss',
-                factor=0.5,
-                patience=10,
-                min_lr=1e-7
-            )
-        ]
+        early_stopping = keras.callbacks.EarlyStopping(
+            monitor='val_loss', patience=15, restore_best_weights=True
+        )
         
         history = model.fit(
             X_normal_scaled, X_normal_scaled,
             batch_size=self.config['batch_size'],
             epochs=self.config['epochs'],
             validation_split=self.config['validation_split'],
-            callbacks=callbacks,
+            callbacks=[early_stopping],
             verbose=1
         )
         
-        # 적응적 임계값 계산
+        # 임계값 계산
         reconstructed = model.predict(X_normal_scaled, verbose=0)
-        normal_errors = np.mean(np.square(X_normal_scaled - reconstructed), axis=1)
-        
-        # 전체 데이터에 대한 재구성 오차
-        X_all_scaled = self.scaler.transform(X_selected)
-        all_reconstructed = model.predict(X_all_scaled, verbose=0)
-        all_errors = np.mean(np.square(X_all_scaled - all_reconstructed), axis=1)
-        
-        # 다양한 임계값 계산
-        self.thresholds = self._calculate_adaptive_thresholds(all_errors, y_labels)
-        self.threshold = self.thresholds['default']  # 기존 호환성
+        mse_normal = np.mean(np.square(X_normal_scaled - reconstructed), axis=1)
+        self.threshold = np.percentile(mse_normal, self.config['threshold_percentile'])
         
         self.models['autoencoder'] = model
         self.history['autoencoder'] = history
         
-        print(f"개선된 훈련 완료. 계산된 임계값들:")
-        for method, threshold_val in self.thresholds.items():
-            print(f"  - {method}: {threshold_val:.4f}")
+        print(f"훈련 완료. 임계값: {self.threshold:.4f}")
         
-        return model, self.selected_features
+        return model, feature_cols
 
     def predict_with_trained_model(self, test_datasets, feature_cols):
         """
-        훈련된 모델로 Test 데이터 예측 (개선된 버전)
+        훈련된 모델로 Test 데이터 예측
         """
-        print("개선된 모델로 Test 데이터 예측 시작...")
+        print("훈련된 모델로 Test 데이터 예측 시작...")
         
         if 'autoencoder' not in self.models:
             print("훈련된 모델이 없습니다.")
@@ -1044,27 +766,19 @@ class SemiconductorRealDataDetector:
         # 동일한 전처리 과정
         processed_df, _ = self.prepare_features(unified_df)
         
-        # 선택된 특성만 사용
-        X_test = processed_df[feature_cols].fillna(0).values
+        # 동일한 feature columns 사용
+        X_test = processed_df[feature_cols].values
         X_test_scaled = self.scaler.transform(X_test)
         
         # 이상탐지 수행
         reconstructed = self.models['autoencoder'].predict(X_test_scaled, verbose=0)
         mse_scores = np.mean(np.square(X_test_scaled - reconstructed), axis=1)
         
-        # 결과 저장 (다중 임계값 적용)
+        # 결과 저장
         result_df = processed_df.copy()
         result_df['anomaly_score'] = mse_scores
-        
-        # 기본 임계값으로 예측
-        default_threshold = self.thresholds.get('default', self.threshold)
-        result_df['predicted_anomaly'] = mse_scores > default_threshold
-        result_df['confidence'] = (mse_scores - default_threshold) / (default_threshold + 1e-8)
-        
-        # 다른 임계값들도 추가
-        for method, threshold_val in self.thresholds.items():
-            if method != 'default':
-                result_df[f'predicted_anomaly_{method}'] = mse_scores > threshold_val
+        result_df['predicted_anomaly'] = mse_scores > self.threshold
+        result_df['confidence'] = (mse_scores - self.threshold) / self.threshold
         
         print(f"예측 완료: {len(result_df)}개 LOT 중 {result_df['predicted_anomaly'].sum()}개 이상 탐지")
         
@@ -1072,29 +786,21 @@ class SemiconductorRealDataDetector:
 
     def visualize_results(self, df_result):
         """
-        결과 시각화 (SVG) - 개선된 버전
+        결과 시각화 (SVG)
         """
         fig, axes = plt.subplots(2, 2, figsize=(15, 12))
         
-        # 1. 이상 점수 분포 (개선됨)
+        # 1. 이상 점수 분포
         if 'predicted_anomaly' in df_result.columns:
             normal_scores = df_result[~df_result['predicted_anomaly']]['anomaly_score']
             anomaly_scores = df_result[df_result['predicted_anomaly']]['anomaly_score']
             
             axes[0, 0].hist(normal_scores, bins=30, alpha=0.7, label='Normal', color='blue')
             axes[0, 0].hist(anomaly_scores, bins=30, alpha=0.7, label='Anomaly', color='red')
-            
-            # 다양한 임계값 표시
-            colors = ['red', 'orange', 'purple', 'green']
-            for i, (method, threshold_val) in enumerate(self.thresholds.items()):
-                if method in ['default', 'f1_optimal', 'isolation_forest']:
-                    color = colors[i % len(colors)]
-                    axes[0, 0].axvline(threshold_val, color=color, linestyle='--', 
-                                     label=f'{method}: {threshold_val:.3f}')
-            
+            axes[0, 0].axvline(self.threshold, color='red', linestyle='--', label='Threshold')
             axes[0, 0].set_xlabel('Anomaly Score')
             axes[0, 0].set_ylabel('Frequency')
-            axes[0, 0].set_title('Improved Anomaly Score Distribution')
+            axes[0, 0].set_title('Anomaly Score Distribution')
             axes[0, 0].legend()
         
         # 2. 수율 vs 이상 점수
@@ -1104,50 +810,26 @@ class SemiconductorRealDataDetector:
                              c=colors, alpha=0.6, s=20)
             axes[0, 1].set_xlabel('Final Yield (%)')
             axes[0, 1].set_ylabel('Anomaly Score')
-            axes[0, 1].set_title('Yield vs Anomaly Score (Improved)')
+            axes[0, 1].set_title('Yield vs Anomaly Score')
         
         # 3. 혼동 행렬
         if 'is_anomaly' in df_result.columns and 'predicted_anomaly' in df_result.columns:
             cm = confusion_matrix(df_result['is_anomaly'], df_result['predicted_anomaly'])
             sns.heatmap(cm, annot=True, fmt='d', ax=axes[1, 0], cmap='Blues')
-            axes[1, 0].set_title('Improved Confusion Matrix')
+            axes[1, 0].set_title('Confusion Matrix')
             axes[1, 0].set_xlabel('Predicted')
             axes[1, 0].set_ylabel('Actual')
         
-        # 4. 임계값별 성능 비교 (새로 추가)
-        if 'is_anomaly' in df_result.columns:
-            methods = []
-            f1_scores = []
-            
-            for method in ['default', 'f1_optimal', 'isolation_forest']:
-                if method in self.thresholds:
-                    threshold_val = self.thresholds[method]
-                    predictions = df_result['anomaly_score'] > threshold_val
-                    
-                    try:
-                        from sklearn.metrics import f1_score
-                        f1 = f1_score(df_result['is_anomaly'], predictions, zero_division=0)
-                        methods.append(method)
-                        f1_scores.append(f1)
-                    except:
-                        pass
-            
-            if methods:
-                axes[1, 1].bar(methods, f1_scores, color=['blue', 'orange', 'green'])
-                axes[1, 1].set_title('F1 Scores by Threshold Method')
-                axes[1, 1].set_ylabel('F1 Score')
-                axes[1, 1].tick_params(axis='x', rotation=45)
-            else:
-                # 학습 손실 (기존)
-                if 'autoencoder' in self.history:
-                    history = self.history['autoencoder']
-                    axes[1, 1].plot(history.history['loss'], label='Training Loss')
-                    if 'val_loss' in history.history:
-                        axes[1, 1].plot(history.history['val_loss'], label='Validation Loss')
-                    axes[1, 1].set_xlabel('Epoch')
-                    axes[1, 1].set_ylabel('Loss')
-                    axes[1, 1].set_title('Training Loss')
-                    axes[1, 1].legend()
+        # 4. 학습 손실
+        if 'autoencoder' in self.history:
+            history = self.history['autoencoder']
+            axes[1, 1].plot(history.history['loss'], label='Training Loss')
+            if 'val_loss' in history.history:
+                axes[1, 1].plot(history.history['val_loss'], label='Validation Loss')
+            axes[1, 1].set_xlabel('Epoch')
+            axes[1, 1].set_ylabel('Loss')
+            axes[1, 1].set_title('Training Loss')
+            axes[1, 1].legend()
         
         plt.tight_layout()
         
@@ -1162,77 +844,58 @@ class SemiconductorRealDataDetector:
         return svg_content
 
     def analyze_results(self, df_result):
-        """
-        결과 분석 및 요약 (개선된 버전)
-        """
-        print("개선된 결과 분석 중...")
-        
-        # 시간 관련 컬럼들을 string으로 변환
-        time_columns = ['timestamp', 'TIMESTAMP', 'credate', 'CREDATE', 
-                       'start_time', 'START_TIME', 'end_time', 'END_TIME',
-                       'measure_time', 'MEASURE_TIME']
-        
-        for col in time_columns:
-            if col in df_result.columns:
-                df_result[col] = df_result[col].astype(str)
-                print(f"컬럼 '{col}'을 string으로 변환했습니다.")
-        
-        total_lots = len(df_result)
-        detected_anomalies = df_result['predicted_anomaly'].sum() if 'predicted_anomaly' in df_result.columns else 0
-        actual_anomalies = df_result['is_anomaly'].sum() if 'is_anomaly' in df_result.columns else 0
-        
-        print(f"\n=== 개선된 이상탐지 결과 요약 ===")
-        print(f"전체 LOT 수: {total_lots}")
-        if 'is_anomaly' in df_result.columns:
-            print(f"실제 이상 LOT: {actual_anomalies} ({actual_anomalies/total_lots:.1%})")
-        print(f"탐지된 이상 LOT: {detected_anomalies} ({detected_anomalies/total_lots:.1%})")
-        
-        # 개선된 성능 평가
-        if 'is_anomaly' in df_result.columns and 'predicted_anomaly' in df_result.columns:
-            from sklearn.metrics import precision_score, recall_score, f1_score, accuracy_score
+            """
+            결과 분석 및 요약
+            """
+            print("결과 분석 중...")
             
-            accuracy = accuracy_score(df_result['is_anomaly'], df_result['predicted_anomaly'])
-            precision = precision_score(df_result['is_anomaly'], df_result['predicted_anomaly'], zero_division=0)
-            recall = recall_score(df_result['is_anomaly'], df_result['predicted_anomaly'], zero_division=0)
-            f1 = f1_score(df_result['is_anomaly'], df_result['predicted_anomaly'], zero_division=0)
+            # 시간 관련 컬럼들을 string으로 변환
+            time_columns = ['timestamp', 'TIMESTAMP', 'credate', 'CREDATE', 
+                        'start_time', 'START_TIME', 'end_time', 'END_TIME',
+                        'measure_time', 'MEASURE_TIME']
             
-            print(f"\n=== 개선된 성능 지표 ===")
-            print(f"정확도 (Accuracy): {accuracy:.3f}")
-            print(f"정밀도 (Precision): {precision:.3f}")
-            print(f"재현율 (Recall): {recall:.3f}")
-            print(f"F1 점수: {f1:.3f}")
+            for col in time_columns:
+                if col in df_result.columns:
+                    df_result[col] = df_result[col].astype(str)
+                    print(f"컬럼 '{col}'을 string으로 변환했습니다.")
             
-            # 다양한 임계값별 성능
-            print(f"\n=== 임계값별 성능 비교 ===")
-            for method, threshold_val in self.thresholds.items():
-                if method != 'default':
-                    predictions = df_result['anomaly_score'] > threshold_val
-                    try:
-                        prec = precision_score(df_result['is_anomaly'], predictions, zero_division=0)
-                        rec = recall_score(df_result['is_anomaly'], predictions, zero_division=0)
-                        f1_score_val = f1_score(df_result['is_anomaly'], predictions, zero_division=0)
-                        print(f"  {method}: P={prec:.3f}, R={rec:.3f}, F1={f1_score_val:.3f}")
-                    except:
-                        pass
-        
-        # 이상 LOT 상세 분석 (개선됨)
-        if 'predicted_anomaly' in df_result.columns:
-            anomaly_lots = df_result[df_result['predicted_anomaly']]
-            if len(anomaly_lots) > 0:
-                print(f"\n=== 개선된 이상 LOT 분석 ===")
-                print("이상 점수가 높은 상위 5개 LOT:")
-                top_anomalies = anomaly_lots.nlargest(5, 'anomaly_score')
-                for _, row in top_anomalies.iterrows():
-                    print(f"  LOT {row['lot_no']}: 점수 {row['anomaly_score']:.4f}")
-                    if 'final_yield' in row:
-                        print(f"    수율: {row['final_yield']:.1f}%")
-                    if 'is_anomaly' in row:
-                        actual_status = "실제 이상" if row['is_anomaly'] else "실제 정상"
-                        print(f"    상태: {actual_status}")
-        
-        return df_result[df_result['predicted_anomaly']].to_dict("records") if 'predicted_anomaly' in df_result.columns else []
+            total_lots = len(df_result)
+            detected_anomalies = df_result['predicted_anomaly'].sum() if 'predicted_anomaly' in df_result.columns else 0
+            actual_anomalies = df_result['is_anomaly'].sum() if 'is_anomaly' in df_result.columns else 0
+            
+            print(f"\n=== 이상탐지 결과 요약 ===")
+            print(f"전체 LOT 수: {total_lots}")
+            if 'is_anomaly' in df_result.columns:
+                print(f"실제 이상 LOT: {actual_anomalies} ({actual_anomalies/total_lots:.1%})")
+            print(f"탐지된 이상 LOT: {detected_anomalies} ({detected_anomalies/total_lots:.1%})")
+            
+            # 성능 평가
+            if 'is_anomaly' in df_result.columns and 'predicted_anomaly' in df_result.columns:
+                from sklearn.metrics import precision_score, recall_score, f1_score
+                
+                precision = precision_score(df_result['is_anomaly'], df_result['predicted_anomaly'])
+                recall = recall_score(df_result['is_anomaly'], df_result['predicted_anomaly'])
+                f1 = f1_score(df_result['is_anomaly'], df_result['predicted_anomaly'])
+                
+                print(f"\n=== 성능 지표 ===")
+                print(f"정밀도 (Precision): {precision:.3f}")
+                print(f"재현율 (Recall): {recall:.3f}")
+                print(f"F1 점수: {f1:.3f}")
+            
+            # 이상 LOT 상세 분석
+            if 'predicted_anomaly' in df_result.columns:
+                anomaly_lots = df_result[df_result['predicted_anomaly']]
+                if len(anomaly_lots) > 0:
+                    print(f"\n=== 이상 LOT 분석 ===")
+                    print("이상 점수가 높은 상위 5개 LOT:")
+                    top_anomalies = anomaly_lots.nlargest(5, 'anomaly_score')
+                    for _, row in top_anomalies.iterrows():
+                        print(f"  LOT {row['lot_no']}: 점수 {row['anomaly_score']:.4f}")
+                        if 'final_yield' in row:
+                            print(f"    수율: {row['final_yield']:.1f}%")
+            
+            return df_result[df_result['predicted_anomaly']].to_dict("records") if 'predicted_anomaly' in df_result.columns else []
 
-# 기존 함수들 (내부만 개선, 이름 유지)
 def load_data_from_database(prism_core_db, start: str, end: str) -> Dict[str, pd.DataFrame]:
     """
     데이터베이스에서 실시간 데이터 로딩
@@ -1263,9 +926,12 @@ def load_data_from_database(prism_core_db, start: str, end: str) -> Dict[str, pd
             print(f"로딩 중: {table_name}")
             
             try:
+                # 테이블 데이터 조회
+                 # Remove or comment this line in real use
                 df = prism_core_db.get_table_data(table_name)
                 
                 if df is not None and len(df) > 0:
+                    # 시간 컬럼이 있는 경우 필터링
                     time_columns = ['timestamp', 'TIMESTAMP', 'credate', 'CREDATE', 
                                   'start_time', 'START_TIME', 'end_time', 'END_TIME',
                                   'measure_time', 'MEASURE_TIME']
@@ -1277,8 +943,10 @@ def load_data_from_database(prism_core_db, start: str, end: str) -> Dict[str, pd
                             break
                     
                     if time_col:
+                        # 시간 컬럼 변환 및 필터링
                         df[time_col] = pd.to_datetime(df[time_col], utc=True, errors='coerce')
                         
+                        # 시간 범위 필터링
                         before_filter = len(df)
                         df = df[(df[time_col] >= start_time) & (df[time_col] <= end_time)]
                         after_filter = len(df)
@@ -1286,6 +954,7 @@ def load_data_from_database(prism_core_db, start: str, end: str) -> Dict[str, pd
                         print(f"  - 시간 필터링: {before_filter} → {after_filter}개 레코드")
                     
                     if len(df) > 0:
+                        # 데이터 정합성 검증 및 전처리
                         df_clean = preprocess_table(df, table_name)
                         datasets[table_name] = df_clean
                         
@@ -1308,6 +977,7 @@ def load_data_from_database(prism_core_db, start: str, end: str) -> Dict[str, pd
             df = pd.read_csv(data_path)
             table_name = os.path.basename(data_path).split('.csv')[0].lower()
             if df is not None and len(df) > 0:
+                # 시간 컬럼이 있는 경우 필터링
                 time_columns = ['timestamp', 'TIMESTAMP', 'credate', 'CREDATE', 
                                 'start_time', 'START_TIME', 'end_time', 'END_TIME',
                                 'measure_time', 'MEASURE_TIME']
@@ -1319,8 +989,10 @@ def load_data_from_database(prism_core_db, start: str, end: str) -> Dict[str, pd
                         break
                 
                 if time_col:
+                    # 시간 컬럼 변환 및 필터링
                     df[time_col] = pd.to_datetime(df[time_col], utc=True, errors='coerce')
                     
+                    # 시간 범위 필터링
                     before_filter = len(df)
                     df = df[(df[time_col] >= start_time) & (df[time_col] <= end_time)]
                     after_filter = len(df)
@@ -1328,6 +1000,7 @@ def load_data_from_database(prism_core_db, start: str, end: str) -> Dict[str, pd
                     print(f"  - 시간 필터링: {before_filter} → {after_filter}개 레코드")
                 
                 if len(df) > 0:
+                    # 데이터 정합성 검증 및 전처리
                     df_clean = preprocess_table(df, table_name)
                     datasets[table_name] = df_clean
                     
@@ -1354,18 +1027,21 @@ def preprocess_table(df: pd.DataFrame, table_name: str = 'GENERIC') -> pd.DataFr
     """
     validator = DataValidityChecker()
     
+    # 데이터 정합성 검증
     validation_result = validator.validate_data_integrity(df, table_name)
     
+    # 심각한 품질 문제가 있는 경우 경고
     if validation_result['data_quality_score'] < 70:
         print(f"경고: {table_name} 데이터 품질이 낮습니다 ({validation_result['data_quality_score']:.1f}점)")
     
+    # 데이터 정제 및 전처리
     df_clean = validator.preprocess_and_clean(df, table_name)
     
     return df_clean
 
 class EnhancedSemiconductorRealTimeMonitor:
     """
-    시나리오 B: 사전 훈련된 모델을 사용하는 빠른 이상탐지 시스템 (개선된 버전)
+    시나리오 B: 사전 훈련된 모델을 사용하는 빠른 이상탐지 시스템 (실시간 데이터 수집 포함)
     """
     
     def __init__(self, config=None, model_dir="models"):
@@ -1395,14 +1071,14 @@ class EnhancedSemiconductorRealTimeMonitor:
         return {
             'test_size': 0.3,
             'random_state': 42,
-            'split_by': 'time'
+            'split_by': 'time'  # 'time' or 'random'
         }
     
     def setup_and_train_model(self, data_path: str):
         """
-        데이터 로딩, 분할 및 모델 훈련 (개선된 버전)
+        데이터 로딩, 분할 및 모델 훈련 (최초 1회 실행)
         """
-        print("=== 개선된 모델 설정 및 훈련 단계 ===")
+        print("=== 모델 설정 및 훈련 단계 ===")
         
         # 1. 전체 데이터 로딩
         print("1. 전체 데이터 로딩 중...")
@@ -1412,8 +1088,8 @@ class EnhancedSemiconductorRealTimeMonitor:
             print("로딩된 데이터가 없습니다.")
             return False
         
-        # 2. 데이터 검증 및 전처리
-        print("2. 개선된 데이터 정합성 검증 중...")
+        # 2. 데이터 검증
+        print("2. 데이터 정합성 검증 중...")
         for table_name, df in all_datasets.items():
             validation = self.data_validator.validate_data_integrity(df, table_name)
             self.validation_results.append(validation)
@@ -1426,42 +1102,38 @@ class EnhancedSemiconductorRealTimeMonitor:
             all_datasets, split_by=self.config['split_by']
         )
         
-        # 4. 개선된 모델 훈련
-        print("4. 개선된 모델 훈련 중...")
+        # 4. 모델 훈련
+        print("4. 모델 훈련 중...")
         model, feature_cols = self.detector.train_model(train_datasets)
         
         if model is None:
             print("모델 훈련 실패")
             return False
         
-        # 5. 개선된 모델 저장
-        print("5. 개선된 모델 저장 중...")
+        # 5. 모델 저장
+        print("5. 모델 저장 중...")
         training_info = {
             'total_tables': len(train_datasets),
             'total_train_records': sum(len(df) for df in train_datasets.values()),
             'total_test_records': sum(len(df) for df in test_datasets.values()),
-            'split_method': self.config['split_by'],
-            'selected_features': len(feature_cols),
-            'improvement_version': 'v2.0_adaptive_threshold_feature_selection'
+            'split_method': self.config['split_by']
         }
         
         performance_metrics = {
-            'thresholds': self.detector.thresholds,
-            'feature_count': len(feature_cols),
-            'feature_selection_applied': True
+            'threshold': self.detector.threshold,
+            'feature_count': len(feature_cols)
         }
         
-        # 다중 임계값 전달
         success = self.model_manager.save_model(
             model, self.detector.scaler, feature_cols, 
-            self.detector.thresholds, training_info, performance_metrics
+            self.detector.threshold, training_info, performance_metrics
         )
         
         if success:
-            print("개선된 모델 설정 및 훈련 완료!")
+            print("모델 설정 및 훈련 완료!")
             
             # 6. Test 데이터로 성능 검증
-            print("6. Test 데이터로 개선된 성능 검증 중...")
+            print("6. Test 데이터로 성능 검증 중...")
             result_df = self.detector.predict_with_trained_model(test_datasets, feature_cols)
             if result_df is not None:
                 self.detector.analyze_results(result_df)
@@ -1473,9 +1145,9 @@ class EnhancedSemiconductorRealTimeMonitor:
     
     def fast_anomaly_detection(self, test_data_path: str = None, test_datasets: Dict = None):
         """
-        시나리오 B: 저장된 모델로 빠른 이상탐지 수행 (개선된 버전)
+        시나리오 B: 저장된 모델로 빠른 이상탐지 수행
         """
-        print("=== 개선된 시나리오 B: 빠른 이상탐지 수행 ===")
+        print("=== 시나리오 B: 빠른 이상탐지 수행 ===")
         
         # 1. 저장된 모델 로드
         print("1. 저장된 모델 로딩 중...")
@@ -1487,20 +1159,12 @@ class EnhancedSemiconductorRealTimeMonitor:
         
         self.detector.models['autoencoder'] = model
         self.detector.scaler = scaler
-        
-        # 다중 임계값 로드
-        if 'thresholds' in metadata:
-            self.detector.thresholds = metadata['thresholds']
-            self.detector.threshold = self.detector.thresholds.get('default', metadata.get('threshold', 1.0))
-        else:
-            self.detector.threshold = metadata['threshold']
-            self.detector.thresholds = {'default': self.detector.threshold}
-        
+        self.detector.threshold = metadata['threshold']
         feature_cols = metadata['feature_columns']
         
-        print(f"개선된 모델 로드 완료: {metadata['model_version']}")
+        print(f"모델 로드 완료: {metadata['model_version']}")
         print(f"특성 수: {len(feature_cols)}")
-        print(f"사용 가능한 임계값: {list(self.detector.thresholds.keys())}")
+        print(f"임계값: {metadata['threshold']}")
         
         # 2. 테스트 데이터 준비
         if test_datasets is None:
@@ -1511,15 +1175,15 @@ class EnhancedSemiconductorRealTimeMonitor:
                 print("테스트 데이터가 제공되지 않았습니다.")
                 return None, "", []
         
-        # 3. 개선된 이상탐지 수행
-        print("3. 개선된 이상탐지 수행 중...")
+        # 3. 빠른 이상탐지 수행
+        print("3. 이상탐지 수행 중...")
         result_df = self.detector.predict_with_trained_model(test_datasets, feature_cols)
         
         if result_df is None:
             return [], "", []
         
-        # 4. 개선된 결과 분석 및 시각화
-        print("4. 개선된 결과 분석 및 시각화 중...")
+        # 4. 결과 분석 및 시각화
+        print("4. 결과 분석 및 시각화 중...")
         analysis_results = self.detector.analyze_results(result_df)
         svg_content = self.detector.visualize_results(result_df)
         
@@ -1527,15 +1191,16 @@ class EnhancedSemiconductorRealTimeMonitor:
         anomalies = result_df[result_df['predicted_anomaly']] if 'predicted_anomaly' in result_df.columns else pd.DataFrame()
         anomaly_records = anomalies.to_dict('records') if len(anomalies) > 0 else []
         
-        print(f"개선된 빠른 이상탐지 완료!")
+        print(f"빠른 이상탐지 완료!")
         print(f"- 총 {len(result_df)}개 LOT 분석")
         print(f"- {len(anomaly_records)}개 이상 LOT 탐지")
         
         return anomaly_records, svg_content, analysis_results
     
-    # 기존 메서드들 유지 (이름 변경 없음)
     def get_system_status(self):
-        """실시간 시스템 상태 조회"""
+        """
+        실시간 시스템 상태 조회 (정상 상태 프로파일 포함)
+        """
         model_status = self.get_model_status()
         normal_state_summary = self.normal_state_manager.get_all_profiles_summary()
         
@@ -1552,7 +1217,9 @@ class EnhancedSemiconductorRealTimeMonitor:
         }
     
     def get_model_status(self):
-        """저장된 모델 상태 조회"""
+        """
+        저장된 모델 상태 조회
+        """
         _, _, metadata = self.model_manager.load_model()
         
         if metadata:
@@ -1561,8 +1228,7 @@ class EnhancedSemiconductorRealTimeMonitor:
                 'model_version': metadata['model_version'],
                 'training_timestamp': metadata['training_timestamp'],
                 'feature_count': len(metadata['feature_columns']),
-                'threshold': metadata.get('threshold', 'N/A'),
-                'thresholds': metadata.get('thresholds', {}),
+                'threshold': metadata['threshold'],
                 'training_info': metadata['training_data_info']
             }
         else:
@@ -1571,31 +1237,67 @@ class EnhancedSemiconductorRealTimeMonitor:
                 'message': '저장된 모델이 없습니다.'
             }
     
+    def get_model_status(self):
+        """
+        저장된 모델 상태 조회
+        """
+        _, _, metadata = self.model_manager.load_model()
+        
+        if metadata:
+            return {
+                'model_available': True,
+                'model_version': metadata['model_version'],
+                'training_timestamp': metadata['training_timestamp'],
+                'feature_count': len(metadata['feature_columns']),
+                'threshold': metadata['threshold'],
+                'training_info': metadata['training_data_info']
+            }
+        else:
+            return {
+                'model_available': False,
+                'message': '저장된 모델이 없습니다.'
+            }
     def load_real_time_data_from_database(self, prism_core_db, start: str, end: str) -> Dict[str, pd.DataFrame]:
-        """데이터베이스에서 실시간 데이터 로딩"""
+        """
+        데이터베이스에서 실시간 데이터 로딩 및 정상 상태 프로파일 업데이트
+        
+        Args:
+            prism_core_db: PrismCoreDataBase 인스턴스
+            start: 시작 시간
+            end: 종료 시간
+            
+        Returns:
+            Dict[str, pd.DataFrame]: 정제된 데이터셋
+        """
         print("실시간 데이터베이스에서 데이터 수집 중...")
         
+        # 데이터베이스에서 실시간 데이터 로딩
         raw_datasets = load_data_from_database(prism_core_db, start, end)
         
         if not raw_datasets:
             print("로딩된 데이터가 없습니다.")
             return {}
         
+        # 테이블명 매핑 (데이터베이스명 → 내부키)
         datasets = {}
         for db_table_name, df in raw_datasets.items():
             internal_key = self.table_mapping.get(db_table_name, db_table_name.lower())
             datasets[internal_key] = df
             
+            # 데이터 품질 검증 결과 저장
             validation_result = self.data_validator.validate_data_integrity(df, db_table_name)
             self.validation_results.append(validation_result)
         
+        # 정상 상태 프로파일 업데이트 (장비 센서 데이터가 있는 경우)
         self._update_normal_state_profiles(datasets)
         
         print(f"실시간 데이터 수집 완료: {len(datasets)}개 테이블")
         return datasets
     
     def _update_normal_state_profiles(self, datasets: Dict[str, pd.DataFrame]):
-        """실시간 데이터로 정상 상태 프로파일 업데이트"""
+        """
+        실시간 데이터로 정상 상태 프로파일 업데이트
+        """
         print("정상 상태 프로파일 업데이트 중...")
         
         sensor_tables = ['semi_photo_sensors', 'semi_etch_sensors', 'semi_cvd_sensors', 
@@ -1609,6 +1311,7 @@ class EnhancedSemiconductorRealTimeMonitor:
                 
             df = datasets[table_key]
             
+            # 장비 ID와 공정 단계 컬럼 확인
             equipment_col = None
             process_col = None
             
@@ -1622,13 +1325,15 @@ class EnhancedSemiconductorRealTimeMonitor:
                     process_col = col
                     break
             
-            if equipment_col and len(df) > 50:
+            if equipment_col and len(df) > 50:  # 최소 50개 샘플 필요
+                # 장비별로 정상 상태 프로파일 업데이트
                 equipment_groups = df.groupby(equipment_col)
                 
                 for equipment_id, equipment_data in equipment_groups:
-                    if len(equipment_data) > 10:
+                    if len(equipment_data) > 10:  # 최소 10개 샘플
                         process_step = equipment_data[process_col].iloc[0] if process_col else 'UNKNOWN'
                         
+                        # 정상 상태 프로파일 업데이트
                         self.normal_state_manager.update_normal_profile(
                             str(equipment_id), str(process_step), equipment_data
                         )
@@ -1637,7 +1342,9 @@ class EnhancedSemiconductorRealTimeMonitor:
         print(f"정상 상태 프로파일 업데이트 완료: {updated_profiles}개 프로파일")
     
     def detect_profile_drifts(self, datasets: Dict[str, pd.DataFrame]) -> List[Dict]:
-        """정상 상태 프로파일 드리프트 감지"""
+        """
+        정상 상태 프로파일 드리프트 감지
+        """
         print("정상 상태 프로파일 드리프트 감지 중...")
         
         drift_results = []
@@ -1650,6 +1357,7 @@ class EnhancedSemiconductorRealTimeMonitor:
                 
             df = datasets[table_key]
             
+            # 장비별 드리프트 검사
             equipment_col = None
             process_col = None
             
@@ -1667,9 +1375,10 @@ class EnhancedSemiconductorRealTimeMonitor:
                 equipment_groups = df.groupby(equipment_col)
                 
                 for equipment_id, equipment_data in equipment_groups:
-                    if len(equipment_data) > 5:
+                    if len(equipment_data) > 5:  # 최소 5개 샘플
                         process_step = equipment_data[process_col].iloc[0] if process_col else 'UNKNOWN'
                         
+                        # 드리프트 감지
                         drift_result = self.normal_state_manager.detect_profile_drift(
                             str(equipment_id), str(process_step), equipment_data
                         )
@@ -1681,10 +1390,22 @@ class EnhancedSemiconductorRealTimeMonitor:
         return drift_results
 
     def fast_anomaly_detection_with_realtime_data(self, prism_core_db=None, start: str = None, 
-                                             end: str = None, test_data_path: str = None, 
-                                             test_datasets: Dict = None):
-        """실시간 데이터베이스 연동 빠른 이상탐지 수행"""
-        print("=== 개선된 실시간 데이터베이스 연동 이상탐지 수행 ===")
+                                                 end: str = None, test_data_path: str = None, 
+                                                 test_datasets: Dict = None):
+        """
+        실시간 데이터베이스 연동 빠른 이상탐지 수행
+        
+        Args:
+            prism_core_db: 실시간 데이터베이스 연결
+            start: 시작 시간 (데이터베이스 모드)
+            end: 종료 시간 (데이터베이스 모드)
+            test_data_path: 로컬 파일 경로 (파일 모드)
+            test_datasets: 직접 제공된 데이터 (직접 모드)
+            
+        Returns:
+            Tuple: (이상 LOT 리스트, SVG 시각화, 분석 결과, 드리프트 결과)
+        """
+        print("=== 실시간 데이터베이스 연동 이상탐지 수행 ===")
         
         # 1. 저장된 모델 로드
         print("1. 저장된 모델 로딩 중...")
@@ -1696,21 +1417,14 @@ class EnhancedSemiconductorRealTimeMonitor:
         
         self.detector.models['autoencoder'] = model
         self.detector.scaler = scaler
-        
-        if 'thresholds' in metadata:
-            self.detector.thresholds = metadata['thresholds']
-            self.detector.threshold = self.detector.thresholds.get('default', metadata.get('threshold', 1.0))
-        else:
-            self.detector.threshold = metadata['threshold']
-            self.detector.thresholds = {'default': self.detector.threshold}
-        
+        self.detector.threshold = metadata['threshold']
         feature_cols = metadata['feature_columns']
         
         print(f"모델 로드 완료: {metadata['model_version']}")
         print(f"특성 수: {len(feature_cols)}")
-        print(f"임계값: {self.detector.threshold}")
+        print(f"임계값: {metadata['threshold']}")
         
-        # 2. 데이터 준비
+        # 2. 데이터 준비 (우선순위: 직접 제공 > 데이터베이스 > 파일)
         if test_datasets is not None:
             print("2. 직접 제공된 테스트 데이터 사용")
             datasets = test_datasets
@@ -1723,6 +1437,7 @@ class EnhancedSemiconductorRealTimeMonitor:
             if not datasets:
                 return [], "", [], []
                 
+            # 정상 상태 프로파일 드리프트 감지
             drift_results = self.detect_profile_drifts(datasets)
             
         elif test_data_path:
@@ -1741,47 +1456,124 @@ class EnhancedSemiconductorRealTimeMonitor:
         if result_df is None:
             return [], "", [], drift_results
         
-        
         # 4. 결과 분석 및 시각화
         print("4. 결과 분석 및 시각화 중...")
         analysis_results = self.detector.analyze_results(result_df)
         svg_content = self.detector.visualize_results(result_df)
-    
-        # 새로 추가: 드리프트 시각화
-        drift_svg_content = ""
-        if drift_results:
-            print("드리프트 결과 시각화 중...")
-            drift_svg_content = self.normal_state_manager.visualize_drift_results(drift_results)
         
         # 5. 이상 LOT 추출
         anomalies = result_df[result_df['predicted_anomaly']] if 'predicted_anomaly' in result_df.columns else pd.DataFrame()
         anomaly_records = anomalies.to_dict('records') if len(anomalies) > 0 else []
         
         # 6. 결과 요약
-        print(f"개선된 실시간 이상탐지 완료!")
+        print(f"실시간 이상탐지 완료!")
         print(f"- 총 {len(result_df)}개 LOT 분석")
         print(f"- {len(anomaly_records)}개 이상 LOT 탐지")
         print(f"- {len(drift_results)}개 프로파일 드리프트 감지")
         
+        # 데이터 품질 요약
         if self.validation_results:
             avg_quality = np.mean([r['data_quality_score'] for r in self.validation_results])
             print(f"- 평균 데이터 품질: {avg_quality:.1f}점")
         
-        return anomaly_records, svg_content, analysis_results, drift_results, drift_svg_content
+        return anomaly_records, svg_content, analysis_results, drift_results
+    
+    def fast_anomaly_detection(self, test_data_path: str = None, test_datasets: Dict = None):
+        """
+        시나리오 B: 저장된 모델로 빠른 이상탐지 수행 (기존 메서드 - 호환성 유지)
+        """
+        print("=== 시나리오 B: 빠른 이상탐지 수행 ===")
+        
+        # 1. 저장된 모델 로드
+        print("1. 저장된 모델 로딩 중...")
+        model, scaler, metadata = self.model_manager.load_model()
+        
+        if model is None:
+            print("저장된 모델이 없습니다. setup_and_train_model()을 먼저 실행하세요.")
+            return None, "", []
+        
+        self.detector.models['autoencoder'] = model
+        self.detector.scaler = scaler
+        self.detector.threshold = metadata['threshold']
+        feature_cols = metadata['feature_columns']
+        
+        print(f"모델 로드 완료: {metadata['model_version']}")
+        print(f"특성 수: {len(feature_cols)}")
+        print(f"임계값: {metadata['threshold']}")
+        
+        # 2. 테스트 데이터 준비
+        if test_datasets is None:
+            if test_data_path:
+                print("2. 테스트 데이터 로딩 중...")
+                test_datasets = self.detector.load_local_data_and_explore(test_data_path)
+            else:
+                print("테스트 데이터가 제공되지 않았습니다.")
+                return None, "", []
+        
+        # 3. 빠른 이상탐지 수행
+        print("3. 이상탐지 수행 중...")
+        result_df = self.detector.predict_with_trained_model(test_datasets, feature_cols)
+        
+        if result_df is None:
+            return [], "", []
+        
+        # 4. 결과 분석 및 시각화
+        print("4. 결과 분석 및 시각화 중...")
+        analysis_results = self.detector.analyze_results(result_df)
+        svg_content = self.detector.visualize_results(result_df)
+        
+        # 5. 이상 LOT 추출
+        anomalies = result_df[result_df['predicted_anomaly']] if 'predicted_anomaly' in result_df.columns else pd.DataFrame()
+        anomaly_records = anomalies.to_dict('records') if len(anomalies) > 0 else []
+        
+        print(f"빠른 이상탐지 완료!")
+        print(f"- 총 {len(result_df)}개 LOT 분석")
+        print(f"- {len(anomaly_records)}개 이상 LOT 탐지")
+        
+        return anomaly_records, svg_content, analysis_results
+        model_status = self.get_model_status()
+        normal_state_summary = self.normal_state_manager.get_all_profiles_summary()
+        
+        return {
+            'model_status': model_status,
+            'normal_state_profiles': normal_state_summary,
+            'data_quality_summary': {
+                'total_validations': len(self.validation_results),
+                'average_quality_score': np.mean([r['data_quality_score'] for r in self.validation_results]) if self.validation_results else 0,
+                'critical_issues': sum(len(r['anomalies']) for r in self.validation_results),
+                'last_validation': self.validation_results[-1]['validation_timestamp'] if self.validation_results else None
+            },
+            'system_timestamp': datetime.now().isoformat()
+        }
 
-# 편의 함수들 (이름 유지, 내부만 개선)
+# 편의 함수들
 def setup_model_training(data_path: str, model_dir: str = "models"):
-    """모델 설정 및 훈련 (개선된 버전)"""
+    """
+    모델 설정 및 훈련 (최초 1회 실행)
+    """
     monitor = EnhancedSemiconductorRealTimeMonitor(model_dir=model_dir)
     return monitor.setup_and_train_model(data_path)
 
 def detect_anomalies_fast(test_data_path: str = None, test_datasets: Dict = None, model_dir: str = "models"):
-    """시나리오 B: 빠른 이상탐지 수행 (개선된 버전)"""
+    """
+    시나리오 B: 빠른 이상탐지 수행 (로컬 파일 모드)
+    """
     monitor = EnhancedSemiconductorRealTimeMonitor(model_dir=model_dir)
     return monitor.fast_anomaly_detection(test_data_path, test_datasets)
 
 def detect_anomalies_realtime(prism_core_db, start: str, end: str, model_dir: str = "models"):
-    """실시간 데이터베이스 연동 이상탐지 수행"""
+    """
+    실시간 데이터베이스 연동 이상탐지 수행
+    
+    Args:
+        prism_core_db: PrismCoreDataBase 인스턴스
+        start: 시작 시간 (ISO format)
+        end: 종료 시간 (ISO format)
+        model_dir: 모델 저장 디렉토리
+        
+    Returns:
+        Tuple: (이상 LOT 리스트, SVG 시각화, 분석 결과, 드리프트 결과)
+    """
     monitor = EnhancedSemiconductorRealTimeMonitor(model_dir=model_dir)
     return monitor.fast_anomaly_detection_with_realtime_data(
         prism_core_db=prism_core_db, 
@@ -1790,27 +1582,47 @@ def detect_anomalies_realtime(prism_core_db, start: str, end: str, model_dir: st
     )
 
 def get_model_info(model_dir: str = "models"):
-    """저장된 모델 정보 조회"""
+    """
+    저장된 모델 정보 조회
+    """
     monitor = EnhancedSemiconductorRealTimeMonitor(model_dir=model_dir)
     return monitor.get_model_status()
 
 def get_system_status(model_dir: str = "models"):
-    """전체 시스템 상태 조회"""
+    """
+    전체 시스템 상태 조회 (모델 + 정상 상태 프로파일 + 데이터 품질)
+    """
     monitor = EnhancedSemiconductorRealTimeMonitor(model_dir=model_dir)
     return monitor.get_system_status()
 
 def get_normal_state_summary(model_dir: str = "models"):
-    """정상 상태 프로파일 요약 조회"""
+    """
+    정상 상태 프로파일 요약 조회
+    """
     manager = NormalStateManager()
     return manager.get_all_profiles_summary()
 
 def detect_equipment_drift(prism_core_db, equipment_id: str, process_step: str, 
                           start: str, end: str, model_dir: str = "models"):
-    """특정 장비의 프로파일 드리프트 감지"""
+    """
+    특정 장비의 프로파일 드리프트 감지
+    
+    Args:
+        prism_core_db: 데이터베이스 연결
+        equipment_id: 장비 ID  
+        process_step: 공정 단계
+        start: 시작 시간
+        end: 종료 시간
+        
+    Returns:
+        Dict: 드리프트 감지 결과
+    """
     monitor = EnhancedSemiconductorRealTimeMonitor(model_dir=model_dir)
     
+    # 해당 기간 데이터 로딩
     datasets = monitor.load_real_time_data_from_database(prism_core_db, start, end)
     
+    # 해당 장비 데이터만 필터링
     equipment_data = None
     for table_key, df in datasets.items():
         if 'equipment_id' in df.columns or 'EQUIPMENT_ID' in df.columns:
@@ -1829,84 +1641,7 @@ def detect_equipment_drift(prism_core_db, equipment_id: str, process_step: str,
             'process_step': process_step
         }
     
+    # 드리프트 감지
     return monitor.normal_state_manager.detect_profile_drift(
         equipment_id, process_step, equipment_data
     )
-    
-# def visualize_drift_results(self, drift_results: List[Dict]) -> str:
-#     """
-#     프로파일 드리프트 결과 시각화 (SVG)
-#     """
-#     if not drift_results:
-#         return "<svg><text x='10' y='30'>드리프트가 감지되지 않았습니다.</text></svg>"
-    
-#     fig, axes = plt.subplots(2, 2, figsize=(15, 10))
-    
-#     # 1. 장비별 드리프트 점수
-#     equipment_scores = {}
-#     for drift in drift_results:
-#         equipment_id = drift['equipment_id']
-#         if equipment_id not in equipment_scores:
-#             equipment_scores[equipment_id] = []
-#         equipment_scores[equipment_id].append(drift['drift_score'])
-    
-#     if equipment_scores:
-#         equipment_names = list(equipment_scores.keys())
-#         avg_scores = [np.mean(scores) for scores in equipment_scores.values()]
-        
-#         axes[0, 0].bar(equipment_names, avg_scores, color='orange', alpha=0.7)
-#         axes[0, 0].set_title('Equipment Drift Scores')
-#         axes[0, 0].set_ylabel('Average Drift Score (%)')
-#         axes[0, 0].tick_params(axis='x', rotation=45)
-    
-#     # 2. 심각도별 분포
-#     severity_counts = {'HIGH': 0, 'MEDIUM': 0}
-#     for drift in drift_results:
-#         for param in drift['drift_parameters']:
-#             severity_counts[param['severity']] += 1
-    
-#     if sum(severity_counts.values()) > 0:
-#         axes[0, 1].pie(severity_counts.values(), labels=severity_counts.keys(), 
-#                       autopct='%1.1f%%', colors=['red', 'orange'])
-#         axes[0, 1].set_title('Drift Severity Distribution')
-    
-#     # 3. 시간별 드리프트 발생 추이
-#     drift_times = [pd.to_datetime(drift['check_timestamp']) for drift in drift_results]
-#     if drift_times:
-#         time_counts = pd.Series(drift_times).groupby(
-#             pd.Series(drift_times).dt.floor('H')
-#         ).count()
-        
-#         axes[1, 0].plot(time_counts.index, time_counts.values, marker='o', color='red')
-#         axes[1, 0].set_title('Drift Detection Over Time')
-#         axes[1, 0].set_xlabel('Time')
-#         axes[1, 0].set_ylabel('Number of Drifts')
-#         axes[1, 0].tick_params(axis='x', rotation=45)
-    
-#     # 4. 파라미터별 Z-score 분포
-#     z_scores = []
-#     param_names = []
-#     for drift in drift_results:
-#         for param in drift['drift_parameters']:
-#             z_scores.append(param['z_score'])
-#             param_names.append(param['parameter'][:15])  # 파라미터명 축약
-    
-#     if z_scores:
-#         axes[1, 1].scatter(range(len(z_scores)), z_scores, 
-#                           c=['red' if z > 5 else 'orange' for z in z_scores], alpha=0.6)
-#         axes[1, 1].axhline(y=3, color='orange', linestyle='--', label='3-sigma')
-#         axes[1, 1].axhline(y=5, color='red', linestyle='--', label='5-sigma') 
-#         axes[1, 1].set_title('Parameter Z-scores')
-#         axes[1, 1].set_ylabel('Z-score')
-#         axes[1, 1].legend()
-    
-#     plt.tight_layout()
-    
-#     # SVG 생성
-#     svg_buffer = io.StringIO()
-#     plt.savefig(svg_buffer, format='svg')
-#     svg_content = svg_buffer.getvalue()
-#     svg_buffer.close()
-#     plt.close(fig)
-    
-#     return svg_content
