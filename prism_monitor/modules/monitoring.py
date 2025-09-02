@@ -1,4 +1,5 @@
 import os
+import time
 import pandas as pd
 import json
 
@@ -48,7 +49,7 @@ def monitoring_event_output(status="complete", anomaly_detected=True, descriptio
 def monitoring_event_detect(monitor_db: TinyDB, prism_core_db, start: str, end: str, task_id: str):
     """모니터링 이벤트 감지 함수"""
     # detect_anomalies_realtime가 이제 5개 값을 반환 (drift_svg 추가)
-    anomalies, svg, analysis, drift_results, drift_svg = detect_anomalies_realtime(prism_core_db, start=start, end=end)
+    anomalies, drift_results, analysis, vis_json = detect_anomalies_realtime(prism_core_db, start=start, end=end)
 
     event_record = {
         "task_id": task_id,
@@ -56,7 +57,6 @@ def monitoring_event_detect(monitor_db: TinyDB, prism_core_db, start: str, end: 
         "validation": {
             "anomalies": anomalies,
             "drift_results": drift_results,
-            "drift_visualization": drift_svg  # 드리프트 시각화 추가
         }
     }
     print(analysis)
@@ -69,8 +69,6 @@ def monitoring_event_detect(monitor_db: TinyDB, prism_core_db, start: str, end: 
             'status': 'complete',
             'anomalies': True if len(anomalies) else False,
             'drift_detected': True if len(drift_results) else False,  # 드리프트 감지 여부 추가
-            'svg': svg,
-            'drift_svg': drift_svg  # 드리프트 시각화 SVG 추가
         }
     }
 
@@ -195,4 +193,16 @@ def monitoring_dashboard_update(field: str = "line_id", type: str = "LINE", stat
         "isSuccess": True,
         "code": 200,
         "message": "대시보드 업데이트 완료"
+    }
+
+def monitoring_real_time(prism_core_db):
+    """모니터링 이벤트 감지 함수"""
+    # detect_anomalies_realtime가 이제 5개 값을 반환 (drift_svg 추가)
+    end = time.now()
+    start = time.now() - pd.Timedelta(minutes=10)
+    anomalies, drift_results, analysis, vis_json = detect_anomalies_realtime(prism_core_db, start=start, end=end)
+    result = vis_json
+
+    return {
+        'result': result
     }

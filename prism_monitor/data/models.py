@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import Optional, List, Union
+from typing import Dict, Optional, List, Union, Any
 from typing import Union, Literal
 from typing_extensions import Annotated
 
@@ -123,3 +123,17 @@ class DashboardUpdateResponse(BaseModel):
     isSuccess: bool = True
     code: int = 200
     message: str = "대시보드 업데이트 완료"
+
+class WorkflowStartResponse(BaseModel):
+    isSuccess: bool = True
+    code: int = 200
+    message: str = "워크플로우 시작 완료"
+
+class WorkflowStartRequest(BaseModel):
+    taskId: str = 'TASK_0001'
+
+class RealTimeMonitoringResponse(BaseModel):
+    isSuccess: bool = True
+    code: int = 200
+    message: str = "실시간 모니터링 데이터 조회 완료"
+    data: List[Dict[str, Any]] = []

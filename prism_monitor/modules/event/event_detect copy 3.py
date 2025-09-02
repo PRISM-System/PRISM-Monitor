@@ -624,41 +624,9 @@ class EnhancedSemiconductorRealTimeMonitor:
         except Exception as e:
             print(f"모델 로드 중 오류: {e}")
     
-    from datetime import datetime
-from typing import List, Dict, Tuple
-
-
-class RealtimeAnomalyDetector:
-    def __init__(self, data_validator, normal_state_manager):
+    def fast_anomaly_detection_with_realtime_data(self, prism_core_db, start: str, end: str) -> Tuple[List[Dict], str, Dict, List[Dict], str]:
         """
-        data_validator: 데이터 전처리 및 검증 객체
-        normal_state_manager: 정상 상태 관리 및 드리프트 감지 객체
-        """
-        self.data_validator = data_validator
-        self.normal_state_manager = normal_state_manager
-
-    def _fetch_data_from_database(self, prism_core_db, start: str, end: str) -> Dict[str, 'pd.DataFrame']:
-        """
-        DB에서 start ~ end 구간의 데이터를 가져옴
-        - 반환값: {테이블명: DataFrame}
-        """
-        # TODO: 실제 DB 연동 로직 구현
-        raise NotImplementedError("DB 연동 로직을 구현해야 합니다.")
-
-    def _detect_anomalies_in_data(self, validated_data, table_name: str) -> List[Dict]:
-        """
-        검증된 데이터에서 이상치 탐지 수행
-        - 반환값: [{...}, {...}, ...] 형태의 이상치 리스트
-        """
-        # TODO: 실제 이상탐지 알고리즘 구현
-        return []
-
-    def fast_anomaly_detection_with_realtime_data(
-        self, prism_core_db, start: str, end: str
-    ) -> Tuple[List[Dict], List[Dict], Dict, Dict]:
-        """
-        실시간 데이터베이스 연동 이상탐지 수행
-        반환값: anomalies, drift_results, analysis, vis_json
+        실시간 데이터베이스 연동 이상탐지 수행 - 5개 반환값
         """
         print(f"실시간 이상탐지 시작: {start} ~ {end}")
         
@@ -667,12 +635,7 @@ class RealtimeAnomalyDetector:
             all_data = self._fetch_data_from_database(prism_core_db, start, end)
             
             if not all_data:
-                vis_json = {
-                    "anomalies": [],
-                    "drift_results": [],
-                    "raw_data": {}
-                }
-                return [], [], {}, vis_json
+                return [], self._create_empty_svg(), {}, [], self._create_empty_drift_svg()
             
             # 2. 이상탐지 수행
             anomalies = []
@@ -714,16 +677,13 @@ class RealtimeAnomalyDetector:
             analysis_summary['anomalies_detected'] = len(anomalies)
             analysis_summary['drift_detected'] = len(drift_results)
             
-            # 3. raw 데이터 vis_json 생성
-            vis_json = {
-                "anomalies": anomalies,
-                "drift_results": drift_results,
-                "raw_data": {tbl: df.to_dict(orient="records") for tbl, df in all_data.items()}
-            }
+            # 3. 시각화 생성
+            svg_visualization = self._create_anomaly_visualization(anomalies, all_data)
+            drift_svg = self.normal_state_manager.visualize_drift_results(drift_results)
             
             print(f"이상탐지 완료: 이상 {len(anomalies)}개, 드리프트 {len(drift_results)}개")
             
-            return anomalies, drift_results, analysis_summary, vis_json
+            return anomalies, svg_visualization, analysis_summary, drift_results, drift_svg
             
         except Exception as e:
             print(f"실시간 이상탐지 중 오류: {e}")
@@ -732,15 +692,47 @@ class RealtimeAnomalyDetector:
                 'processing_time': datetime.now().isoformat(),
                 'status': 'error'
             }
-            vis_json = {
-                "anomalies": [],
-                "drift_results": [],
-                "raw_data": {},
-                "error": str(e)
-            }
-            return [], [], error_analysis, vis_json
-
-
+            return [], self._create_error_svg(str(e)), error_analysis, [], self._create_empty_drift_svg()
+    
+    def _fetch_data_from_database(self, prism_core_db, start: str, end: str) -> Dict[str, pd.DataFrame]:
+        """데이터베이스에서 데이터 수집"""
+        all_data = {}
+        
+        # 반도체 센서 테이블들
+        sensor_tables = [
+            'semi_photo_sensors',
+            'semi_etch_sensors', 
+            'semi_cvd_sensors',
+            'semi_implant_sensors',
+            'semi_cmp_sensors'
+        ]
+        
+        try:
+            for table_name in sensor_tables:
+                try:
+                    # 데이터베이스에서 데이터 조회
+                    query = f"""
+                    SELECT * FROM {table_name} 
+                    WHERE timestamp BETWEEN '{start}' AND '{end}'
+                    ORDER BY timestamp DESC
+                    LIMIT 10000
+                    """
+                    
+                    data = prism_core_db.execute_query(query)
+                    if data is not None and len(data) > 0:
+                        all_data[table_name] = data
+                        print(f"{table_name}: {len(data)} 레코드 수집됨")
+                    else:
+                        print(f"{table_name}: 데이터 없음")
+                        
+                except Exception as e:
+                    print(f"{table_name} 데이터 수집 실패: {e}")
+                    continue
+                    
+        except Exception as e:
+            print(f"데이터베이스 연결 오류: {e}")
+            
+        return all_data
     
     def _detect_anomalies_in_data(self, data: pd.DataFrame, table_name: str) -> List[Dict]:
         """데이터에서 이상 감지"""
