@@ -43,7 +43,7 @@ pipenv install
 pipenv shell
 ```
 
-### 1) .env 파일 작성(env과 같은 포맷입니다)
+### 1) .env 파일 작성(.env-local을 알맞게 수정해서 .env로 변경해주세요)
 
 
 ### 2) 서버 실행
