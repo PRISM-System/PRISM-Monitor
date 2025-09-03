@@ -497,6 +497,7 @@ FEWSHOT_TASK_2 = (
 #     return response.choices[0].message.content
 
 def _call_api(llm_url, system_prompt, fewshots, data, max_tokens=256, temperature=0.7, presence_penalty=1.5):
+    print(llm_url)
     # prompt 문자열을 직접 구성
     prompt = system_prompt + "\n\n"
     for user_ex, assistant_ex in fewshots:

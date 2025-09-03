@@ -765,7 +765,8 @@ class RealtimeAnomalyDetector:
                 table_name = os.path.basename(data_path).split('.csv')[0].lower()
                 if 'timestamp' in df.columns:
                     df['timestamp'] = pd.to_datetime(df['timestamp'], utc=True, errors='coerce')
-                    df = df[(df['timestamp'] >= start_time) & (df['timestamp'] <= end_time)]
+                    # df = df[(df['timestamp'] >= start_time) & (df['timestamp'] <= end_time)]
+                    print(f"시간 필터링 비활성화 - 전체 데이터 사용: {len(df)}행")
                 datasets[table_name] = df
                 
         return datasets
