@@ -5,3 +5,5 @@ pydantic_settings
 pandas
 weaviate-client
 tinydb
+tensorflow
+scikit-learn
