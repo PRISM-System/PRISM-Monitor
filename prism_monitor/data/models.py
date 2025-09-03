@@ -125,13 +125,7 @@ class DashboardUpdateResponse(BaseModel):
     message: str = "대시보드 업데이트 완료"
 
 class WorkflowStartResponse(BaseModel):
-    class Result(BaseModel):
-        detectResult: dict = {}
-        explainResult: dict = {}
-        causeCandidatesResult: dict = {}
-        precursorResult: dict = {}
-        evaluateRiskResult: dict = {}
-    result: Result = Result()
+    result: str = ''
 
 class WorkflowStartRequest(BaseModel):
     taskId: str = 'TASK_0001'

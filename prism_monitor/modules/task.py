@@ -2,6 +2,8 @@
 
 from tinydb import TinyDB
 
+
+from prism_monitor.llm.api import llm_generate
 from prism_monitor.modules.monitoring import (
     monitoring_event_output, 
     monitoring_event_detect, 
@@ -93,6 +95,8 @@ def workflow_start(llm_url: str, monitor_db: TinyDB, prism_core_db, task_id: str
         'precursorResult': precursor_res,
         'evaluateRiskResult': evaluate_risk_res
     }
+    prompt = f'유저쿼리={query}에 대한 분석로그/결과={result}를 정리해줘'
+    llm_result = llm_generate(llm_url, prompt)['text']
     return {
-        'result': result
+        'result': llm_result
     }

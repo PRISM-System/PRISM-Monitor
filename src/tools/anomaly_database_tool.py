@@ -30,7 +30,8 @@ class AnomalyDataBaseTool(BaseTool):
                     "sql_query": {"type": "string", "description": "실행할 SQL 쿼리"}
                 },
                 "required": ["sql_query"]
-            }
+            },
+            tool_type='function'
         )
         # 에이전트별 설정 또는 기본값 사용
         self._database_url = database_url

@@ -510,6 +510,7 @@ def _call_api(llm_url, system_prompt, fewshots, data, max_tokens=256, temperatur
         temperature=temperature,
         presence_penalty=presence_penalty
     )
+    print(response)
     return response['text']
 
 
