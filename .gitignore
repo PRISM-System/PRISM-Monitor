@@ -36,4 +36,4 @@ htmlcov/
 # Legacy
 legacy/__pycache__/
 
-monitor_db.json
+/monitor_db.json
