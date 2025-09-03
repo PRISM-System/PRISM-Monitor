@@ -145,7 +145,6 @@ def monitoring_event_precursor(monitor_db: TinyDB, prism_core_db: PrismCoreDataB
             datasets[table_name] = df
 
     res = precursor(datasets)
-    print(res)
     Event = Query()
     monitor_db.table('EventPrecursorHistory').upsert(res, Event.task_id == task_id)
 
