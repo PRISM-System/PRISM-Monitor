@@ -208,8 +208,6 @@ def monitoring_dashboard_update(field: str = "line_id", type: str = "LINE", stat
 #         'result': result
 #     }
 
-
-# 민주: 임의로 코드 수정해봄
 def monitoring_real_time(prism_core_db):
     """모니터링 이벤트 감지 함수"""
     end = pd.Timestamp.now()

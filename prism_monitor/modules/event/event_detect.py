@@ -995,10 +995,179 @@ class RealtimeAnomalyDetector:
 #     )
 
 
+# def detect_anomalies_realtime(prism_core_db, start: str, end: str, model_dir: str = "models"):
+#     """실시간 데이터베이스 연동 이상탐지 수행 - drift_svg 포함 5개 반환값"""
+    
+#     print(f"실시간 이상탐지 시작: {start} ~ {end}")
+    
+#     try:
+#         # 1. 데이터베이스에서 데이터 수집
+#         all_data = _fetch_data_from_database_standalone(prism_core_db, start, end)
+        
+#         if not all_data:
+#             vis_json = {
+#                 "anomalies": [],
+#                 "drift_results": [],
+#                 "raw_data": {}
+#             }
+#             return [], [], {}, vis_json
+        
+#         # 2. 모니터 인스턴스 생성
+#         monitor = EnhancedSemiconductorRealTimeMonitor(model_dir=model_dir)
+        
+#         # 3. 이상탐지 수행
+#         anomalies = []
+#         drift_results = []
+#         analysis_summary = {
+#             'total_records': 0,
+#             'tables_processed': 0,
+#             'anomalies_detected': 0,
+#             'drift_detected': 0,
+#             'processing_time': datetime.now().isoformat()
+#         }
+        
+#         for table_name, data in all_data.items():
+#             print(f"처리 중인 테이블: {table_name}, 데이터 수: {len(data)}")
+            
+#             if data.empty:
+#                 continue
+            
+#             analysis_summary['total_records'] += len(data)
+#             analysis_summary['tables_processed'] += 1
+            
+#             # 데이터 검증 및 전처리 (monitor가 data_validator를 가지고 있다면)
+#             try:
+#                 if hasattr(monitor, 'data_validator'):
+#                     validated_data = monitor.data_validator.preprocess_and_clean(data, table_name)
+#                 else:
+#                     validated_data = data  # fallback
+#             except Exception as e:
+#                 print(f"데이터 검증 중 오류: {e}")
+#                 validated_data = data  # fallback
+            
+#             # 이상탐지 수행 (monitor의 메서드 사용)
+#             try:
+#                 if hasattr(monitor, '_detect_anomalies_in_data'):
+#                     table_anomalies = monitor._detect_anomalies_in_data(validated_data, table_name)
+#                 elif hasattr(monitor, 'detect_anomalies_in_data'):
+#                     table_anomalies = monitor.detect_anomalies_in_data(validated_data, table_name)
+#                 else:
+#                     # 기본 이상탐지 로직 구현
+#                     table_anomalies = _basic_anomaly_detection(validated_data, table_name)
+                
+#                 anomalies.extend(table_anomalies)
+#             except Exception as e:
+#                 print(f"이상탐지 중 오류: {e}")
+#                 continue
+            
+#             # 드리프트 감지 (장비별로 수행)
+#             try:
+#                 if 'equipment_id' in data.columns and hasattr(monitor, 'normal_state_manager'):
+#                     for equipment_id in data['equipment_id'].unique():
+#                         equipment_data = data[data['equipment_id'] == equipment_id]
+#                         drift_result = monitor.normal_state_manager.detect_profile_drift(
+#                             equipment_id, table_name, equipment_data
+#                         )
+#                         if drift_result and drift_result.get('drift_detected'):
+#                             drift_results.append(drift_result)
+#             except Exception as e:
+#                 print(f"드리프트 감지 중 오류: {e}")
+#                 continue
+        
+#         analysis_summary['anomalies_detected'] = len(anomalies)
+#         analysis_summary['drift_detected'] = len(drift_results)
+        
+#         # 4. vis_json 생성
+#         vis_json = {
+#             "anomalies": anomalies,
+#             "drift_results": drift_results,
+#             "raw_data": {tbl: df.to_dict(orient="records") for tbl, df in all_data.items()}
+#         }
+        
+#         print(f"이상탐지 완료: 이상 {len(anomalies)}개, 드리프트 {len(drift_results)}개")
+        
+#         return anomalies, drift_results, analysis_summary, vis_json
+        
+#     except Exception as e:
+#         print(f"실시간 이상탐지 중 오류: {e}")
+#         import traceback
+#         traceback.print_exc()
+        
+#         error_analysis = {
+#             'error': str(e),
+#             'processing_time': datetime.now().isoformat(),
+#             'status': 'error'
+#         }
+#         vis_json = {
+#             "anomalies": [],
+#             "drift_results": [],
+#             "raw_data": {},
+#             "error": str(e)
+#         }
+#         return [], [], error_analysis, vis_json
+
+# 민주 수정: 'vis_json'이 json 형식으로 나올 수 있도록 수정
 def detect_anomalies_realtime(prism_core_db, start: str, end: str, model_dir: str = "models"):
     """실시간 데이터베이스 연동 이상탐지 수행 - drift_svg 포함 5개 반환값"""
     
     print(f"실시간 이상탐지 시작: {start} ~ {end}")
+    
+    def convert_to_json_serializable(obj):
+        """객체를 JSON 직렬화 가능한 형태로 변환"""
+        import pandas as pd
+        import numpy as np
+        from datetime import datetime, date
+        
+        # numpy 배열이나 pandas Series/DataFrame 처리
+        if isinstance(obj, (np.ndarray, pd.Series)):
+            return [convert_to_json_serializable(item) for item in obj.tolist()]
+        elif isinstance(obj, pd.DataFrame):
+            return obj.to_dict(orient="records")
+        
+        # scalar 값들에 대한 NA 체크 (배열이 아닌 경우만)
+        try:
+            if pd.isna(obj):
+                return None
+        except (ValueError, TypeError):
+            # 배열이거나 NA 체크가 불가능한 객체는 그냥 넘어감
+            pass
+        
+        if isinstance(obj, (np.integer, np.int64, np.int32)):
+            return int(obj)
+        elif isinstance(obj, (np.floating, np.float64, np.float32)):
+            if np.isnan(obj):
+                return None
+            return float(obj)
+        elif isinstance(obj, (datetime, date)):
+            return obj.isoformat()
+        elif isinstance(obj, pd.Timestamp):
+            return obj.isoformat()
+        elif isinstance(obj, np.bool_):
+            return bool(obj)
+        elif isinstance(obj, bytes):
+            return obj.decode('utf-8', errors='ignore')
+        elif isinstance(obj, dict):
+            return {k: convert_to_json_serializable(v) for k, v in obj.items()}
+        elif isinstance(obj, (list, tuple)):
+            return [convert_to_json_serializable(item) for item in obj]
+        else:
+            return obj
+
+    def dataframe_to_json_serializable(df):
+        """DataFrame을 JSON 직렬화 가능한 dict로 변환"""
+        if df.empty:
+            return []
+        
+        # DataFrame을 dict로 변환
+        records = df.to_dict(orient="records")
+        
+        # 각 레코드를 JSON 직렬화 가능하게 변환
+        json_records = []
+        for record in records:
+            json_record = convert_to_json_serializable(record)
+            json_records.append(json_record)
+        
+        return json_records
     
     try:
         # 1. 데이터베이스에서 데이터 수집
@@ -1077,12 +1246,52 @@ def detect_anomalies_realtime(prism_core_db, start: str, end: str, model_dir: st
         analysis_summary['anomalies_detected'] = len(anomalies)
         analysis_summary['drift_detected'] = len(drift_results)
         
-        # 4. vis_json 생성
+        # 4. vis_json 생성 (JSON 직렬화 가능하도록 변환)
         vis_json = {
-            "anomalies": anomalies,
-            "drift_results": drift_results,
-            "raw_data": {tbl: df.to_dict(orient="records") for tbl, df in all_data.items()}
+            "anomalies": [],
+            "drift_results": [],
+            "raw_data": {}
         }
+        
+        try:
+            # anomalies 안전하게 변환
+            print("anomalies 변환 중...")
+            vis_json["anomalies"] = convert_to_json_serializable(anomalies)
+        except Exception as e:
+            print(f"anomalies 변환 오류: {e}")
+            vis_json["anomalies"] = []
+            
+        try:
+            # drift_results 안전하게 변환
+            print("drift_results 변환 중...")
+            vis_json["drift_results"] = convert_to_json_serializable(drift_results)
+        except Exception as e:
+            print(f"drift_results 변환 오류: {e}")
+            vis_json["drift_results"] = []
+            
+        try:
+            # raw_data를 JSON 직렬화 가능하게 변환
+            print("raw_data 변환 중...")
+            for tbl, df in all_data.items():
+                print(f"  테이블 {tbl} 변환 중...")
+                vis_json["raw_data"][tbl] = dataframe_to_json_serializable(df)
+        except Exception as e:
+            print(f"raw_data 변환 오류: {e}")
+            vis_json["raw_data"] = {}
+            
+        # 최종 JSON 직렬화 테스트
+        try:
+            import json
+            json.dumps(vis_json)
+            print("vis_json JSON 직렬화 테스트 성공")
+        except Exception as e:
+            print(f"vis_json JSON 직렬화 테스트 실패: {e}")
+            vis_json = {
+                "anomalies": [],
+                "drift_results": [],
+                "raw_data": {},
+                "serialization_error": str(e)
+            }
         
         print(f"이상탐지 완료: 이상 {len(anomalies)}개, 드리프트 {len(drift_results)}개")
         
@@ -1105,7 +1314,6 @@ def detect_anomalies_realtime(prism_core_db, start: str, end: str, model_dir: st
             "error": str(e)
         }
         return [], [], error_analysis, vis_json
-
 
 def _fetch_data_from_database_standalone(prism_core_db, start: str, end: str):
     """독립적인 데이터 가져오기 함수"""
