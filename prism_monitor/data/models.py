@@ -125,12 +125,17 @@ class DashboardUpdateResponse(BaseModel):
     message: str = "대시보드 업데이트 완료"
 
 class WorkflowStartResponse(BaseModel):
-    isSuccess: bool = True
-    code: int = 200
-    message: str = "워크플로우 시작 완료"
+    class Result(BaseModel):
+        detectResult: dict = {}
+        explainResult: dict = {}
+        causeCandidatesResult: dict = {}
+        precursorResult: dict = {}
+        evaluateRiskResult: dict = {}
+    result: Result = Result()
 
 class WorkflowStartRequest(BaseModel):
     taskId: str = 'TASK_0001'
+    query: str = ''
 
 class RealTimeMonitoringResponse(BaseModel):
     visJson: dict = {}

@@ -241,7 +241,9 @@ def start_workflow(body: WorkflowStartRequest):
     res = workflow_start(
         llm_url=LLM_URL,
         monitor_db=MONITOR_DB,
-        task_id=body.taskId
+        prism_core_db=PRISM_CORE_DB,
+        task_id=body.taskId,
+        query=body.query
     )
     return res
 
@@ -257,4 +259,4 @@ def get_real_time_monitoring_data():
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("main:app", host="0.0.0.0", port=8002, reload=True)
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
