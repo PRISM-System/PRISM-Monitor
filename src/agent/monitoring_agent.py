@@ -51,7 +51,6 @@ class MonitoringAgent:
         self.api_key = os.getenv("PRISM_CORE_SERVER_LLM_API_KEY", "EMPTY")
         self.prism_server_url = os.getenv("PRISM_CORE_SERVER_URL")
         self.prism_server_llm_url = os.getenv("PRISM_CORE_SERVER_LLM_URL")
-        self.llm_model_name = os.getenv("LLM_MODEL_NAME")
 
         retry_strategy = Retry(
             total=2,  # 재시도 횟수 (즉, 최초 1회 + 재시도 2회 = 최대 3회 시도)
