@@ -11,8 +11,9 @@ from prism_monitor.modules.monitoring import (
     monitoring_event_cause_candidates,
     monitoring_event_precursor,
     monitoring_event_evaluate_risk,
-    monitoring_dashboard_update
+    monitoring_dashboard_update,
 )
+from prism_monitor.modules.event.llm import llm_parse_query
 
 
 
@@ -57,8 +58,13 @@ def monitoring_output(task_id, status: str = "complete", anomaly_detected: bool 
 def workflow_start(llm_url: str, monitor_db: TinyDB, prism_core_db, task_id: str, query: str):
     # 워크플로우 시작 로직 구현
     # event detect > explain > cause-candidate > precursor > evaluate-risk 다실행
-    start='2024-01-01T12:00:00Z'
-    end='2024-02-01T12:30:00Z'
+    parse_query_result = llm_parse_query(
+        llm_url=llm_url,
+        query=query
+    )
+    print(parse_query_result)
+    start = parse_query_result.get('start', '2024-01-01T12:00:00Z')
+    end = parse_query_result.get('end', '2024-01-01T13:00:00Z')
     detect_res = monitoring_event_detect(
         monitor_db=monitor_db, 
         prism_core_db=prism_core_db,

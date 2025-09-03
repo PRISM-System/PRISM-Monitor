@@ -1,22 +1,12 @@
-from dotenv import load_dotenv
-load_dotenv()
-
-
-
-import sys
-sys.path.append('/home/minjoo/Github/prism_monitor/PRISM-Monitor')
-
-
 import os
 import json
 import random
 from datetime import datetime, timedelta
 from prism_monitor.llm.api import llm_generate
 
-LLM_URL = os.environ['LLM_URL']
 
-def func(query: str):
-    
+def llm_parse_query(llm_url, query: str):
+
     # LLM 프롬프트
     prompt = f'''너는 자연어에서 시간 범위를 추출하여 JSON으로 변환하는 파서다.
 
@@ -37,7 +27,7 @@ def func(query: str):
 출력:'''
 
     # LLM 호출
-    res = llm_generate(url=LLM_URL, prompt=prompt)
+    res = llm_generate(url=llm_url, prompt=prompt)
     
     # JSON 파싱
     try:
@@ -70,15 +60,15 @@ def func(query: str):
     
     return res
 
-# 테스트
-if __name__ == "__main__":
-    queries = [
-        "2024년 1월 1일 오전 데이터 보여줘",
-        "1월 2일 13시 데이터",
-        "이상치 분석 방법 알려줘",
-        "30분간 데이터"
-    ]
+# # 테스트
+# if __name__ == "__main__":
+#     queries = [
+#         "2024년 1월 1일 오전 데이터 보여줘",
+#         "1월 2일 13시 데이터",
+#         "이상치 분석 방법 알려줘",
+#         "30분간 데이터"
+#     ]
     
-    for q in queries:
-        result = func(q)
-        print(f"'{q}' -> {result}")
+#     for q in queries:
+#         result = func(q)
+#         print(f"'{q}' -> {result}")
