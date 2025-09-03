@@ -128,7 +128,7 @@ def create_unified_dataset(datasets):
     if 'param_measure' in datasets:
         param_df = datasets['param_measure']
         if 'lot_no' in param_df.columns:
-            param_stats = param_df.groupby('LOT_NO')['measured_val'].agg([
+            param_stats = param_df.groupby('lot_no')['measured_val'].agg([
                 'mean', 'std', 'min', 'max'
             ]).reset_index()
             

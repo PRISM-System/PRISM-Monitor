@@ -145,7 +145,6 @@ def monitoring_event_precursor(monitor_db: TinyDB, prism_core_db: PrismCoreDataB
             datasets[table_name] = df
 
     res = precursor(datasets)
-    print(res)
     Event = Query()
     monitor_db.table('EventPrecursorHistory').upsert(res, Event.task_id == task_id)
 
@@ -181,6 +180,8 @@ def monitoring_event_evaluate_risk(llm_url, monitor_db: TinyDB, task_id, topk=5)
         task_instructions=task_instructions,
         task_instructions_history=task_instructions_history
     )
+
+
     return {
         'eventEvaluation':event_evaluation,
         'predictionEvaluation':prediction_evaluation,

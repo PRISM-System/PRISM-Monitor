@@ -30,7 +30,8 @@ class AnomalyDataViewTool(BaseTool):
                     "query": {"type": "string", "description": "오케스트레이션 에이전트를 거친 후의 사용자 입력"}
                 },
                 "required": ["query"]
-            }
+            },
+            tool_type='function'
         )
         # 에이전트별 설정 또는 기본값 사용
         self._database_url = database_url
