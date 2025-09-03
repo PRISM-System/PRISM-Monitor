@@ -63,8 +63,6 @@ class EventDetectResponse(BaseModel):
         status: Literal["complete", "failed"] = "complete"
         anomalies: bool = True
         drift_detected: bool = False
-        drift_svg: str = True
-        svg: str = ''
     result: Result = Result()
 
 
@@ -135,7 +133,4 @@ class WorkflowStartRequest(BaseModel):
     taskId: str = 'TASK_0001'
 
 class RealTimeMonitoringResponse(BaseModel):
-    isSuccess: bool = True
-    code: int = 200
-    message: str = "실시간 모니터링 데이터 조회 완료"
-    data: List[Dict[str, Any]] = []
+    visJson: dict = {}
