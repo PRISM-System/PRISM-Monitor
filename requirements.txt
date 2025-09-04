@@ -7,3 +7,4 @@ weaviate-client
 tinydb
 tensorflow
 scikit-learn
+pandasql
