@@ -26,11 +26,9 @@ class MonitoringAgent:
         # 2. 매니저 초기화
         self.initialize_managers()
 
-        # 3. 에이전트 등록
+        self.setup_tools()
+
         self.register_agent()
-        
-        # 4. 에이전트 도구 설정
-        self.setup_agent_tools()
         
         # 5. 워크플로우 등록
         self.register_workflows()
@@ -75,11 +73,11 @@ class MonitoringAgent:
         self.monitoring_tool_setup = MonitoringToolSetup()
         self.tool_registry = self.monitoring_tool_setup.setup_tools()
 
-    def setup_agent_tools(self):
+    def setup_tools(self):
         tool_register_url = urljoin(self.prism_server_url, 'api/tools')
         for tool_name, tool in self.tool_registry._tools.items():
             tool_info = tool.get_info()
-            tool_info['tool_type'] = 'custom'
+            tool_info['tool_type'] = 'function'
             r = self.session.post(tool_register_url, json=tool_info)
             if r.status_code == 200:
                 print(f"Tool '{tool_name}' registered successfully.")
