@@ -50,7 +50,7 @@ from prism_monitor.modules.monitoring import (
 
 DATABASE_PATH="monitor_db.json"
 LOCAL_FILE_DIR='prism_monitor/data/local'
-LLM_URL=os.environ.get('LLM_URL', 'http://0.0.0.0:8001/v1/completions')
+LLM_URL=os.environ.get('LLM_URL', 'http://0.0.0.0:8001')
 MONITOR_DB = TinyDB(DATABASE_PATH)
 PRISM_CORE_DB = PrismCoreDataBase(os.environ['PRISM_CORE_DATABASE_URL'])
 
