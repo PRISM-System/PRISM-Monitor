@@ -8,3 +8,8 @@ tinydb
 tensorflow
 scikit-learn
 pandasql
+matplotlib
+seaborn
+torch==2.8.0
+openai==1.107.0
+vllm

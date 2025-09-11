@@ -59,16 +59,3 @@ def llm_parse_query(llm_url, query: str):
         }
     
     return res
-
-# # 테스트
-# if __name__ == "__main__":
-#     queries = [
-#         "2024년 1월 1일 오전 데이터 보여줘",
-#         "1월 2일 13시 데이터",
-#         "이상치 분석 방법 알려줘",
-#         "30분간 데이터"
-#     ]
-    
-#     for q in queries:
-#         result = func(q)
-#         print(f"'{q}' -> {result}")

@@ -2,15 +2,9 @@ from dotenv import load_dotenv
 load_dotenv()
 
 import os
-import subprocess
-import time
-import requests
-import signal
-import atexit
-import logging
-
 os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"   # see issue #152
 os.environ["CUDA_VISIBLE_DEVICES"]="-1"
+import logging
 
 from tinydb import TinyDB, Query
 from fastapi import FastAPI, Query, Path
@@ -50,12 +44,9 @@ from prism_monitor.modules.monitoring import (
 
 DATABASE_PATH="monitor_db.json"
 LOCAL_FILE_DIR='prism_monitor/data/local'
-LLM_URL=os.environ.get('LLM_URL', 'http://0.0.0.0:8001/v1/completions')
+LLM_URL=os.environ['LLM_URL']
 MONITOR_DB = TinyDB(DATABASE_PATH)
 PRISM_CORE_DB = PrismCoreDataBase(os.environ['PRISM_CORE_DATABASE_URL'])
-
-# vLLM 프로세스를 저장할 전역 변수
-vllm_process = None
 
 # Logger 설정
 logger = logging.getLogger("prism_monitor")
@@ -68,93 +59,7 @@ logger.addHandler(handler)
 # FastAPI 앱 인스턴스 생성
 app = FastAPI()
 
-def is_vllm_running(port=8001):
-    """vLLM 서버가 실행 중인지 확인"""
-    try:
-        response = requests.get(f"http://0.0.0.0:{port}/v1/models", timeout=2)
-        return response.status_code == 200
-    except:
-        return False
-
-def start_vllm_server():
-    """vLLM 서버 시작"""
-    global vllm_process
-    
-    # 이미 실행 중인지 확인
-    if is_vllm_running():
-        logger.info("vLLM server is already running")
-        return
-    
-    logger.info("Starting vLLM server...")
-    
-    # vLLM 서버 시작
-    cmd = [
-        "python", "-m", "vllm.entrypoints.openai.api_server",
-        "--model", "Qwen/Qwen3-0.6B",
-        "--port", "8001",
-        "--host", "0.0.0.0"
-    ]
-    
-    try:
-        vllm_process = subprocess.Popen(
-            cmd,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            preexec_fn=os.setsid  # 새로운 process group 생성
-        )
-        
-        # vLLM 서버가 시작될 때까지 대기
-        max_wait_time = 120  # 최대 2분 대기
-        wait_interval = 5    # 5초마다 확인
-        
-        for i in range(0, max_wait_time, wait_interval):
-            if is_vllm_running():
-                logger.info(f"vLLM server started successfully (took {i}s)")
-                return
-            time.sleep(wait_interval)
-            logger.info(f"Waiting for vLLM server to start... ({i}s)")
-        
-        logger.error("vLLM server failed to start within timeout")
-        
-    except Exception as e:
-        logger.error(f"Failed to start vLLM server: {e}")
-
-def stop_vllm_server():
-    """vLLM 서버 종료"""
-    global vllm_process
-    
-    if vllm_process:
-        logger.info("Stopping vLLM server...")
-        try:
-            # process group 전체 종료
-            os.killpg(os.getpgid(vllm_process.pid), signal.SIGTERM)
-            vllm_process.wait(timeout=10)
-        except:
-            # 강제 종료
-            try:
-                os.killpg(os.getpgid(vllm_process.pid), signal.SIGKILL)
-            except:
-                pass
-        finally:
-            vllm_process = None
-            logger.info("vLLM server stopped")
-
-# 프로그램 종료 시 vLLM 서버도 함께 종료
-atexit.register(stop_vllm_server)
-
-# FastAPI startup event
-@app.on_event("startup")
-async def startup_event():
-    logger.info("Starting PRISM Monitor application...")
-    start_vllm_server()
-
-# FastAPI shutdown event
-@app.on_event("shutdown")
-async def shutdown_event():
-    logger.info("Shutting down PRISM Monitor application...")
-    stop_vllm_server()
-
-# 기존 라우팅들...
+# 라우팅 예시
 @app.get("/")
 def read_root():
     logger.info("Root endpoint accessed.")
@@ -175,6 +80,7 @@ def get_dashboard_data(
     res = monitoring_dashboard(task_id, type, field)
     return res
 
+#/api/v1/task/{task_id}/monitoring/status=pending
 @app.get(
     "/api/v1/task/{task_id}/monitoring/status",
     response_model=StatusPendingResponse,
@@ -189,6 +95,7 @@ def get_task_status(
     res = monitoring_status_pending(task_id, status)
     return res
 
+#/api/v1/monitoring/event/output
 @app.post(
     "/api/v1/monitoring/event/output",
     response_model=EventOutputResponse,
@@ -322,6 +229,7 @@ def update_dashboard(body: DashboardUpdateRequest):
     )
     return res
 
+# workflow api post
 @app.post(
     "/api/v1/workflow/start",
     response_model=WorkflowStartResponse,
@@ -339,6 +247,7 @@ def start_workflow(body: WorkflowStartRequest):
     )
     return res
 
+# real time monitoring visualization
 @app.get(
     "/api/v1/monitoring/real-time",
     summary="실시간 모니터링 데이터 조회",
@@ -346,27 +255,8 @@ def start_workflow(body: WorkflowStartRequest):
 )
 def get_real_time_monitoring_data():
     logger.info("Real-time monitoring data requested")
-    return monitoring_real_time(PRISM_CORE_DB)
-
-# vLLM 서버 상태 확인 엔드포인트 추가
-@app.get("/api/v1/llm/status")
-def get_llm_status():
-    """vLLM 서버 상태 확인"""
-    if is_vllm_running():
-        return {"status": "running", "url": LLM_URL}
-    else:
-        return {"status": "stopped", "url": LLM_URL}
+    return monitoring_real_time(PRISM_CORE_DB)  # 직접 반환
 
 if __name__ == "__main__":
     import uvicorn
-    
-    # Signal handler for graceful shutdown
-    def signal_handler(signum, frame):
-        logger.info("Received signal, shutting down...")
-        stop_vllm_server()
-        exit(0)
-    
-    signal.signal(signal.SIGINT, signal_handler)
-    signal.signal(signal.SIGTERM, signal_handler)
-    
-    uvicorn.run("main:app", host="0.0.0.0", port=8002, reload=False)  # reload=False로 설정
+    uvicorn.run("main:app", host="0.0.0.0", port=8002, reload=True)
