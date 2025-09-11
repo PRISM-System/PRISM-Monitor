@@ -56,6 +56,9 @@ def monitoring_output(task_id, status: str = "complete", anomaly_detected: bool 
     }
 
 def workflow_start(llm_url: str, monitor_db: TinyDB, prism_core_db, task_id: str, query: str):
+    from src.agent.monitoring_agent import MonitoringAgent
+    agent = MonitoringAgent()
+    
     # 워크플로우 시작 로직 구현
     # event detect > explain > cause-candidate > precursor > evaluate-risk 다실행
     parse_query_result = llm_parse_query(

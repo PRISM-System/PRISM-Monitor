@@ -1,21 +1,10 @@
 import json
 
-# from _data_load import (
-#     load_and_explore_data,
-#     create_unified_dataset,
-#     prepare_features
-# )
-
 from prism_monitor.modules.risk_assessment._data_load import (
     load_and_explore_data,
     create_unified_dataset,
     prepare_features
 )
-
-# from _assessment import (
-#     evaluate_event_risk,
-#     evaluate_prediction_risk
-# )
 
 from prism_monitor.modules.risk_assessment._assessment import (
     evaluate_event_risk,

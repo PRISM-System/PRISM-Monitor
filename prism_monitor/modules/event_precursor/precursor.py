@@ -10,17 +10,6 @@ from prism_monitor.modules.event_precursor._precursor import (
     run_multi_output_scenario
 )
 
-# from _precursor import (
-#     load_and_explore_data,
-#     create_unified_dataset,
-#     prepare_features
-# )
-
-# from _precursor import (
-#     run_single_output_scenario,
-#     run_real_time_monitoring_scenario,
-#     run_multi_output_scenario
-# )
 
 from sklearn.model_selection import train_test_split
 
