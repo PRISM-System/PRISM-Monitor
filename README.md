@@ -47,8 +47,8 @@ pipenv shell
 
 
 ### 2) 서버 실행
-```bash
-python main.py
+```terminal
+bash start.sh
 ```
 
 ### 3) Swagger 문서 확인
