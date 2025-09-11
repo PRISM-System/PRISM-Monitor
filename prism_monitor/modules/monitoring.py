@@ -21,31 +21,6 @@ def monitoring_event_output(status="complete", anomaly_detected=True, descriptio
     }
     return res
 
-
-# def monitoring_event_detect(monitor_db: TinyDB, prism_core_db: PrismCoreDataBase, start: str, end: str, task_id: str):
-#     anomalies, svg, analysis, drift_results = detect_anomalies_realtime(prism_core_db, start=start, end=end)
-
-#     event_record = {
-#         "task_id": task_id,
-#         "records": analysis,
-#         "validation": {
-#             "anomalies": anomalies,
-#             "drift_results": drift_results
-#         }
-#     }
-#     print(analysis)
-    
-#     Event = Query()
-#     monitor_db.table('EventDetectHistory').upsert(event_record, Event.task_id == task_id)
-
-#     return {
-#         'result': {
-#             'status': 'complete',
-#             'anomalies': True if len(anomalies) else False,
-#             'svg': svg
-#         }
-#     }
-
 def monitoring_event_detect(monitor_db: TinyDB, prism_core_db, start: str, end: str, task_id: str):
     """모니터링 이벤트 감지 함수"""
     # detect_anomalies_realtime가 이제 5개 값을 반환 (drift_svg 추가)
