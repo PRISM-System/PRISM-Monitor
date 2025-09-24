@@ -1,4 +1,3 @@
-```markdown
 # InstructionRF
 
 자연어 작업자 쿼리를 구조화된 JSON 명령어로 변환하는 의도(Intent) 분류 시스템입니다. vLLM 서버 자동 구동과 평가를 원클릭으로 수행할 수 있습니다.
