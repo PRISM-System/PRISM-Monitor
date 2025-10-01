@@ -383,120 +383,120 @@ examples:
           dependencies: []
           expected_output: "controlled_profile_update"
           
-  information_1:
-  input: "Etcher 라인의 지난 24시간 RF_Power 관련 알람을 장비/레시피/시간대 기준으로 피벗 요약하고, MTTR과 조치 이력 링크를 포함한 요약 리포트를 작성해 설명해 주세요."
-  output:
-    instruction_id: "inst_info_001"
-    original_query: "Etcher 라인의 지난 24시간 RF_Power 관련 알람을 장비/레시피/시간대 기준으로 피벗 요약하고, MTTR과 조치 이력 링크를 포함한 요약 리포트를 작성해 설명해 주세요."
-    intent_type: "INFORMATION"
-    priority: "LOW"
-    target:
-      process: "Etching"
-      parameter: "RF_Power"
-    tasks:
-      - task_id: "task_info_001"
-        agent: "ORCHESTRATION"
-        action: "summarize_recent_events"
-        parameters:
-          scope: "last_24_hours"
-          group_by: ["equipment", "recipe", "time_bucket"]
-          include: ["MTTR", "action_history_links"]
-        dependencies: []
-        expected_output: "pivot_summary_report"
-    context_requirements:
-      historical_data: true
-      real_time_data: false
-      external_knowledge: false
-      simulation_needed: false
-    constraints:
-      safety_requirements: ["information_purpose_only"]
+    information_1:
+    input: "Etcher 라인의 지난 24시간 RF_Power 관련 알람을 장비/레시피/시간대 기준으로 피벗 요약해 주세요. MTTR과 조치 이력 링크를 포함한 요약 리포트를 정리해 주세요."
+    output:
+      instruction_id: "inst_example_info_001"
+      original_query: "Etcher 라인의 지난 24시간 RF_Power 관련 알람을 장비/레시피/시간대 기준으로 피벗 요약해 주세요. MTTR과 조치 이력 링크를 포함한 요약 리포트를 정리해 주세요."
+      intent_type: "INFORMATION"
+      priority: "LOW"
+      target:
+        process: "Etching"
+        parameter: "RF_Power"
+      tasks:
+        - task_id: "task_001"
+          agent: "ORCHESTRATION"
+          action: "summarize_recent_events"
+          parameters:
+            scope: "last_24_hours"
+            group_by: ["equipment","recipe","time_bucket"]
+            include: ["MTTR","action_history_links"]
+          dependencies: []
+          expected_output: "pivot_summary_report"
+      context_requirements:
+        historical_data: true
+        real_time_data: false
+        external_knowledge: false
+        simulation_needed: false
+      constraints:
+        safety_requirements: ["information_purpose_only"]
 
-information_2:
-  input: "CVD 3/7/12번의 최근 1주 막두께 균일도 분포와 Gas_Flow 알람 타임라인을 한 화면 요약 대시보드로 구성하고, 임계치 대비 여유도와 레시피 버전 주석을 포함해 설명해 주세요."
-  output:
-    instruction_id: "inst_info_002"
-    original_query: "CVD 3/7/12번의 최근 1주 막두께 균일도 분포와 Gas_Flow 알람 타임라인을 한 화면 요약 대시보드로 구성하고, 임계치 대비 여유도와 레시피 버전 주석을 포함해 설명해 주세요."
-    intent_type: "INFORMATION"
-    priority: "LOW"
-    target:
-      process: "CVD"
-      parameter: "Thickness_Uniformity,Gas_Flow_Alarms"
-    tasks:
-      - task_id: "task_info_002"
-        agent: "ORCHESTRATION"
-        action: "summarize_recent_events"
-        parameters:
-          scope: "last_7_days"
-          equipment_ids: ["CVD_#3", "CVD_#7", "CVD_#12"]
-          annotate: ["spec_margin", "recipe_version"]
-        dependencies: []
-        expected_output: "dashboard_report"
-    context_requirements:
-      historical_data: true
-      real_time_data: false
-      external_knowledge: false
-      simulation_needed: false
-    constraints:
-      safety_requirements: ["information_purpose_only"]
+  information_2:
+    input: "CVD 3/7/12번의 최근 일주일 막두께 균일도 분포와 Gas_Flow 알람 타임라인을 한 화면으로 정리해 주세요. 임계치 대비 여유도/레시피 버전 주석을 포함해 리포트로 정리해 주세요."
+    output:
+      instruction_id: "inst_example_info_002"
+      original_query: "CVD 3/7/12번의 최근 일주일 막두께 균일도 분포와 Gas_Flow 알람 타임라인을 한 화면으로 정리해 주세요. 임계치 대비 여유도/레시피 버전 주석을 포함해 리포트로 정리해 주세요."
+      intent_type: "INFORMATION"
+      priority: "LOW"
+      target:
+        process: "CVD"
+        parameter: "Thickness_Uniformity,Gas_Flow_Alarms"
+      tasks:
+        - task_id: "task_001"
+          agent: "ORCHESTRATION"
+          action: "summarize_recent_events"
+          parameters:
+            scope: "last_7_days"
+            equipment_ids: ["CVD_#3","CVD_#7","CVD_#12"]
+            annotate: ["spec_margin","recipe_version"]
+          dependencies: []
+          expected_output: "dashboard_report"
+      context_requirements:
+        historical_data: true
+        real_time_data: false
+        external_knowledge: false
+        simulation_needed: false
+      constraints:
+        safety_requirements: ["information_purpose_only"]
 
-information_3:
-  input: "PVD 4번의 지난 72시간 진공 레벨·배기 상태·타겟 사용량 트렌드와 파티클 지표 상관을 표·피벗 중심 요약 리포트로 정리하고, 이상 표시 구간은 하이라이트하여 설명해 주세요."
-  output:
-    instruction_id: "inst_info_003"
-    original_query: "PVD 4번의 지난 72시간 진공 레벨·배기 상태·타겟 사용량 트렌드와 파티클 지표 상관을 표·피벗 중심 요약 리포트로 정리하고, 이상 표시 구간은 하이라이트하여 설명해 주세요."
-    intent_type: "INFORMATION"
-    priority: "LOW"
-    target:
-      equipment_id: "PVD_#4"
-      parameter: "Vacuum,Exhaust,Target_Usage,Particle_Index"
-      process: "PVD"
-    tasks:
-      - task_id: "task_info_003"
-        agent: "ORCHESTRATION"
-        action: "summarize_recent_events"
-        parameters:
-          scope: "last_72_hours"
-          include_correlations: true
-          bookmark_anomalies: true
-        dependencies: []
-        expected_output: "trend_and_correlation_table"
-    context_requirements:
-      historical_data: true
-      real_time_data: false
-      external_knowledge: false
-      simulation_needed: false
-    constraints:
-      safety_requirements: ["information_purpose_only"]
+  information_3:
+    input: "PVD 4번의 지난 72시간 진공 레벨/배기 상태/타겟 사용량 트렌드와 파티클 지표 상관을 요약해 주세요. 이상 구간에 북마크를 달아 표로 정리해 주세요."
+    output:
+      instruction_id: "inst_example_info_003"
+      original_query: "PVD 4번의 지난 72시간 진공 레벨/배기 상태/타겟 사용량 트렌드와 파티클 지표 상관을 요약해 주세요. 이상 구간에 북마크를 달아 표로 정리해 주세요."
+      intent_type: "INFORMATION"
+      priority: "LOW"
+      target:
+        equipment_id: "PVD_#4"
+        parameter: "Vacuum,Exhaust,Target_Usage,Particle_Index"
+        process: "PVD"
+      tasks:
+        - task_id: "task_001"
+          agent: "ORCHESTRATION"
+          action: "summarize_recent_events"
+          parameters:
+            scope: "last_72_hours"
+            include_correlations: true
+            bookmark_anomalies: true
+          dependencies: []
+          expected_output: "trend_and_correlation_table"
+      context_requirements:
+        historical_data: true
+        real_time_data: false
+        external_knowledge: false
+        simulation_needed: false
+      constraints:
+        safety_requirements: ["information_purpose_only"]
 
-information_4:
-  input: "Photo 1/9/14번의 지난 3일 어라인먼트 실패 사례를 마스크/레시피별로 분류해 원인·조치·리워크 여부를 표로 정리하고, 현황을 설명해 주세요."
-  output:
-    instruction_id: "inst_info_004"
-    original_query: "Photo 1/9/14번의 지난 3일 어라인먼트 실패 사례를 마스크/레시피별로 분류해 원인·조치·리워크 여부를 표로 정리하고, 현황을 설명해 주세요."
-    intent_type: "INFORMATION"
-    priority: "LOW"
-    target:
-      process: "Lithography"
-      parameter: "Alignment_Failures"
-    tasks:
-      - task_id: "task_info_004"
-        agent: "ORCHESTRATION"
-        action: "summarize_recent_events"
-        parameters:
-          scope: "last_3_days"
-          equipment_ids: ["Photo_#1", "Photo_#9", "Photo_#14"]
-          group_by: ["mask", "recipe"]
-          include: ["root_cause", "action_taken", "rework_flag"]
-        dependencies: []
-        expected_output: "failure_summary_table"
-    context_requirements:
-      historical_data: true
-      real_time_data: false
-      external_knowledge: false
-      simulation_needed: false
-    constraints:
-      safety_requirements: ["information_purpose_only"]
-  
+  information_4:
+    input: "Photo 1/9/14번의 지난 3일 어라인먼트 실패 사례를 마스크/레시피별로 분류해 원인/조치/리워크 여부를 표로 정리해 주세요."
+    output:
+      instruction_id: "inst_example_info_004"
+      original_query: "Photo 1/9/14번의 지난 3일 어라인먼트 실패 사례를 마스크/레시피별로 분류해 원인/조치/리워크 여부를 표로 정리해 주세요."
+      intent_type: "INFORMATION"
+      priority: "LOW"
+      target:
+        process: "Lithography"
+        parameter: "Alignment_Failures"
+      tasks:
+        - task_id: "task_001"
+          agent: "ORCHESTRATION"
+          action: "summarize_recent_events"
+          parameters:
+            scope: "last_3_days"
+            equipment_ids: ["Photo_#1","Photo_#9","Photo_#14"]
+            group_by: ["mask","recipe"]
+            include: ["root_cause","action_taken","rework_flag"]
+          dependencies: []
+          expected_output: "failure_summary_table"
+      context_requirements:
+        historical_data: true
+        real_time_data: false
+        external_knowledge: false
+        simulation_needed: false
+      constraints:
+        safety_requirements: ["information_purpose_only"]
+
 
   optimization_1:
     input: "Etcher 6번에서 라인 속도 유지하면서 엔드포인트 안정화를 달성할 RF/가스/압력 최적 조합을 도출해 주세요. 기대 개선폭과 검증 런 수를 수치로 제시하는 다목적 최적안을 제안해 주세요."

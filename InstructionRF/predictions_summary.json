@@ -1,0 +1,57 @@
+{
+  "accuracy": 0.99,
+  "errors": 0,
+  "num_examples": 100,
+  "labels": [
+    "ANOMALY_CHECK",
+    "PREDICTION",
+    "CONTROL",
+    "INFORMATION",
+    "OPTIMIZATION"
+  ],
+  "classification_report": {
+    "ANOMALY_CHECK": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1-score": 1.0,
+      "support": 20.0
+    },
+    "PREDICTION": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1-score": 1.0,
+      "support": 20.0
+    },
+    "CONTROL": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1-score": 1.0,
+      "support": 20.0
+    },
+    "INFORMATION": {
+      "precision": 0.9523809523809523,
+      "recall": 1.0,
+      "f1-score": 0.975609756097561,
+      "support": 20.0
+    },
+    "OPTIMIZATION": {
+      "precision": 1.0,
+      "recall": 0.95,
+      "f1-score": 0.9743589743589743,
+      "support": 20.0
+    },
+    "accuracy": 0.99,
+    "macro avg": {
+      "precision": 0.9904761904761905,
+      "recall": 0.99,
+      "f1-score": 0.9899937460913071,
+      "support": 100.0
+    },
+    "weighted avg": {
+      "precision": 0.9904761904761905,
+      "recall": 0.99,
+      "f1-score": 0.9899937460913071,
+      "support": 100.0
+    }
+  }
+}
