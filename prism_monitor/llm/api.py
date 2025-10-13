@@ -1,4 +1,6 @@
+import os
 import requests
+import json
 
 def llm_generate(url, prompt, max_tokens=512, temperature=0.7, presence_penalty=1.5):
     # URL 정규화 수정
@@ -46,3 +48,23 @@ def llm_generate(url, prompt, max_tokens=512, temperature=0.7, presence_penalty=
             
     except Exception as e:
         raise Exception(f"LLM request failed: {str(e)}")
+    
+def temp_llm_call(prompt):
+    response = requests.post(
+        url="https://openrouter.ai/api/v1/chat/completions",
+        headers={
+            "Authorization": "Bearer "+os.environ['OPENROUTER_API_KEY'],
+            "Content-Type": "application/json",
+        },
+        data=json.dumps({
+            "model": "qwen/qwen3-14b:free",
+            "messages": [
+            {
+                "role": "user",
+                "content": prompt
+            }
+            ],
+            
+        })
+    )
+    return json.loads(response.json()['choices'][0]['message']['content'])
