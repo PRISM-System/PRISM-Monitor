@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import Optional, List, Union
+from typing import Dict, Optional, List, Union, Any
 from typing import Union, Literal
 from typing_extensions import Annotated
 
@@ -62,7 +62,7 @@ class EventDetectResponse(BaseModel):
     class Result(BaseModel):
         status: Literal["complete", "failed"] = "complete"
         anomalies: bool = True
-        svg: str = ''
+        drift_detected: bool = False
     result: Result = Result()
 
 
@@ -123,3 +123,13 @@ class DashboardUpdateResponse(BaseModel):
     isSuccess: bool = True
     code: int = 200
     message: str = "대시보드 업데이트 완료"
+
+class WorkflowStartResponse(BaseModel):
+    result: str = ''
+
+class WorkflowStartRequest(BaseModel):
+    taskId: str = 'TASK_0001'
+    query: str = ''
+
+class RealTimeMonitoringResponse(BaseModel):
+    visJson: dict = {}

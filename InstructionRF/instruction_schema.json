@@ -1,0 +1,38 @@
+{
+  "instruction_id": "string (UUID)",
+  "original_query": "string (original user input)",
+  "intent_type": "ANOMALY_CHECK | PREDICTION | CONTROL | INFORMATION | OPTIMIZATION",
+  "priority": "HIGH | MEDIUM | LOW",
+  "target": {
+    "equipment_id": "string (optional)",
+    "parameter": "string (optional)",
+    "process": "string (optional)"
+  },
+  "tasks": [
+    {
+      "task_id": "string",
+      "agent": "MONITORING | PREDICTION | CONTROL | ORCHESTRATION",
+      "action": "string (specific action)",
+      "parameters": {},
+      "dependencies": [
+        "task_id list"
+      ],
+      "expected_output": "string"
+    }
+  ],
+  "context_requirements": {
+    "historical_data": "boolean",
+    "real_time_data": "boolean",
+    "external_knowledge": "boolean",
+    "simulation_needed": "boolean"
+  },
+  "constraints": {
+    "time_limit": "string (optional)",
+    "safety_requirements": [
+      "string list"
+    ],
+    "regulatory_compliance": [
+      "string list"
+    ]
+  }
+}

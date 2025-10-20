@@ -2,6 +2,8 @@ from dotenv import load_dotenv
 load_dotenv()
 
 import os
+os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"   # see issue #152
+os.environ["CUDA_VISIBLE_DEVICES"]="-1"
 import logging
 
 from tinydb import TinyDB, Query
@@ -19,12 +21,15 @@ from prism_monitor.data.models import (
     CauseCandidatesRequest, CauseCandidatesResponse,
     PrecursorRequest, PrecursorResponse,
     EvaluateRiskRequest, EvaluateRiskResponse,
-    DashboardUpdateRequest, DashboardUpdateResponse
+    DashboardUpdateRequest, DashboardUpdateResponse,
+    WorkflowStartRequest, WorkflowStartResponse,
+    RealTimeMonitoringResponse
 )
 from prism_monitor.modules.task import (
     monitoring_dashboard,
     monitoring_status_pending,
-    monitoring_output
+    monitoring_output,
+    workflow_start
 )
 from prism_monitor.modules.monitoring import (
     monitoring_event_output, 
@@ -33,7 +38,8 @@ from prism_monitor.modules.monitoring import (
     monitoring_event_cause_candidates,
     monitoring_event_precursor,
     monitoring_event_evaluate_risk,
-    monitoring_dashboard_update
+    monitoring_dashboard_update,
+    monitoring_real_time
 )
 
 DATABASE_PATH="monitor_db.json"
@@ -223,6 +229,34 @@ def update_dashboard(body: DashboardUpdateRequest):
     )
     return res
 
+# workflow api post
+@app.post(
+    "/api/v1/workflow/start",
+    response_model=WorkflowStartResponse,
+    summary="워크플로우 시작",
+    tags=["Workflow"]
+)
+def start_workflow(body: WorkflowStartRequest):
+    logger.info(f"Workflow start requested: {body}")
+    res = workflow_start(
+        llm_url=LLM_URL,
+        monitor_db=MONITOR_DB,
+        prism_core_db=PRISM_CORE_DB,
+        task_id=body.taskId,
+        query=body.query
+    )
+    return res
+
+# real time monitoring visualization
+@app.get(
+    "/api/v1/monitoring/real-time",
+    summary="실시간 모니터링 데이터 조회",
+    tags=["Monitoring"]
+)
+def get_real_time_monitoring_data():
+    logger.info("Real-time monitoring data requested")
+    return monitoring_real_time(PRISM_CORE_DB)  # 직접 반환
+
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
+    uvicorn.run("main:app", host="0.0.0.0", port=8002, reload=True)

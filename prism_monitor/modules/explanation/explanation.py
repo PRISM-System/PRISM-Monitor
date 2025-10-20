@@ -434,69 +434,8 @@ FEWSHOT_TASK_2 = (
     "- Alignment 및 Stage 관련 센서 값의 이상이 누적되어, 장비 조건 불안정이 전체 로트 품질과 최종 수율에 미칠 위험도를 사전 평가해야 함."
 )
 
-# # Sensor Only 등 단일 센서 데이터 활용의 예시
-# FEWSHOT_USER_CASE_SINGLE_1 = r"""
-# data:
-# {PS001,PHO_001,LOT24001A,W001,2024-01-15 08:30:15,85.0,-30.0,45.0,500.0,20.0,5.5,6.0,7.5,70.0,50.0}
-# answer:
-# """
-# FEWSHOT_EXPLANATION_SINGLE_1 = (
-#     "PHOTO 공정 장비(PHO_001)에서 스테이지 온도가 85.0°C로 정상 범위(20–40°C)를 초과하였고, "
-#     "초점 위치는 -30.0nm로 정상 기준(±50nm)을 크게 벗어났습니다.\n"
-#     "또한 챔버 압력은 500.0hPa로 정상 기준(약 1013hPa)보다 낮으며, 습도 20.0%는 정상 범위(40–50%)보다 부족합니다.\n"
-#     "얼라인먼트 오차(X=5.5, Y=6.0, Focus=7.5)는 정상 기준(±1–2)을 크게 초과하였고, "
-#     "렌즈 수차 70.0 및 광 균일도 50.0% 역시 정상 기준(≥90%)보다 저하되었습니다.\n"
-#     "이러한 이상치는 챔버 압력 저하와 습도 부족 → 열적 불안정 → 정렬 불량 및 광학 성능 저하로 이어지는 원인 관계를 시사합니다."
-# )
-
-# FEWSHOT_TASK_SINGLE_1 = (
-#     "- PHOTO 장비의 챔버 압력 및 습도 제어 모듈의 정상 동작 여부를 점검해야 합니다.\n"
-#     "- 스테이지 온도 제어 장치의 냉각 시스템 이상 여부를 확인해야 합니다.\n"
-#     "- 웨이퍼 얼라인먼트 센서의 교정 및 Stage tilt 보정이 필요합니다.\n"
-#     "- 렌즈 수차 및 광 균일도 개선을 위해 광원 및 집광계의 점검을 수행해야 합니다."
-# )
-
-# FEWSHOT_USER_CASE_SINGLE_2 = r"""
-# data:
-# {PM010,LOT24002A,W001,CVD_003,CVD_002,THICKNESS,NITRIDE_THICKNESS,Å,850.4,850.0,870.0,830.0,2024-01-16 20:30:00}
-# answer:
-# """
-# FEWSHOT_EXPLANATION_SINGLE_2 = (
-#     "LOT24002A의 CVD 질화막 두께 중앙값은 850.4Å로 정상 기준(≈850Å)과 유사합니다.\n"
-#     "그러나 최소 830Å, 최대 870Å로 두께 편차가 ±20Å 발생하여, 일반 허용오차(±5~10Å)를 크게 초과하였습니다.\n"
-#     "따라서 이는 두께 균일도 불량으로 인한 이상치일 가능성이 높습니다."
-# )
-
-# FEWSHOT_TASK_SINGLE_2 = (
-#     "- CVD 장비(CVD_002, CVD_003)에서 질화막 증착 두께의 균일도 제어에 대한 분석이 필요합니다.\n"
-#     "- LOT24002A 공정에서 발생한 ±20Å 편차가 수율이나 전기적 특성에 어떤 영향을 미치는지 예측 분석이 필요합니다."
-# )
-
-# def _call_api(system_prompt, fewshots, data):
-#     client = OpenAI(
-#         api_key="EMPTY",
-#         base_url="http://localhost:8001/v1"
-#     )
-    
-#     messages = [{"role": "system", "content": system_prompt}]
-#     # few-shot 예시 추가
-#     for user_ex, assistant_ex in fewshots:
-#         messages.append({"role": "user", "content": user_ex})
-#         messages.append({"role": "assistant", "content": assistant_ex})
-#     # 실제 입력
-#     messages.append({"role": "user", "content": f"data:\n{data}\n\nanswer:\n"})
-    
-#     response = client.chat.completions.create(
-#         model="Qwen/Qwen3-0.6B",
-#         messages=messages,
-#         max_tokens=8192,
-#         temperature=0.8,
-#         presence_penalty=0.0,
-#         extra_body={"top_k": 20, "chat_template_kwargs": {"enable_thinking": False}},
-#     )
-#     return response.choices[0].message.content
-
 def _call_api(llm_url, system_prompt, fewshots, data, max_tokens=256, temperature=0.7, presence_penalty=1.5):
+    print(llm_url)
     # prompt 문자열을 직접 구성
     prompt = system_prompt + "\n\n"
     for user_ex, assistant_ex in fewshots:
@@ -510,30 +449,11 @@ def _call_api(llm_url, system_prompt, fewshots, data, max_tokens=256, temperatur
         temperature=temperature,
         presence_penalty=presence_penalty
     )
+    print(response)
     return response['text']
 
 
 def event_explain(llm_url, event_detect_analysis):
-    # """이상치 값에 대한 설명을 생성"""
-    # try:
-    #     parsed = json.loads(data)
-    # except Exception:
-    #     parsed = {}
-    
-    # # 데이터 행 개수 판단
-    # if isinstance(parsed, dict):
-    #     row_count = 1
-    # elif isinstance(parsed, list):
-    #     row_count = len(parsed)
-    # else:
-    #     row_count = 1
-
-    # if row_count == 1:
-    #     fewshots = [
-    #         (FEWSHOT_USER_CASE_SINGLE_1, FEWSHOT_EXPLANATION_SINGLE_1),
-    #         (FEWSHOT_USER_CASE_SINGLE_2, FEWSHOT_EXPLANATION_SINGLE_2),
-    #     ]
-    # else:
     fewshots = [
         (FEWSHOT_USER_CASE_1, FEWSHOT_EXPLANATION_1),
         (FEWSHOT_USER_CASE_2, FEWSHOT_EXPLANATION_2),
@@ -542,18 +462,6 @@ def event_explain(llm_url, event_detect_analysis):
     return _call_api(llm_url, EXPLANATION_SYSTEM_PROMPT, fewshots, event_detect_analysis)
 
 def event_cause_candidates(llm_url, event_detect_analysis):
-    # """이상치 분석을 위한 과업을 생성"""
-    # try:
-    #     parsed = json.loads(data)
-    # except Exception:
-    #     parsed = {}
-    # row_count = 1 if isinstance(parsed, dict) else len(parsed)
-    # if row_count == 1:
-    #     fewshots = [
-    #         (FEWSHOT_USER_CASE_SINGLE_1, FEWSHOT_TASK_SINGLE_1),
-    #         (FEWSHOT_USER_CASE_SINGLE_2, FEWSHOT_TASK_SINGLE_2),
-    #     ]
-    # else:
     fewshots = [
         (FEWSHOT_USER_CASE_1, FEWSHOT_TASK_1),
         (FEWSHOT_USER_CASE_2, FEWSHOT_TASK_2),

@@ -4,9 +4,11 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
-from sklearn.preprocessing import StandardScaler, MinMaxScaler
+from sklearn.preprocessing import StandardScaler, RobustScaler
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import classification_report, confusion_matrix
+from sklearn.metrics import classification_report, confusion_matrix, precision_recall_curve
+from sklearn.feature_selection import SelectKBest, mutual_info_classif
+from sklearn.ensemble import IsolationForest
 import tensorflow as tf
 from tensorflow import keras
 from tensorflow.keras import layers
@@ -19,13 +21,13 @@ from datetime import datetime, timedelta
 from typing import Dict, List, Tuple, Optional
 from tinydb import TinyDB, Query
 import matplotlib
-matplotlib.use('Agg')  # GUI 없는 환경에서 사용
+matplotlib.use('Agg')
 
 warnings.filterwarnings('ignore')
 
 class ModelManager:
     """
-    모델 저장, 로딩, 관리 클래스
+    모델 저장, 로딩, 관리 클래스 (개선된 버전)
     """
     
     def __init__(self, model_dir: str = "models"):
@@ -37,23 +39,27 @@ class ModelManager:
     def save_model(self, model, scaler, feature_cols: List[str], threshold: float, 
                    training_data_info: Dict, performance_metrics: Dict):
         """
-        모델과 관련 정보 저장
+        모델과 관련 정보 저장 (다중 임계값 지원으로 개선)
         """
         try:
-            # 모델 저장
             model_file = os.path.join(self.model_dir, "autoencoder_model.h5")
             model.save(model_file)
             
-            # 스케일러 저장
             with open(self.scaler_file, 'wb') as f:
                 pickle.dump(scaler, f)
             
-            # 메타데이터 저장
+            # 임계값이 dict인 경우 처리
+            if isinstance(threshold, dict):
+                thresholds = threshold
+            else:
+                thresholds = {'default': threshold, 'legacy': threshold}
+            
             metadata = {
                 'model_version': datetime.now().strftime('%Y%m%d_%H%M%S'),
                 'training_timestamp': datetime.now().isoformat(),
                 'feature_columns': feature_cols,
-                'threshold': threshold,
+                'threshold': threshold,  # 기존 호환성
+                'thresholds': thresholds,  # 새로운 다중 임계값
                 'training_data_info': training_data_info,
                 'performance_metrics': performance_metrics,
                 'model_file': model_file,
@@ -63,7 +69,11 @@ class ModelManager:
             with open(self.model_metadata_file, 'w') as f:
                 json.dump(metadata, f, indent=2, default=str)
             
-            print(f"모델 저장 완료: {model_file}")
+            print(f"개선된 모델 저장 완료: {model_file}")
+            if isinstance(threshold, dict):
+                print(f"다중 임계값: {threshold}")
+            else:
+                print(f"임계값: {threshold}")
             return True
             
         except Exception as e:
@@ -79,11 +89,9 @@ class ModelManager:
                 print("저장된 모델이 없습니다.")
                 return None, None, None
             
-            # 메타데이터 로드
             with open(self.model_metadata_file, 'r') as f:
                 metadata = json.load(f)
             
-            # 모델 파일 존재 확인
             model_file = metadata.get('model_file')
             if not os.path.exists(model_file):
                 print(f"모델 파일이 존재하지 않음: {model_file}")
@@ -92,7 +100,6 @@ class ModelManager:
             from tensorflow.keras.metrics import MeanSquaredError
             model = keras.models.load_model(model_file, custom_objects={"mse": MeanSquaredError()})
             
-            # 스케일러 로드
             scaler = None
             if os.path.exists(self.scaler_file):
                 with open(self.scaler_file, 'rb') as f:
@@ -114,7 +121,7 @@ class ModelManager:
 
 class NormalStateManager:
     """
-    정상 상태 데이터 관리 모듈
+    정상 상태 데이터 관리 모듈 (drift 시각화 개선)
     """
     
     def __init__(self, storage_path: str = "normal_state_profiles.json"):
@@ -241,10 +248,202 @@ class NormalStateManager:
                 for key, profile in self.normal_profiles.items()
             ]
         }
+        
+    def visualize_drift_results(self, drift_results: List[Dict]) -> str:
+        """
+        프로파일 드리프트 결과 시각화 (SVG) - 개선된 버전
+        """
+        print(f"드리프트 시각화 시작: {len(drift_results)}개 드리프트 결과")
+        
+        if not drift_results:
+            # 빈 드리프트 결과에 대한 기본 SVG
+            svg_content = '''
+            <svg width="800" height="400" xmlns="http://www.w3.org/2000/svg">
+                <rect width="800" height="400" fill="white" stroke="black" stroke-width="1"/>
+                <text x="400" y="200" text-anchor="middle" font-size="18" fill="green">
+                    드리프트가 감지되지 않았습니다.
+                </text>
+                <text x="400" y="230" text-anchor="middle" font-size="14" fill="gray">
+                    모든 장비가 정상 상태를 유지하고 있습니다.
+                </text>
+            </svg>
+            '''
+            return svg_content.strip()
+        
+        try:
+            fig, axes = plt.subplots(2, 2, figsize=(15, 10))
+            
+            # 1. 장비별 드리프트 점수
+            equipment_scores = {}
+            for drift in drift_results:
+                equipment_id = drift.get('equipment_id', 'Unknown')
+                if equipment_id not in equipment_scores:
+                    equipment_scores[equipment_id] = []
+                equipment_scores[equipment_id].append(drift.get('drift_score', 0))
+            
+            if equipment_scores:
+                equipment_names = list(equipment_scores.keys())
+                avg_scores = [np.mean(scores) for scores in equipment_scores.values()]
+                
+                colors = ['red' if score > 50 else 'orange' if score > 20 else 'yellow' for score in avg_scores]
+                axes[0, 0].bar(equipment_names, avg_scores, color=colors, alpha=0.7)
+                axes[0, 0].set_title('Equipment Drift Scores', fontsize=12, fontweight='bold')
+                axes[0, 0].set_ylabel('Average Drift Score (%)')
+                axes[0, 0].tick_params(axis='x', rotation=45)
+                axes[0, 0].grid(True, alpha=0.3)
+                
+                # 임계값 라인 추가
+                axes[0, 0].axhline(y=10, color='orange', linestyle='--', alpha=0.7, label='Warning (10%)')
+                axes[0, 0].axhline(y=50, color='red', linestyle='--', alpha=0.7, label='Critical (50%)')
+                axes[0, 0].legend()
+            else:
+                axes[0, 0].text(0.5, 0.5, 'No equipment data', ha='center', va='center', transform=axes[0, 0].transAxes)
+                axes[0, 0].set_title('Equipment Drift Scores')
+            
+            # 2. 심각도별 분포
+            severity_counts = {'HIGH': 0, 'MEDIUM': 0}
+            for drift in drift_results:
+                for param in drift.get('drift_parameters', []):
+                    severity = param.get('severity', 'MEDIUM')
+                    if severity in severity_counts:
+                        severity_counts[severity] += 1
+                    else:
+                        severity_counts['MEDIUM'] += 1
+            
+            total_severity = sum(severity_counts.values())
+            if total_severity > 0:
+                colors_pie = ['red', 'orange']
+                wedges, texts, autotexts = axes[0, 1].pie(
+                    severity_counts.values(), 
+                    labels=severity_counts.keys(), 
+                    autopct='%1.1f%%', 
+                    colors=colors_pie,
+                    startangle=90
+                )
+                axes[0, 1].set_title('Drift Severity Distribution', fontsize=12, fontweight='bold')
+                
+                # 텍스트 스타일 개선
+                for autotext in autotexts:
+                    autotext.set_color('white')
+                    autotext.set_fontweight('bold')
+            else:
+                axes[0, 1].text(0.5, 0.5, 'No severity data', ha='center', va='center', transform=axes[0, 1].transAxes)
+                axes[0, 1].set_title('Drift Severity Distribution')
+            
+            # 3. 시간별 드리프트 발생 추이
+            try:
+                drift_times = []
+                for drift in drift_results:
+                    timestamp = drift.get('check_timestamp')
+                    if timestamp:
+                        try:
+                            drift_times.append(pd.to_datetime(timestamp))
+                        except:
+                            drift_times.append(datetime.now())
+                
+                if drift_times:
+                    time_df = pd.DataFrame({'timestamp': drift_times})
+                    time_df['hour'] = time_df['timestamp'].dt.floor('H')
+                    time_counts = time_df.groupby('hour').size()
+                    
+                    if len(time_counts) > 0:
+                        axes[1, 0].plot(time_counts.index, time_counts.values, 
+                                       marker='o', color='red', linewidth=2, markersize=6)
+                        axes[1, 0].fill_between(time_counts.index, time_counts.values, 
+                                              alpha=0.3, color='red')
+                        axes[1, 0].set_title('Drift Detection Over Time', fontsize=12, fontweight='bold')
+                        axes[1, 0].set_xlabel('Time')
+                        axes[1, 0].set_ylabel('Number of Drifts')
+                        axes[1, 0].tick_params(axis='x', rotation=45)
+                        axes[1, 0].grid(True, alpha=0.3)
+                    else:
+                        axes[1, 0].text(0.5, 0.5, 'No time data', ha='center', va='center', 
+                                       transform=axes[1, 0].transAxes)
+                else:
+                    axes[1, 0].text(0.5, 0.5, 'No time data', ha='center', va='center', 
+                                   transform=axes[1, 0].transAxes)
+                    axes[1, 0].set_title('Drift Detection Over Time')
+            except Exception as e:
+                print(f"시간별 차트 생성 오류: {e}")
+                axes[1, 0].text(0.5, 0.5, 'Time chart error', ha='center', va='center', 
+                               transform=axes[1, 0].transAxes)
+                axes[1, 0].set_title('Drift Detection Over Time')
+            
+            # 4. 파라미터별 Z-score 분포 (개선됨)
+            z_scores = []
+            param_names = []
+            colors_scatter = []
+            
+            for drift in drift_results:
+                for param in drift.get('drift_parameters', []):
+                    z_score = param.get('z_score', 0)
+                    param_name = param.get('parameter', 'Unknown')[:15]
+                    severity = param.get('severity', 'MEDIUM')
+                    
+                    z_scores.append(z_score)
+                    param_names.append(param_name)
+                    colors_scatter.append('red' if severity == 'HIGH' else 'orange')
+            
+            if z_scores:
+                scatter = axes[1, 1].scatter(range(len(z_scores)), z_scores, 
+                                           c=colors_scatter, alpha=0.7, s=60, edgecolors='black')
+                
+                # 임계값 라인들
+                axes[1, 1].axhline(y=3, color='orange', linestyle='--', alpha=0.7, 
+                                  linewidth=2, label='3-sigma threshold')
+                axes[1, 1].axhline(y=5, color='red', linestyle='--', alpha=0.7, 
+                                  linewidth=2, label='5-sigma threshold')
+                
+                axes[1, 1].set_title('Parameter Z-scores', fontsize=12, fontweight='bold')
+                axes[1, 1].set_xlabel('Parameter Index')
+                axes[1, 1].set_ylabel('Z-score')
+                axes[1, 1].legend()
+                axes[1, 1].grid(True, alpha=0.3)
+                
+                # Y축 범위 조정
+                if max(z_scores) > 0:
+                    axes[1, 1].set_ylim(0, max(z_scores) * 1.1)
+            else:
+                axes[1, 1].text(0.5, 0.5, 'No Z-score data', ha='center', va='center', 
+                               transform=axes[1, 1].transAxes)
+                axes[1, 1].set_title('Parameter Z-scores')
+            
+            plt.tight_layout()
+            plt.subplots_adjust(hspace=0.3, wspace=0.3)
+            
+            # SVG 생성
+            svg_buffer = io.StringIO()
+            plt.savefig(svg_buffer, format='svg', bbox_inches='tight', 
+                       facecolor='white', edgecolor='none', dpi=100)
+            svg_content = svg_buffer.getvalue()
+            svg_buffer.close()
+            plt.close(fig)
+            
+            print(f"드리프트 SVG 시각화 생성 완료: {len(svg_content)} 문자")
+            return svg_content
+            
+        except Exception as e:
+            print(f"드리프트 시각화 생성 오류: {e}")
+            # 오류 발생 시 기본 SVG 반환
+            error_svg = f'''
+            <svg width="800" height="400" xmlns="http://www.w3.org/2000/svg">
+                <rect width="800" height="400" fill="white" stroke="black" stroke-width="1"/>
+                <text x="400" y="180" text-anchor="middle" font-size="16" fill="red">
+                    드리프트 시각화 생성 중 오류가 발생했습니다.
+                </text>
+                <text x="400" y="210" text-anchor="middle" font-size="12" fill="gray">
+                    오류: {str(e)[:50]}...
+                </text>
+                <text x="400" y="240" text-anchor="middle" font-size="12" fill="blue">
+                    감지된 드리프트: {len(drift_results)}개
+                </text>
+            </svg>
+            '''
+            return error_svg.strip()
 
 class DataValidityChecker:
     """
-    실시간 데이터 정합성 검증 모듈
+    실시간 데이터 정합성 검증 모듈 (개선된 버전)
     """
     
     def __init__(self):
@@ -365,1281 +564,721 @@ class DataValidityChecker:
     
     def preprocess_and_clean(self, df: pd.DataFrame, table_name: str) -> pd.DataFrame:
         """
-        데이터 정제 및 전처리
+        데이터 정제 및 전처리 (개선된 버전)
         """
         df_clean = df.copy()
         
         # 1. 수치형 컬럼 식별
         numeric_cols = df_clean.select_dtypes(include=[np.number]).columns
         
-        # 2. 결측치 처리
+        # 2. 개선된 결측치 처리
         for col in numeric_cols:
             if df_clean[col].isnull().any():
-                # 센서 데이터는 이전 값으로 채우기 (forward fill)
-                df_clean[col] = df_clean[col].fillna(method='ffill')
-                # 여전히 NaN이 있으면 median으로 채우기
-                df_clean[col] = df_clean[col].fillna(df_clean[col].median())
+                # Median 사용 (평균보다 이상치에 강건)
+                median_val = df_clean[col].median()
+                df_clean[col] = df_clean[col].fillna(median_val)
         
-        # 3. 이상치 처리 (정상 범위 기반)
+        # 3. IQR 기반 이상치 처리 (개선된 방법)
+        for col in numeric_cols:
+            Q1 = df_clean[col].quantile(0.25)
+            Q3 = df_clean[col].quantile(0.75)
+            IQR = Q3 - Q1
+            
+            if IQR > 0:
+                # 3×IQR 범위로 클리핑 (더 강건한 방법)
+                lower_bound = Q1 - 3 * IQR
+                upper_bound = Q3 + 3 * IQR
+                df_clean[col] = df_clean[col].clip(lower_bound, upper_bound)
+        
+        # 4. 정상 범위 기반 클리핑
         if table_name in self.normal_ranges:
             ranges = self.normal_ranges[table_name]
             for col, (min_val, max_val) in ranges.items():
                 if col in df_clean.columns:
-                    # 범위를 벗어나는 값들을 경계값으로 클리핑
                     df_clean[col] = df_clean[col].clip(lower=min_val, upper=max_val)
         
         return df_clean
 
-class DataSplitter:
+class EnhancedSemiconductorRealTimeMonitor:
     """
-    데이터를 train/test로 분할하는 클래스
-    """
-    
-    def __init__(self, test_size: float = 0.3, random_state: int = 42):
-        self.test_size = test_size
-        self.random_state = random_state
-    
-    def split_datasets(self, datasets: Dict[str, pd.DataFrame], 
-                      split_by: str = 'time') -> Tuple[Dict[str, pd.DataFrame], Dict[str, pd.DataFrame]]:
-        """
-        데이터셋을 train/test로 분할
-        
-        Args:
-            datasets: 전체 데이터셋
-            split_by: 분할 방식 ('time' 또는 'random')
-            
-        Returns:
-            Tuple[train_datasets, test_datasets]
-        """
-        train_datasets = {}
-        test_datasets = {}
-        
-        for table_name, df in datasets.items():
-            if len(df) == 0:
-                continue
-                
-            if split_by == 'time' and any(col in df.columns for col in ['TIMESTAMP', 'CREDATE', 'START_TIME', 'MEASURE_TIME']):
-                # 시간 기준 분할
-                time_col = None
-                for col in ['TIMESTAMP', 'CREDATE', 'START_TIME', 'MEASURE_TIME']:
-                    if col in df.columns:
-                        time_col = col
-                        break
-                
-                if time_col:
-                    df_sorted = df.sort_values(time_col)
-                    split_idx = int(len(df_sorted) * (1 - self.test_size))
-                    train_df = df_sorted.iloc[:split_idx].copy()
-                    test_df = df_sorted.iloc[split_idx:].copy()
-                else:
-                    # 시간 컬럼이 없으면 랜덤 분할
-                    train_df, test_df = train_test_split(
-                        df, test_size=self.test_size, random_state=self.random_state
-                    )
-            else:
-                # 랜덤 분할
-                train_df, test_df = train_test_split(
-                    df, test_size=self.test_size, random_state=self.random_state
-                )
-            
-            train_datasets[table_name] = train_df
-            test_datasets[table_name] = test_df
-            
-            print(f"{table_name}: Train {len(train_df)}, Test {len(test_df)}")
-        
-        return train_datasets, test_datasets
-
-class SemiconductorRealDataDetector:
-    """
-    실제 반도체 공정 데이터를 활용한 이상탐지 딥러닝 모듈
+    향상된 반도체 실시간 모니터링 시스템
     """
     
-    def __init__(self, config=None):
-        self.config = config or self._default_config()
-        self.scaler = StandardScaler()
-        self.models = {}
-        self.history = {}
-        self.threshold = None
-        self.data_files = {
-            'semi_lot_manage': 'SEMI_LOT_MANAGE.csv',
-            'semi_process_history': 'SEMI_PROCESS_HISTORY.csv', 
-            'semi_param_measure': 'SEMI_PARAM_MEASURE.csv',
-            'semi_equipment_sensor': 'SEMI_EQUIPMENT_SENSOR.csv',
-            'semi_alert_config': 'SEMI_SENSOR_ALERT_CONFIG.csv',
-            'semi_photo_sensors': 'SEMI_PHOTO_SENSORS.csv',
-            'semi_etch_sensors': 'SEMI_ETCH_SENSORS.csv',
-            'semi_cvd_sensors': 'SEMI_CVD_SENSORS.csv',
-            'semi_implant_sensors': 'SEMI_IMPLANT_SENSORS.csv',
-            'semi_cmp_sensors': 'SEMI_CMP_SENSORS.csv'
-        }
+    def __init__(self, model_dir: str = "models"):
+        self.model_manager = ModelManager(model_dir)
+        self.normal_state_manager = NormalStateManager()
+        self.data_validator = DataValidityChecker()
+        self.model = None
+        self.scaler = None
+        self.metadata = None
         
-    def _default_config(self):
-        """기본 설정"""
-        return {
-            'sequence_length': 60,
-            'contamination': 0.05,
-            'threshold_percentile': 95,
-            'batch_size': 32,
-            'epochs': 50,
-            'validation_split': 0.2,
-        }
+        # 모델 로드 시도
+        self.load_model()
+    
+    def load_model(self):
+        """저장된 모델 로드"""
+        try:
+            self.model, self.scaler, self.metadata = self.model_manager.load_model()
+            if self.model is None:
+                print("Warning: 저장된 모델이 없습니다. 기본 알고리즘을 사용합니다.")
+        except Exception as e:
+            print(f"모델 로드 중 오류: {e}")
+    
+    from datetime import datetime
+from typing import List, Dict, Tuple
 
-    def load_local_data_and_explore(self, data_base_path):
-        """
-        실제 데이터 로딩 및 탐색
-        """
-        print("실제 반도체 데이터 로딩 및 탐색 중...")
-        
-        datasets = {}
-        for key, filename in self.data_files.items():
-            file_path = os.path.join(data_base_path, filename)
-            if os.path.exists(file_path):
-                print(f"로딩 중: {filename}")
-                try:
-                    df = pd.read_csv(file_path)
-                    datasets[key] = df
-                    print(f"  - 크기: {df.shape}")
-                    print(f"  - 컬럼: {list(df.columns)}")
-                    print()
-                except Exception as e:
-                    print(f"  - 오류: {e}")
-            else:
-                print(f"파일 없음: {file_path}")
-        
-        self.raw_datasets = datasets
-        return datasets
 
-    def integrate_sensor_data(self, datasets):
+class RealtimeAnomalyDetector:
+    def __init__(self, data_validator, normal_state_manager):
         """
-        여러 센서 테이블을 통합하여 하나의 센서 데이터셋 생성
+        data_validator: 데이터 전처리 및 검증 객체
+        normal_state_manager: 정상 상태 관리 및 드리프트 감지 객체
         """
-        print("센서 데이터 통합 중...")
+        self.data_validator = data_validator
+        self.normal_state_manager = normal_state_manager
+
+    def _fetch_data_from_database(self, prism_core_db, start: str, end: str) -> Dict[str, 'pd.DataFrame']:
+        """
+        DB에서 start ~ end 구간의 데이터를 가져옴
+        - 반환값: {테이블명: DataFrame}
+        """
+        # TODO: 실제 DB 연동 로직 구현
+        raise NotImplementedError("DB 연동 로직을 구현해야 합니다.")
+
+    def fast_anomaly_detection_with_realtime_data(
+        self, prism_core_db, start: str, end: str
+    ) -> Tuple[List[Dict], List[Dict], Dict, Dict]:
+        """
+        실시간 데이터베이스 연동 이상탐지 수행
+        반환값: anomalies, drift_results, analysis, vis_json
+        """
+        print(f"실시간 이상탐지 시작: {start} ~ {end}")
         
-        sensor_tables = ['semi_photo_sensors', 'semi_etch_sensors', 'semi_cvd_sensors', 
-                        'semi_implant_sensors', 'semi_cmp_sensors']
-        
-        integrated_sensors = []
-        
-        for table_name in sensor_tables:
-            if table_name in datasets:
-                df = datasets[table_name].copy()
+        try:
+            # 1. 데이터베이스에서 데이터 수집
+            all_data = self._fetch_data_from_database(prism_core_db, start, end)
+            
+            if not all_data:
+                vis_json = {
+                    "anomalies": [],
+                    "drift_results": [],
+                    "raw_data": {}
+                }
+                return [], [], {}, vis_json
+            
+            # 2. 이상탐지 수행
+            anomalies = []
+            drift_results = []
+            analysis_summary = {
+                'total_records': 0,
+                'tables_processed': 0,
+                'anomalies_detected': 0,
+                'drift_detected': 0,
+                'processing_time': datetime.now().isoformat()
+            }
+            
+            for table_name, data in all_data.items():
+                print(f"처리 중인 테이블: {table_name}, 데이터 수: {len(data)}")
                 
-                # 공통 컬럼들만 선택
-                common_cols = ['pno', 'equipment_id', 'lot_no', 'timestamp']
-                available_common = [col for col in common_cols if col in df.columns]
+                if data.empty:
+                    continue
                 
-                if available_common:
-                    # 수치형 센서 컬럼들 찾기
-                    numeric_cols = df.select_dtypes(include=[np.number]).columns.tolist()
-                    sensor_cols = [col for col in numeric_cols if col != 'pno']
-                    
-                    # 테이블 정보 추가
-                    df['sensor_table'] = table_name.replace('_sensors', '')
-                    
-                    # 센서값들을 하나의 컬럼으로 변환
-                    if sensor_cols:
-                        df_long = df.melt(
-                            id_vars=available_common + ['sensor_table'],
-                            value_vars=sensor_cols,
-                            var_name='sensor_type',
-                            value_name='sensor_value'
+                analysis_summary['total_records'] += len(data)
+                analysis_summary['tables_processed'] += 1
+                
+                # 데이터 검증 및 전처리
+                validated_data = self.data_validator.preprocess_and_clean(data, table_name)
+                
+                # 이상탐지 수행
+                table_anomalies = self._detect_anomalies_in_data(validated_data, table_name)
+                anomalies.extend(table_anomalies)
+                
+                # 드리프트 감지 (장비별로 수행)
+                if 'equipment_id' in data.columns:
+                    for equipment_id in data['equipment_id'].unique():
+                        equipment_data = data[data['equipment_id'] == equipment_id]
+                        drift_result = self.normal_state_manager.detect_profile_drift(
+                            equipment_id, table_name, equipment_data
                         )
-                        integrated_sensors.append(df_long)
-                        print(f"  - {table_name}: {len(sensor_cols)}개 센서, {len(df)}개 레코드")
-        
-        if integrated_sensors:
-            result = pd.concat(integrated_sensors, ignore_index=True)
-            print(f"통합 완료: 총 {len(result)}개 센서 레코드")
-            return result
-        else:
-            print("통합할 센서 데이터가 없습니다.")
-            return pd.DataFrame()
+                        if drift_result.get('drift_detected'):
+                            drift_results.append(drift_result)
+            
+            analysis_summary['anomalies_detected'] = len(anomalies)
+            analysis_summary['drift_detected'] = len(drift_results)
+            
+            # 3. raw 데이터 vis_json 생성
+            vis_json = {
+                "anomalies": anomalies,
+                "drift_results": drift_results,
+                "raw_data": {tbl: df.to_dict(orient="records") for tbl, df in all_data.items()}
+            }
+            
+            print(f"이상탐지 완료: 이상 {len(anomalies)}개, 드리프트 {len(drift_results)}개")
+            
+            return anomalies, drift_results, analysis_summary, vis_json
+            
+        except Exception as e:
+            print(f"실시간 이상탐지 중 오류: {e}")
+            error_analysis = {
+                'error': str(e),
+                'processing_time': datetime.now().isoformat(),
+                'status': 'error'
+            }
+            vis_json = {
+                "anomalies": [],
+                "drift_results": [],
+                "raw_data": {},
+                "error": str(e)
+            }
+            return [], [], error_analysis, vis_json
 
-    def create_unified_dataset(self, datasets):
+    def _fetch_data_from_database(self, prism_core_db, start: str, end: str) -> Dict[str, pd.DataFrame]:
         """
-        모든 테이블을 통합하여 분석용 데이터셋 생성
+        데이터베이스에서 데이터를 가져오는 메서드
+        실패시 로컬 CSV 파일을 사용
         """
-        print("통합 데이터셋 생성 중...")
+        start_time = pd.to_datetime(start, utc=True)
+        end_time = pd.to_datetime(end, utc=True)
+        datasets = {}
         
-        # 1. 센서 데이터 통합
-        integrated_sensors = self.integrate_sensor_data(datasets)
-        
-        # 2. LOT 관리 데이터 기준으로 통합
-        if 'semi_lot_manage' in datasets:
-            main_df = datasets['semi_lot_manage'].copy()
-            print(f"기본 LOT 데이터: {len(main_df)}개 LOT")
-        else:
-            print("LOT 관리 데이터가 없습니다.")
-            return pd.DataFrame()
-        
-        # 3. 각 LOT별 센서 통계 생성
-        if not integrated_sensors.empty and 'lot_no' in integrated_sensors.columns:
-            sensor_stats = integrated_sensors.groupby(['lot_no', 'sensor_type'])['sensor_value'].agg([
-                'mean', 'std', 'min', 'max', 'count'
-            ]).reset_index()
+        try:
+            # 우선 로컬 데이터 사용 (테스트용)
+            raise ValueError('use local data')
             
-            sensor_features = sensor_stats.pivot_table(
-                index='lot_no',
-                columns='sensor_type',
-                values=['mean', 'std', 'min', 'max'],
-                fill_value=0
-            )
-            
-            sensor_features.columns = [f"{stat}_{sensor}" for stat, sensor in sensor_features.columns]
-            sensor_features = sensor_features.reset_index()
-            
-            main_df = main_df.merge(sensor_features, on='lot_no', how='left')
-            print(f"센서 특성 추가 완료: {sensor_features.shape[1]-1}개 특성")
-        
-        # 4. 공정 이력 데이터 통합
-        if 'semi_process_history' in datasets:
-            process_df = datasets['semi_process_history']
-            if 'lot_no' in process_df.columns:
-                process_stats = process_df.groupby('lot_no').agg({
-                    'in_qty': ['mean', 'sum'],
-                    'out_qty': ['mean', 'sum'],
-                }).reset_index()
+            # 데이터베이스에서 데이터 가져오기 (실제 운영시 사용)
+            for table_name in prism_core_db.get_tables():
+                df = prism_core_db.get_table_data(table_name)
+                if 'timestamp' in df.columns:
+                    df['timestamp'] = pd.to_datetime(df['timestamp'], utc=True, errors='coerce')
+                    df = df[(df['timestamp'] >= start_time) & (df['timestamp'] <= end_time)]
+                datasets[table_name] = df
                 
-                process_stats.columns = [f"process_{col[0]}_{col[1]}" if col[1] else col[0] 
-                                       for col in process_stats.columns]
-                process_stats.columns = [col.replace('process_lot_no_', 'lot_no') for col in process_stats.columns]
+        except Exception as e:
+            print(f"dataset error raised {e}, use local data")
+            # 로컬 CSV 파일에서 데이터 가져오기
+            from glob import glob
+            import os
+            
+            data_paths = glob('prism_monitor/data/Industrial_DB_sample/*.csv')
+            for data_path in data_paths:
+                df = pd.read_csv(data_path)
+                table_name = os.path.basename(data_path).split('.csv')[0].lower()
+                if 'timestamp' in df.columns:
+                    df['timestamp'] = pd.to_datetime(df['timestamp'], utc=True, errors='coerce')
+                    # df = df[(df['timestamp'] >= start_time) & (df['timestamp'] <= end_time)]
+                    print(f"시간 필터링 비활성화 - 전체 데이터 사용: {len(df)}행")
+                datasets[table_name] = df
                 
-                main_df = main_df.merge(process_stats, on='lot_no', how='left')
-                print(f"공정 이력 특성 추가 완료")
-        
-        # 5. 파라미터 측정 데이터 통합
-        if 'semi_param_measure' in datasets:
-            param_df = datasets['semi_param_measure']
-            if 'lot_no' in param_df.columns:
-                param_stats = param_df.groupby('lot_no')['measured_val'].agg([
-                    'mean', 'std', 'min', 'max'
-                ]).reset_index()
-                
-                param_stats.columns = [f"param_{col}" if col != 'lot_no' else col 
-                                     for col in param_stats.columns]
-                
-                main_df = main_df.merge(param_stats, on='lot_no', how='left')
-                print(f"파라미터 측정 특성 추가 완료")
-        
-        print(f"최종 통합 데이터셋: {main_df.shape}")
-        return main_df
-
-    def prepare_features(self, df):
-        """
-        특성 준비 및 전처리
-        """
-        print("특성 준비 및 전처리 중...")
-        
-        numeric_cols = df.select_dtypes(include=[np.number]).columns.tolist()
-        
-        exclude_cols = ['pno']
-        if 'final_yield' in numeric_cols:
-            exclude_cols.append('final_yield')
-            
-        feature_cols = [col for col in numeric_cols if col not in exclude_cols]
-        
-        df_processed = df.copy()
-        df_processed[feature_cols] = df_processed[feature_cols].fillna(0)
-        
-        # 이상치 라벨 생성
-        if 'final_yield' in df.columns:
-            yield_threshold = df['final_yield'].quantile(0.1)
-            df_processed['is_anomaly'] = df_processed['final_yield'] < yield_threshold
-        else:
-            feature_data = df_processed[feature_cols]
-            z_scores = np.abs((feature_data - feature_data.mean()) / feature_data.std()).mean(axis=1)
-            threshold = np.percentile(z_scores, 90)
-            df_processed['is_anomaly'] = z_scores > threshold
-        
-        print(f"전처리 완료: {len(feature_cols)}개 특성")
-        print(f"이상 LOT 비율: {df_processed['is_anomaly'].mean():.2%}")
-        
-        return df_processed, feature_cols
-
-    def build_autoencoder(self, input_dim):
-        """
-        Autoencoder 모델 구축
-        """ 
-        input_layer = layers.Input(shape=(input_dim,))
-        
-        encoded = layers.Dense(128, activation='relu')(input_layer)
-        encoded = layers.BatchNormalization()(encoded)
-        encoded = layers.Dropout(0.2)(encoded)
-        
-        encoded = layers.Dense(64, activation='relu')(encoded)
-        encoded = layers.BatchNormalization()(encoded)
-        encoded = layers.Dropout(0.2)(encoded)
-        
-        encoded = layers.Dense(32, activation='relu')(encoded)
-        
-        decoded = layers.Dense(64, activation='relu')(encoded)
-        decoded = layers.BatchNormalization()(decoded)
-        decoded = layers.Dropout(0.2)(decoded)
-        
-        decoded = layers.Dense(128, activation='relu')(decoded)
-        decoded = layers.BatchNormalization()(decoded)
-        decoded = layers.Dropout(0.2)(decoded)
-        
-        decoded = layers.Dense(input_dim, activation='linear')(decoded)
-        
-        autoencoder = keras.Model(input_layer, decoded)
-        autoencoder.compile(
-            optimizer=keras.optimizers.Adam(learning_rate=0.001),
-            loss='mse',
-            metrics=['mae']
-        )
-        
-        return autoencoder
-
-    def train_model(self, train_datasets):
-        """
-        Train 데이터로 모델 훈련
-        """
-        print("Train 데이터로 모델 훈련 시작...")
-        
-        # 통합 데이터셋 생성
-        unified_df = self.create_unified_dataset(train_datasets)
-        if unified_df.empty:
-            print("훈련용 데이터가 없습니다.")
-            return None, []
-        
-        # 특성 준비
-        processed_df, feature_cols = self.prepare_features(unified_df)
-        
-        # 정상 데이터만 사용하여 학습
-        normal_data = processed_df[~processed_df['is_anomaly']]
-        X_normal = normal_data[feature_cols].values
-        
-        if len(X_normal) < 5:
-            print(f"훈련용 정상 데이터가 부족합니다. {len(X_normal)}개 샘플")
-            return None, feature_cols
-        
-        print(f"학습 데이터: {len(X_normal)}개 정상 샘플")
-        
-        # 스케일링
-        X_normal_scaled = self.scaler.fit_transform(X_normal)
-        
-        # Autoencoder 학습
-        model = self.build_autoencoder(len(feature_cols))
-        
-        early_stopping = keras.callbacks.EarlyStopping(
-            monitor='val_loss', patience=15, restore_best_weights=True
-        )
-        
-        history = model.fit(
-            X_normal_scaled, X_normal_scaled,
-            batch_size=self.config['batch_size'],
-            epochs=self.config['epochs'],
-            validation_split=self.config['validation_split'],
-            callbacks=[early_stopping],
-            verbose=1
-        )
-        
-        # 임계값 계산
-        reconstructed = model.predict(X_normal_scaled, verbose=0)
-        mse_normal = np.mean(np.square(X_normal_scaled - reconstructed), axis=1)
-        self.threshold = np.percentile(mse_normal, self.config['threshold_percentile'])
-        
-        self.models['autoencoder'] = model
-        self.history['autoencoder'] = history
-        
-        print(f"훈련 완료. 임계값: {self.threshold:.4f}")
-        
-        return model, feature_cols
-
-    def predict_with_trained_model(self, test_datasets, feature_cols):
-        """
-        훈련된 모델로 Test 데이터 예측
-        """
-        print("훈련된 모델로 Test 데이터 예측 시작...")
-        
-        if 'autoencoder' not in self.models:
-            print("훈련된 모델이 없습니다.")
-            return None
-        
-        # 통합 데이터셋 생성
-        unified_df = self.create_unified_dataset(test_datasets)
-        if unified_df.empty:
-            print("테스트 데이터가 없습니다.")
-            return None
-        
-        # 동일한 전처리 과정
-        processed_df, _ = self.prepare_features(unified_df)
-        
-        # 동일한 feature columns 사용
-        X_test = processed_df[feature_cols].values
-        X_test_scaled = self.scaler.transform(X_test)
-        
-        # 이상탐지 수행
-        reconstructed = self.models['autoencoder'].predict(X_test_scaled, verbose=0)
-        mse_scores = np.mean(np.square(X_test_scaled - reconstructed), axis=1)
-        
-        # 결과 저장
-        result_df = processed_df.copy()
-        result_df['anomaly_score'] = mse_scores
-        result_df['predicted_anomaly'] = mse_scores > self.threshold
-        result_df['confidence'] = (mse_scores - self.threshold) / self.threshold
-        
-        print(f"예측 완료: {len(result_df)}개 LOT 중 {result_df['predicted_anomaly'].sum()}개 이상 탐지")
-        
-        return result_df
-
-    def visualize_results(self, df_result):
-        """
-        결과 시각화 (SVG)
-        """
-        fig, axes = plt.subplots(2, 2, figsize=(15, 12))
-        
-        # 1. 이상 점수 분포
-        if 'predicted_anomaly' in df_result.columns:
-            normal_scores = df_result[~df_result['predicted_anomaly']]['anomaly_score']
-            anomaly_scores = df_result[df_result['predicted_anomaly']]['anomaly_score']
-            
-            axes[0, 0].hist(normal_scores, bins=30, alpha=0.7, label='Normal', color='blue')
-            axes[0, 0].hist(anomaly_scores, bins=30, alpha=0.7, label='Anomaly', color='red')
-            axes[0, 0].axvline(self.threshold, color='red', linestyle='--', label='Threshold')
-            axes[0, 0].set_xlabel('Anomaly Score')
-            axes[0, 0].set_ylabel('Frequency')
-            axes[0, 0].set_title('Anomaly Score Distribution')
-            axes[0, 0].legend()
-        
-        # 2. 수율 vs 이상 점수
-        if 'final_yield' in df_result.columns and 'predicted_anomaly' in df_result.columns:
-            colors = ['red' if x else 'blue' for x in df_result['predicted_anomaly']]
-            axes[0, 1].scatter(df_result['final_yield'], df_result['anomaly_score'], 
-                             c=colors, alpha=0.6, s=20)
-            axes[0, 1].set_xlabel('Final Yield (%)')
-            axes[0, 1].set_ylabel('Anomaly Score')
-            axes[0, 1].set_title('Yield vs Anomaly Score')
-        
-        # 3. 혼동 행렬
-        if 'is_anomaly' in df_result.columns and 'predicted_anomaly' in df_result.columns:
-            cm = confusion_matrix(df_result['is_anomaly'], df_result['predicted_anomaly'])
-            sns.heatmap(cm, annot=True, fmt='d', ax=axes[1, 0], cmap='Blues')
-            axes[1, 0].set_title('Confusion Matrix')
-            axes[1, 0].set_xlabel('Predicted')
-            axes[1, 0].set_ylabel('Actual')
-        
-        # 4. 학습 손실
-        if 'autoencoder' in self.history:
-            history = self.history['autoencoder']
-            axes[1, 1].plot(history.history['loss'], label='Training Loss')
-            if 'val_loss' in history.history:
-                axes[1, 1].plot(history.history['val_loss'], label='Validation Loss')
-            axes[1, 1].set_xlabel('Epoch')
-            axes[1, 1].set_ylabel('Loss')
-            axes[1, 1].set_title('Training Loss')
-            axes[1, 1].legend()
-        
-        plt.tight_layout()
-        
-        # SVG로 저장
-        svg_buffer = io.StringIO()
-        plt.savefig(svg_buffer, format='svg')
-        svg_content = svg_buffer.getvalue()
-        svg_buffer.close()
-        
-        plt.close(fig)
-        
-        return svg_content
-
-    def analyze_results(self, df_result):
-            """
-            결과 분석 및 요약
-            """
-            print("결과 분석 중...")
-            
-            # 시간 관련 컬럼들을 string으로 변환
-            time_columns = ['timestamp', 'TIMESTAMP', 'credate', 'CREDATE', 
-                        'start_time', 'START_TIME', 'end_time', 'END_TIME',
-                        'measure_time', 'MEASURE_TIME']
-            
-            for col in time_columns:
-                if col in df_result.columns:
-                    df_result[col] = df_result[col].astype(str)
-                    print(f"컬럼 '{col}'을 string으로 변환했습니다.")
-            
-            total_lots = len(df_result)
-            detected_anomalies = df_result['predicted_anomaly'].sum() if 'predicted_anomaly' in df_result.columns else 0
-            actual_anomalies = df_result['is_anomaly'].sum() if 'is_anomaly' in df_result.columns else 0
-            
-            print(f"\n=== 이상탐지 결과 요약 ===")
-            print(f"전체 LOT 수: {total_lots}")
-            if 'is_anomaly' in df_result.columns:
-                print(f"실제 이상 LOT: {actual_anomalies} ({actual_anomalies/total_lots:.1%})")
-            print(f"탐지된 이상 LOT: {detected_anomalies} ({detected_anomalies/total_lots:.1%})")
-            
-            # 성능 평가
-            if 'is_anomaly' in df_result.columns and 'predicted_anomaly' in df_result.columns:
-                from sklearn.metrics import precision_score, recall_score, f1_score
-                
-                precision = precision_score(df_result['is_anomaly'], df_result['predicted_anomaly'])
-                recall = recall_score(df_result['is_anomaly'], df_result['predicted_anomaly'])
-                f1 = f1_score(df_result['is_anomaly'], df_result['predicted_anomaly'])
-                
-                print(f"\n=== 성능 지표 ===")
-                print(f"정밀도 (Precision): {precision:.3f}")
-                print(f"재현율 (Recall): {recall:.3f}")
-                print(f"F1 점수: {f1:.3f}")
-            
-            # 이상 LOT 상세 분석
-            if 'predicted_anomaly' in df_result.columns:
-                anomaly_lots = df_result[df_result['predicted_anomaly']]
-                if len(anomaly_lots) > 0:
-                    print(f"\n=== 이상 LOT 분석 ===")
-                    print("이상 점수가 높은 상위 5개 LOT:")
-                    top_anomalies = anomaly_lots.nlargest(5, 'anomaly_score')
-                    for _, row in top_anomalies.iterrows():
-                        print(f"  LOT {row['lot_no']}: 점수 {row['anomaly_score']:.4f}")
-                        if 'final_yield' in row:
-                            print(f"    수율: {row['final_yield']:.1f}%")
-            
-            return df_result[df_result['predicted_anomaly']].to_dict("records") if 'predicted_anomaly' in df_result.columns else []
-
-def load_data_from_database(prism_core_db, start: str, end: str) -> Dict[str, pd.DataFrame]:
-    """
-    데이터베이스에서 실시간 데이터 로딩
+        return datasets
     
-    Args:
-        prism_core_db: PrismCoreDataBase 인스턴스
-        start: 시작 시간 (ISO format)
-        end: 종료 시간 (ISO format)
+    def _detect_anomalies_in_data(self, data: pd.DataFrame, table_name: str) -> List[Dict]:
+        """데이터에서 이상 감지"""
+        anomalies = []
         
-    Returns:
-        Dict[str, pd.DataFrame]: 테이블명별 데이터프레임
-    """
-    print(f"데이터베이스에서 실시간 데이터 로딩: {start} ~ {end}")
+        try:
+            # 수치형 컬럼만 선택
+            numeric_cols = data.select_dtypes(include=[np.number]).columns
+            
+            if len(numeric_cols) == 0:
+                return anomalies
+            
+            # Isolation Forest를 사용한 이상탐지
+            if len(data) >= 10:  # 최소 데이터 수 확인
+                iso_forest = IsolationForest(contamination=0.1, random_state=42)
+                outlier_labels = iso_forest.fit_predict(data[numeric_cols].fillna(0))
+                
+                # 이상치 인덱스 찾기
+                anomaly_indices = np.where(outlier_labels == -1)[0]
+                
+                for idx in anomaly_indices:
+                    anomaly_record = {
+                        'table_name': table_name,
+                        'timestamp': data.iloc[idx].get('timestamp', datetime.now().isoformat()),
+                        'equipment_id': data.iloc[idx].get('equipment_id', 'unknown'),
+                        'anomaly_type': 'statistical_outlier',
+                        'severity': 'MEDIUM',
+                        'anomaly_score': abs(iso_forest.score_samples(data[numeric_cols].iloc[[idx]].fillna(0))[0]),
+                        'affected_parameters': [],
+                        'detection_method': 'isolation_forest'
+                    }
+                    
+                    # 이상 파라미터 식별
+                    for col in numeric_cols:
+                        value = data.iloc[idx][col]
+                        if pd.notna(value):
+                            col_mean = data[col].mean()
+                            col_std = data[col].std()
+                            if col_std > 0:
+                                z_score = abs((value - col_mean) / col_std)
+                                if z_score > 2:  # 2-sigma 이상
+                                    anomaly_record['affected_parameters'].append({
+                                        'parameter': col,
+                                        'value': float(value),
+                                        'z_score': float(z_score),
+                                        'mean': float(col_mean),
+                                        'std': float(col_std)
+                                    })
+                    
+                    if anomaly_record['affected_parameters']:
+                        anomalies.append(anomaly_record)
+                        
+        except Exception as e:
+            print(f"{table_name} 이상탐지 중 오류: {e}")
+            
+        return anomalies
+    
+    def _create_anomaly_visualization(self, anomalies: List[Dict], all_data: Dict[str, pd.DataFrame]) -> str:
+        """이상 현상 시각화 생성"""
+        if not anomalies and not all_data:
+            return self._create_empty_svg()
+        
+        try:
+            fig, axes = plt.subplots(2, 2, figsize=(15, 10))
+            
+            # 1. 테이블별 이상 개수
+            if anomalies:
+                table_counts = {}
+                for anomaly in anomalies:
+                    table_name = anomaly.get('table_name', 'unknown')
+                    table_counts[table_name] = table_counts.get(table_name, 0) + 1
+                
+                if table_counts:
+                    axes[0, 0].bar(table_counts.keys(), table_counts.values(), color='red', alpha=0.7)
+                    axes[0, 0].set_title('Anomalies by Table')
+                    axes[0, 0].set_ylabel('Anomaly Count')
+                    axes[0, 0].tick_params(axis='x', rotation=45)
+                else:
+                    axes[0, 0].text(0.5, 0.5, 'No anomalies detected', ha='center', va='center', transform=axes[0, 0].transAxes)
+            else:
+                axes[0, 0].text(0.5, 0.5, 'No anomalies detected', ha='center', va='center', transform=axes[0, 0].transAxes)
+            axes[0, 0].set_title('Anomalies by Table')
+            
+            # 2. 심각도별 분포
+            if anomalies:
+                severity_counts = {}
+                for anomaly in anomalies:
+                    severity = anomaly.get('severity', 'MEDIUM')
+                    severity_counts[severity] = severity_counts.get(severity, 0) + 1
+                
+                if severity_counts:
+                    colors = ['red' if s == 'HIGH' else 'orange' if s == 'MEDIUM' else 'yellow' for s in severity_counts.keys()]
+                    axes[0, 1].pie(severity_counts.values(), labels=severity_counts.keys(), 
+                                  autopct='%1.1f%%', colors=colors, startangle=90)
+                else:
+                    axes[0, 1].text(0.5, 0.5, 'No severity data', ha='center', va='center', transform=axes[0, 1].transAxes)
+            else:
+                axes[0, 1].text(0.5, 0.5, 'No severity data', ha='center', va='center', transform=axes[0, 1].transAxes)
+            axes[0, 1].set_title('Severity Distribution')
+            
+            # 3. 데이터 품질 점수 (테이블별)
+            if all_data:
+                quality_scores = {}
+                for table_name, data in all_data.items():
+                    validation_result = self.data_validator.validate_data_integrity(data, table_name)
+                    quality_scores[table_name] = validation_result.get('data_quality_score', 0)
+                
+                if quality_scores:
+                    colors = ['green' if score > 80 else 'yellow' if score > 60 else 'red' for score in quality_scores.values()]
+                    axes[1, 0].bar(quality_scores.keys(), quality_scores.values(), color=colors, alpha=0.7)
+                    axes[1, 0].set_title('Data Quality Scores')
+                    axes[1, 0].set_ylabel('Quality Score (%)')
+                    axes[1, 0].set_ylim(0, 100)
+                    axes[1, 0].tick_params(axis='x', rotation=45)
+                else:
+                    axes[1, 0].text(0.5, 0.5, 'No quality data', ha='center', va='center', transform=axes[1, 0].transAxes)
+            else:
+                axes[1, 0].text(0.5, 0.5, 'No quality data', ha='center', va='center', transform=axes[1, 0].transAxes)
+            axes[1, 0].set_title('Data Quality Scores')
+            
+            # 4. 시간별 이상 발생 추이
+            if anomalies:
+                try:
+                    anomaly_times = []
+                    for anomaly in anomalies:
+                        timestamp = anomaly.get('timestamp')
+                        if timestamp:
+                            try:
+                                anomaly_times.append(pd.to_datetime(timestamp))
+                            except:
+                                anomaly_times.append(datetime.now())
+                    
+                    if anomaly_times:
+                        time_df = pd.DataFrame({'timestamp': anomaly_times})
+                        time_df['hour'] = time_df['timestamp'].dt.floor('H')
+                        time_counts = time_df.groupby('hour').size()
+                        
+                        if len(time_counts) > 0:
+                            axes[1, 1].plot(time_counts.index, time_counts.values, 
+                                           marker='o', color='red', linewidth=2)
+                            axes[1, 1].fill_between(time_counts.index, time_counts.values, alpha=0.3, color='red')
+                            axes[1, 1].set_xlabel('Time')
+                            axes[1, 1].set_ylabel('Anomaly Count')
+                            axes[1, 1].tick_params(axis='x', rotation=45)
+                        else:
+                            axes[1, 1].text(0.5, 0.5, 'No time data', ha='center', va='center', transform=axes[1, 1].transAxes)
+                    else:
+                        axes[1, 1].text(0.5, 0.5, 'No time data', ha='center', va='center', transform=axes[1, 1].transAxes)
+                except Exception as e:
+                    axes[1, 1].text(0.5, 0.5, f'Time chart error: {str(e)[:30]}', ha='center', va='center', transform=axes[1, 1].transAxes)
+            else:
+                axes[1, 1].text(0.5, 0.5, 'No anomaly timeline', ha='center', va='center', transform=axes[1, 1].transAxes)
+            axes[1, 1].set_title('Anomaly Timeline')
+            
+            plt.tight_layout()
+            
+            # SVG 생성
+            svg_buffer = io.StringIO()
+            plt.savefig(svg_buffer, format='svg', bbox_inches='tight', 
+                       facecolor='white', edgecolor='none', dpi=100)
+            svg_content = svg_buffer.getvalue()
+            svg_buffer.close()
+            plt.close(fig)
+            
+            return svg_content
+            
+        except Exception as e:
+            print(f"시각화 생성 중 오류: {e}")
+            return self._create_error_svg(str(e))
+    
+    def _create_empty_svg(self) -> str:
+        """빈 결과용 SVG 생성"""
+        return '''
+        <svg width="800" height="400" xmlns="http://www.w3.org/2000/svg">
+            <rect width="800" height="400" fill="white" stroke="black" stroke-width="1"/>
+            <text x="400" y="200" text-anchor="middle" font-size="18" fill="green">
+                이상이 감지되지 않았습니다.
+            </text>
+            <text x="400" y="230" text-anchor="middle" font-size="14" fill="gray">
+                모든 시스템이 정상 상태입니다.
+            </text>
+        </svg>
+        '''.strip()
+    
+    def _create_empty_drift_svg(self) -> str:
+        """빈 드리프트 결과용 SVG 생성"""
+        return '''
+        <svg width="800" height="400" xmlns="http://www.w3.org/2000/svg">
+            <rect width="800" height="400" fill="white" stroke="black" stroke-width="1"/>
+            <text x="400" y="200" text-anchor="middle" font-size="18" fill="green">
+                드리프트가 감지되지 않았습니다.
+            </text>
+            <text x="400" y="230" text-anchor="middle" font-size="14" fill="gray">
+                모든 장비가 정상 상태를 유지하고 있습니다.
+            </text>
+        </svg>
+        '''.strip()
+    
+    def _create_error_svg(self, error_message: str) -> str:
+        """오류용 SVG 생성"""
+        return f'''
+        <svg width="800" height="400" xmlns="http://www.w3.org/2000/svg">
+            <rect width="800" height="400" fill="white" stroke="black" stroke-width="1"/>
+            <text x="400" y="180" text-anchor="middle" font-size="16" fill="red">
+                처리 중 오류가 발생했습니다.
+            </text>
+            <text x="400" y="210" text-anchor="middle" font-size="12" fill="gray">
+                오류: {error_message[:50]}...
+            </text>
+            <text x="400" y="240" text-anchor="middle" font-size="12" fill="blue">
+                관리자에게 문의하시기 바랍니다.
+            </text>
+        </svg>
+        '''.strip()
+
+def detect_anomalies_realtime(prism_core_db, start: str, end: str, model_dir: str = "models"):
+    """실시간 데이터베이스 연동 이상탐지 수행 - drift_svg 포함 5개 반환값"""
+    
+    print(f"실시간 이상탐지 시작: {start} ~ {end}")
+    
+    def convert_to_json_serializable(obj):
+        """객체를 JSON 직렬화 가능한 형태로 변환"""
+        import pandas as pd
+        import numpy as np
+        from datetime import datetime, date
+        
+        # numpy 배열이나 pandas Series/DataFrame 처리
+        if isinstance(obj, (np.ndarray, pd.Series)):
+            return [convert_to_json_serializable(item) for item in obj.tolist()]
+        elif isinstance(obj, pd.DataFrame):
+            return obj.to_dict(orient="records")
+        
+        # scalar 값들에 대한 NA 체크 (배열이 아닌 경우만)
+        try:
+            if pd.isna(obj):
+                return None
+        except (ValueError, TypeError):
+            # 배열이거나 NA 체크가 불가능한 객체는 그냥 넘어감
+            pass
+        
+        if isinstance(obj, (np.integer, np.int64, np.int32)):
+            return int(obj)
+        elif isinstance(obj, (np.floating, np.float64, np.float32)):
+            if np.isnan(obj):
+                return None
+            return float(obj)
+        elif isinstance(obj, (datetime, date)):
+            return obj.isoformat()
+        elif isinstance(obj, pd.Timestamp):
+            return obj.isoformat()
+        elif isinstance(obj, np.bool_):
+            return bool(obj)
+        elif isinstance(obj, bytes):
+            return obj.decode('utf-8', errors='ignore')
+        elif isinstance(obj, dict):
+            return {k: convert_to_json_serializable(v) for k, v in obj.items()}
+        elif isinstance(obj, (list, tuple)):
+            return [convert_to_json_serializable(item) for item in obj]
+        else:
+            return obj
+
+    def dataframe_to_json_serializable(df):
+        """DataFrame을 JSON 직렬화 가능한 dict로 변환"""
+        if df.empty:
+            return []
+        
+        # DataFrame을 dict로 변환
+        records = df.to_dict(orient="records")
+        
+        # 각 레코드를 JSON 직렬화 가능하게 변환
+        json_records = []
+        for record in records:
+            json_record = convert_to_json_serializable(record)
+            json_records.append(json_record)
+        
+        return json_records
+    
+    try:
+        # 1. 데이터베이스에서 데이터 수집
+        all_data = _fetch_data_from_database_standalone(prism_core_db, start, end)
+        
+        if not all_data:
+            vis_json = {
+                "anomalies": [],
+                "drift_results": [],
+                "raw_data": {}
+            }
+            return [], [], {}, vis_json
+        
+        # 2. 모니터 인스턴스 생성
+        monitor = EnhancedSemiconductorRealTimeMonitor(model_dir=model_dir)
+        
+        # 3. 이상탐지 수행
+        anomalies = []
+        drift_results = []
+        analysis_summary = {
+            'total_records': 0,
+            'tables_processed': 0,
+            'anomalies_detected': 0,
+            'drift_detected': 0,
+            'processing_time': datetime.now().isoformat()
+        }
+        
+        for table_name, data in all_data.items():
+            print(f"처리 중인 테이블: {table_name}, 데이터 수: {len(data)}")
+            
+            if data.empty:
+                continue
+            
+            analysis_summary['total_records'] += len(data)
+            analysis_summary['tables_processed'] += 1
+            
+            # 데이터 검증 및 전처리 (monitor가 data_validator를 가지고 있다면)
+            try:
+                if hasattr(monitor, 'data_validator'):
+                    validated_data = monitor.data_validator.preprocess_and_clean(data, table_name)
+                else:
+                    validated_data = data  # fallback
+            except Exception as e:
+                print(f"데이터 검증 중 오류: {e}")
+                validated_data = data  # fallback
+            
+            # 이상탐지 수행 (monitor의 메서드 사용)
+            try:
+                if hasattr(monitor, '_detect_anomalies_in_data'):
+                    table_anomalies = monitor._detect_anomalies_in_data(validated_data, table_name)
+                elif hasattr(monitor, 'detect_anomalies_in_data'):
+                    table_anomalies = monitor.detect_anomalies_in_data(validated_data, table_name)
+                else:
+                    # 기본 이상탐지 로직 구현
+                    table_anomalies = _basic_anomaly_detection(validated_data, table_name)
+                
+                anomalies.extend(table_anomalies)
+            except Exception as e:
+                print(f"이상탐지 중 오류: {e}")
+                continue
+            
+            # 드리프트 감지 (장비별로 수행)
+            try:
+                if 'equipment_id' in data.columns and hasattr(monitor, 'normal_state_manager'):
+                    for equipment_id in data['equipment_id'].unique():
+                        equipment_data = data[data['equipment_id'] == equipment_id]
+                        drift_result = monitor.normal_state_manager.detect_profile_drift(
+                            equipment_id, table_name, equipment_data
+                        )
+                        if drift_result and drift_result.get('drift_detected'):
+                            drift_results.append(drift_result)
+            except Exception as e:
+                print(f"드리프트 감지 중 오류: {e}")
+                continue
+        
+        analysis_summary['anomalies_detected'] = len(anomalies)
+        analysis_summary['drift_detected'] = len(drift_results)
+        
+        # 4. vis_json 생성 (JSON 직렬화 가능하도록 변환)
+        vis_json = {
+            "anomalies": [],
+            "drift_results": [],
+            "raw_data": {}
+        }
+        
+        try:
+            # anomalies 안전하게 변환
+            print("anomalies 변환 중...")
+            vis_json["anomalies"] = convert_to_json_serializable(anomalies)
+        except Exception as e:
+            print(f"anomalies 변환 오류: {e}")
+            vis_json["anomalies"] = []
+            
+        try:
+            # drift_results 안전하게 변환
+            print("drift_results 변환 중...")
+            vis_json["drift_results"] = convert_to_json_serializable(drift_results)
+        except Exception as e:
+            print(f"drift_results 변환 오류: {e}")
+            vis_json["drift_results"] = []
+            
+        try:
+            # raw_data를 JSON 직렬화 가능하게 변환
+            print("raw_data 변환 중...")
+            for tbl, df in all_data.items():
+                print(f"  테이블 {tbl} 변환 중...")
+                vis_json["raw_data"][tbl] = dataframe_to_json_serializable(df)
+        except Exception as e:
+            print(f"raw_data 변환 오류: {e}")
+            vis_json["raw_data"] = {}
+            
+        # 최종 JSON 직렬화 테스트
+        try:
+            import json
+            json.dumps(vis_json)
+            print("vis_json JSON 직렬화 테스트 성공")
+        except Exception as e:
+            print(f"vis_json JSON 직렬화 테스트 실패: {e}")
+            vis_json = {
+                "anomalies": [],
+                "drift_results": [],
+                "raw_data": {},
+                "serialization_error": str(e)
+            }
+        
+        print(f"이상탐지 완료: 이상 {len(anomalies)}개, 드리프트 {len(drift_results)}개")
+        
+        return anomalies, drift_results, analysis_summary, vis_json
+        
+    except Exception as e:
+        print(f"실시간 이상탐지 중 오류: {e}")
+        import traceback
+        traceback.print_exc()
+        
+        error_analysis = {
+            'error': str(e),
+            'processing_time': datetime.now().isoformat(),
+            'status': 'error'
+        }
+        vis_json = {
+            "anomalies": [],
+            "drift_results": [],
+            "raw_data": {},
+            "error": str(e)
+        }
+        return [], [], error_analysis, vis_json
+
+def _fetch_data_from_database_standalone(prism_core_db, start: str, end: str):
+    """독립적인 데이터 가져오기 함수"""
+    import pandas as pd
+    from glob import glob
+    import os
     
     start_time = pd.to_datetime(start, utc=True)
     end_time = pd.to_datetime(end, utc=True)
-    
     datasets = {}
-    data_validator = DataValidityChecker()
     
     try:
-        # 데이터베이스에서 모든 테이블 조회
-        available_tables = prism_core_db.get_tables()
-        print(f"사용 가능한 테이블: {len(available_tables)}개")
+        # 우선 로컬 데이터 사용 (테스트용)
+        raise ValueError('use local data')
         
-        for table_name in available_tables:
-            print(f"로딩 중: {table_name}")
-            
-            try:
-                # 테이블 데이터 조회
+        # 데이터베이스에서 데이터 가져오기 (실제 운영시 사용)
+        if hasattr(prism_core_db, 'get_tables'):
+            for table_name in prism_core_db.get_tables():
                 df = prism_core_db.get_table_data(table_name)
-                
-                if df is not None and len(df) > 0:
-                    # 시간 컬럼이 있는 경우 필터링
-                    time_columns = ['timestamp', 'TIMESTAMP', 'credate', 'CREDATE', 
-                                  'start_time', 'START_TIME', 'end_time', 'END_TIME',
-                                  'measure_time', 'MEASURE_TIME']
-                    
-                    time_col = None
-                    for col in time_columns:
-                        if col in df.columns:
-                            time_col = col
-                            break
-                    
-                    if time_col:
-                        # 시간 컬럼 변환 및 필터링
-                        df[time_col] = pd.to_datetime(df[time_col], utc=True, errors='coerce')
-                        
-                        # 시간 범위 필터링
-                        before_filter = len(df)
-                        df = df[(df[time_col] >= start_time) & (df[time_col] <= end_time)]
-                        after_filter = len(df)
-                        
-                        print(f"  - 시간 필터링: {before_filter} → {after_filter}개 레코드")
-                    
-                    if len(df) > 0:
-                        # 데이터 정합성 검증 및 전처리
-                        df_clean = preprocess_table(df, table_name)
-                        datasets[table_name] = df_clean
-                        
-                        print(f"  - 최종 데이터: {len(df_clean)}개 레코드")
-                    else:
-                        print(f"  - 해당 기간 데이터 없음")
-                        
-                else:
-                    print(f"  - 테이블이 비어있음")
-                    
-            except Exception as table_error:
-                print(f"  - 테이블 {table_name} 로딩 실패: {table_error}")
-                continue
-                
+                if 'timestamp' in df.columns:
+                    df['timestamp'] = pd.to_datetime(df['timestamp'], utc=True, errors='coerce')
+                    df = df[(df['timestamp'] >= start_time) & (df['timestamp'] <= end_time)]
+                datasets[table_name] = df
+            
     except Exception as e:
-        print(f"데이터베이스 접근 오류: {e}. 로컬환경에서 접근")
-        
-        data_paths = glob('prism_monitor/data/Industrial_DB_sample/*.csv')
-        for data_path in data_paths:
-            df = pd.read_csv(data_path)
-            table_name = os.path.basename(data_path).split('.csv')[0].lower()
-            if df is not None and len(df) > 0:
-                # 시간 컬럼이 있는 경우 필터링
-                time_columns = ['timestamp', 'TIMESTAMP', 'credate', 'CREDATE', 
-                                'start_time', 'START_TIME', 'end_time', 'END_TIME',
-                                'measure_time', 'MEASURE_TIME']
-                
-                time_col = None
-                for col in time_columns:
-                    if col in df.columns:
-                        time_col = col
-                        break
-                
-                if time_col:
-                    # 시간 컬럼 변환 및 필터링
-                    df[time_col] = pd.to_datetime(df[time_col], utc=True, errors='coerce')
-                    
-                    # 시간 범위 필터링
-                    before_filter = len(df)
-                    df = df[(df[time_col] >= start_time) & (df[time_col] <= end_time)]
-                    after_filter = len(df)
-                    
-                    print(f"  - 시간 필터링: {before_filter} → {after_filter}개 레코드")
-                
-                if len(df) > 0:
-                    # 데이터 정합성 검증 및 전처리
-                    df_clean = preprocess_table(df, table_name)
-                    datasets[table_name] = df_clean
-                    
-                    print(f"  - 최종 데이터: {len(df_clean)}개 레코드")
-                else:
-                    print(f"  - 해당 기간 데이터 없음")
-                    
-            else:
-                print(f"  - 테이블이 비어있음")
-        
-    print(f"총 {len(datasets)}개 테이블 로딩 완료")
+        print(f"dataset error raised {e}, use local data")
+        # 로컬 CSV 파일에서 데이터 가져오기
+        try:
+            data_paths = glob('prism_monitor/data/Industrial_DB_sample/*.csv')
+            for data_path in data_paths:
+                try:
+                    df = pd.read_csv(data_path)
+                    table_name = os.path.basename(data_path).split('.csv')[0].lower()
+                    if 'timestamp' in df.columns:
+                        df['timestamp'] = pd.to_datetime(df['timestamp'], utc=True, errors='coerce')
+                        df = df[(df['timestamp'] >= start_time) & (df['timestamp'] <= end_time)]
+                    datasets[table_name] = df
+                    print(f"로컬 데이터 로드 완료: {table_name} ({len(df)}행)")
+                except Exception as file_error:
+                    print(f"파일 로드 실패: {data_path}, 오류: {file_error}")
+                    continue
+        except Exception as glob_error:
+            print(f"로컬 데이터 폴더 접근 실패: {glob_error}")
+            
     return datasets
 
-def preprocess_table(df: pd.DataFrame, table_name: str = 'GENERIC') -> pd.DataFrame:
-    """
-    테이블별 정합성 검증 및 정상화
-    
-    Args:
-        df: 원본 데이터프레임
-        table_name: 테이블명 (검증 규칙 적용용)
-        
-    Returns:
-        pd.DataFrame: 전처리된 데이터프레임
-    """
-    validator = DataValidityChecker()
-    
-    # 데이터 정합성 검증
-    validation_result = validator.validate_data_integrity(df, table_name)
-    
-    # 심각한 품질 문제가 있는 경우 경고
-    if validation_result['data_quality_score'] < 70:
-        print(f"경고: {table_name} 데이터 품질이 낮습니다 ({validation_result['data_quality_score']:.1f}점)")
-    
-    # 데이터 정제 및 전처리
-    df_clean = validator.preprocess_and_clean(df, table_name)
-    
-    return df_clean
 
-class EnhancedSemiconductorRealTimeMonitor:
-    """
-    시나리오 B: 사전 훈련된 모델을 사용하는 빠른 이상탐지 시스템 (실시간 데이터 수집 포함)
-    """
+def _basic_anomaly_detection(data, table_name):
+    """기본 이상탐지 로직 (fallback)"""
+    anomalies = []
     
-    def __init__(self, config=None, model_dir="models"):
-        self.config = config or self._default_config()
-        self.detector = SemiconductorRealDataDetector(config)
-        self.model_manager = ModelManager(model_dir)
-        self.data_validator = DataValidityChecker()
-        self.data_splitter = DataSplitter()
-        self.normal_state_manager = NormalStateManager()
-        self.validation_results = []
+    try:
+        # 간단한 통계 기반 이상탐지
+        import pandas as pd
+        import numpy as np
         
-        # 테이블 매핑 (데이터베이스 테이블명 → 내부 키)
-        self.table_mapping = {
-            'SEMI_LOT_MANAGE': 'semi_lot_manage',
-            'SEMI_PROCESS_HISTORY': 'semi_process_history', 
-            'SEMI_PARAM_MEASURE': 'semi_param_measure',
-            'SEMI_EQUIPMENT_SENSOR': 'semi_equipment_sensor',
-            'SEMI_PHOTO_SENSORS': 'semi_photo_sensors',
-            'SEMI_ETCH_SENSORS': 'semi_etch_sensors',
-            'SEMI_CVD_SENSORS': 'semi_cvd_sensors',
-            'SEMI_IMPLANT_SENSORS': 'semi_implant_sensors',
-            'SEMI_CMP_SENSORS': 'semi_cmp_sensors',
-            'SEMI_SENSOR_ALERT_CONFIG': 'semi_alert_config'
-        }
-        
-    def _default_config(self):
-        return {
-            'test_size': 0.3,
-            'random_state': 42,
-            'split_by': 'time'  # 'time' or 'random'
-        }
-    
-    def setup_and_train_model(self, data_path: str):
-        """
-        데이터 로딩, 분할 및 모델 훈련 (최초 1회 실행)
-        """
-        print("=== 모델 설정 및 훈련 단계 ===")
-        
-        # 1. 전체 데이터 로딩
-        print("1. 전체 데이터 로딩 중...")
-        all_datasets = self.detector.load_local_data_and_explore(data_path)
-        
-        if not all_datasets:
-            print("로딩된 데이터가 없습니다.")
-            return False
-        
-        # 2. 데이터 검증
-        print("2. 데이터 정합성 검증 중...")
-        for table_name, df in all_datasets.items():
-            validation = self.data_validator.validate_data_integrity(df, table_name)
-            self.validation_results.append(validation)
-            df_clean = self.data_validator.preprocess_and_clean(df, table_name)
-            all_datasets[table_name] = df_clean
-        
-        # 3. 데이터 분할
-        print("3. 데이터 Train/Test 분할 중...")
-        train_datasets, test_datasets = self.data_splitter.split_datasets(
-            all_datasets, split_by=self.config['split_by']
-        )
-        
-        # 4. 모델 훈련
-        print("4. 모델 훈련 중...")
-        model, feature_cols = self.detector.train_model(train_datasets)
-        
-        if model is None:
-            print("모델 훈련 실패")
-            return False
-        
-        # 5. 모델 저장
-        print("5. 모델 저장 중...")
-        training_info = {
-            'total_tables': len(train_datasets),
-            'total_train_records': sum(len(df) for df in train_datasets.values()),
-            'total_test_records': sum(len(df) for df in test_datasets.values()),
-            'split_method': self.config['split_by']
-        }
-        
-        performance_metrics = {
-            'threshold': self.detector.threshold,
-            'feature_count': len(feature_cols)
-        }
-        
-        success = self.model_manager.save_model(
-            model, self.detector.scaler, feature_cols, 
-            self.detector.threshold, training_info, performance_metrics
-        )
-        
-        if success:
-            print("모델 설정 및 훈련 완료!")
-            
-            # 6. Test 데이터로 성능 검증
-            print("6. Test 데이터로 성능 검증 중...")
-            result_df = self.detector.predict_with_trained_model(test_datasets, feature_cols)
-            if result_df is not None:
-                self.detector.analyze_results(result_df)
-            
-            return True
-        else:
-            print("모델 저장 실패")
-            return False
-    
-    def fast_anomaly_detection(self, test_data_path: str = None, test_datasets: Dict = None):
-        """
-        시나리오 B: 저장된 모델로 빠른 이상탐지 수행
-        """
-        print("=== 시나리오 B: 빠른 이상탐지 수행 ===")
-        
-        # 1. 저장된 모델 로드
-        print("1. 저장된 모델 로딩 중...")
-        model, scaler, metadata = self.model_manager.load_model()
-        
-        if model is None:
-            print("저장된 모델이 없습니다. setup_and_train_model()을 먼저 실행하세요.")
-            return None, "", []
-        
-        self.detector.models['autoencoder'] = model
-        self.detector.scaler = scaler
-        self.detector.threshold = metadata['threshold']
-        feature_cols = metadata['feature_columns']
-        
-        print(f"모델 로드 완료: {metadata['model_version']}")
-        print(f"특성 수: {len(feature_cols)}")
-        print(f"임계값: {metadata['threshold']}")
-        
-        # 2. 테스트 데이터 준비
-        if test_datasets is None:
-            if test_data_path:
-                print("2. 테스트 데이터 로딩 중...")
-                test_datasets = self.detector.load_local_data_and_explore(test_data_path)
-            else:
-                print("테스트 데이터가 제공되지 않았습니다.")
-                return None, "", []
-        
-        # 3. 빠른 이상탐지 수행
-        print("3. 이상탐지 수행 중...")
-        result_df = self.detector.predict_with_trained_model(test_datasets, feature_cols)
-        
-        if result_df is None:
-            return [], "", []
-        
-        # 4. 결과 분석 및 시각화
-        print("4. 결과 분석 및 시각화 중...")
-        analysis_results = self.detector.analyze_results(result_df)
-        svg_content = self.detector.visualize_results(result_df)
-        
-        # 5. 이상 LOT 추출
-        anomalies = result_df[result_df['predicted_anomaly']] if 'predicted_anomaly' in result_df.columns else pd.DataFrame()
-        anomaly_records = anomalies.to_dict('records') if len(anomalies) > 0 else []
-        
-        print(f"빠른 이상탐지 완료!")
-        print(f"- 총 {len(result_df)}개 LOT 분석")
-        print(f"- {len(anomaly_records)}개 이상 LOT 탐지")
-        
-        return anomaly_records, svg_content, analysis_results
-    
-    def get_system_status(self):
-        """
-        실시간 시스템 상태 조회 (정상 상태 프로파일 포함)
-        """
-        model_status = self.get_model_status()
-        normal_state_summary = self.normal_state_manager.get_all_profiles_summary()
-        
-        return {
-            'model_status': model_status,
-            'normal_state_profiles': normal_state_summary,
-            'data_quality_summary': {
-                'total_validations': len(self.validation_results),
-                'average_quality_score': np.mean([r['data_quality_score'] for r in self.validation_results]) if self.validation_results else 0,
-                'critical_issues': sum(len(r['anomalies']) for r in self.validation_results),
-                'last_validation': self.validation_results[-1]['validation_timestamp'] if self.validation_results else None
-            },
-            'system_timestamp': datetime.now().isoformat()
-        }
-    
-    def get_model_status(self):
-        """
-        저장된 모델 상태 조회
-        """
-        _, _, metadata = self.model_manager.load_model()
-        
-        if metadata:
-            return {
-                'model_available': True,
-                'model_version': metadata['model_version'],
-                'training_timestamp': metadata['training_timestamp'],
-                'feature_count': len(metadata['feature_columns']),
-                'threshold': metadata['threshold'],
-                'training_info': metadata['training_data_info']
-            }
-        else:
-            return {
-                'model_available': False,
-                'message': '저장된 모델이 없습니다.'
-            }
-    
-    def get_model_status(self):
-        """
-        저장된 모델 상태 조회
-        """
-        _, _, metadata = self.model_manager.load_model()
-        
-        if metadata:
-            return {
-                'model_available': True,
-                'model_version': metadata['model_version'],
-                'training_timestamp': metadata['training_timestamp'],
-                'feature_count': len(metadata['feature_columns']),
-                'threshold': metadata['threshold'],
-                'training_info': metadata['training_data_info']
-            }
-        else:
-            return {
-                'model_available': False,
-                'message': '저장된 모델이 없습니다.'
-            }
-    def load_real_time_data_from_database(self, prism_core_db, start: str, end: str) -> Dict[str, pd.DataFrame]:
-        """
-        데이터베이스에서 실시간 데이터 로딩 및 정상 상태 프로파일 업데이트
-        
-        Args:
-            prism_core_db: PrismCoreDataBase 인스턴스
-            start: 시작 시간
-            end: 종료 시간
-            
-        Returns:
-            Dict[str, pd.DataFrame]: 정제된 데이터셋
-        """
-        print("실시간 데이터베이스에서 데이터 수집 중...")
-        
-        # 데이터베이스에서 실시간 데이터 로딩
-        raw_datasets = load_data_from_database(prism_core_db, start, end)
-        
-        if not raw_datasets:
-            print("로딩된 데이터가 없습니다.")
-            return {}
-        
-        # 테이블명 매핑 (데이터베이스명 → 내부키)
-        datasets = {}
-        for db_table_name, df in raw_datasets.items():
-            internal_key = self.table_mapping.get(db_table_name, db_table_name.lower())
-            datasets[internal_key] = df
-            
-            # 데이터 품질 검증 결과 저장
-            validation_result = self.data_validator.validate_data_integrity(df, db_table_name)
-            self.validation_results.append(validation_result)
-        
-        # 정상 상태 프로파일 업데이트 (장비 센서 데이터가 있는 경우)
-        self._update_normal_state_profiles(datasets)
-        
-        print(f"실시간 데이터 수집 완료: {len(datasets)}개 테이블")
-        return datasets
-    
-    def _update_normal_state_profiles(self, datasets: Dict[str, pd.DataFrame]):
-        """
-        실시간 데이터로 정상 상태 프로파일 업데이트
-        """
-        print("정상 상태 프로파일 업데이트 중...")
-        
-        sensor_tables = ['semi_photo_sensors', 'semi_etch_sensors', 'semi_cvd_sensors', 
-                        'semi_implant_sensors', 'semi_cmp_sensors']
-        
-        updated_profiles = 0
-        
-        for table_key in sensor_tables:
-            if table_key not in datasets:
+        for column in data.select_dtypes(include=[np.number]).columns:
+            if column == 'timestamp':
                 continue
                 
-            df = datasets[table_key]
-            
-            # 장비 ID와 공정 단계 컬럼 확인
-            equipment_col = None
-            process_col = None
-            
-            for col in ['equipment_id', 'EQUIPMENT_ID']:
-                if col in df.columns:
-                    equipment_col = col
-                    break
-                    
-            for col in ['process_step', 'PROCESS_STEP', 'current_step', 'CURRENT_STEP']:
-                if col in df.columns:
-                    process_col = col
-                    break
-            
-            if equipment_col and len(df) > 50:  # 최소 50개 샘플 필요
-                # 장비별로 정상 상태 프로파일 업데이트
-                equipment_groups = df.groupby(equipment_col)
-                
-                for equipment_id, equipment_data in equipment_groups:
-                    if len(equipment_data) > 10:  # 최소 10개 샘플
-                        process_step = equipment_data[process_col].iloc[0] if process_col else 'UNKNOWN'
-                        
-                        # 정상 상태 프로파일 업데이트
-                        self.normal_state_manager.update_normal_profile(
-                            str(equipment_id), str(process_step), equipment_data
-                        )
-                        updated_profiles += 1
-        
-        print(f"정상 상태 프로파일 업데이트 완료: {updated_profiles}개 프로파일")
-    
-    def detect_profile_drifts(self, datasets: Dict[str, pd.DataFrame]) -> List[Dict]:
-        """
-        정상 상태 프로파일 드리프트 감지
-        """
-        print("정상 상태 프로파일 드리프트 감지 중...")
-        
-        drift_results = []
-        sensor_tables = ['semi_photo_sensors', 'semi_etch_sensors', 'semi_cvd_sensors', 
-                        'semi_implant_sensors', 'semi_cmp_sensors']
-        
-        for table_key in sensor_tables:
-            if table_key not in datasets:
+            values = data[column].dropna()
+            if len(values) == 0:
                 continue
                 
-            df = datasets[table_key]
+            mean = values.mean()
+            std = values.std()
             
-            # 장비별 드리프트 검사
-            equipment_col = None
-            process_col = None
-            
-            for col in ['equipment_id', 'EQUIPMENT_ID']:
-                if col in df.columns:
-                    equipment_col = col
-                    break
-                    
-            for col in ['process_step', 'PROCESS_STEP', 'current_step', 'CURRENT_STEP']:
-                if col in df.columns:
-                    process_col = col
-                    break
-            
-            if equipment_col:
-                equipment_groups = df.groupby(equipment_col)
+            if std > 0:
+                # 3-sigma 규칙 적용
+                threshold_upper = mean + 3 * std
+                threshold_lower = mean - 3 * std
                 
-                for equipment_id, equipment_data in equipment_groups:
-                    if len(equipment_data) > 5:  # 최소 5개 샘플
-                        process_step = equipment_data[process_col].iloc[0] if process_col else 'UNKNOWN'
-                        
-                        # 드리프트 감지
-                        drift_result = self.normal_state_manager.detect_profile_drift(
-                            str(equipment_id), str(process_step), equipment_data
-                        )
-                        
-                        if drift_result.get('drift_detected'):
-                            drift_results.append(drift_result)
-        
-        print(f"프로파일 드리프트 감지 완료: {len(drift_results)}개 드리프트 발견")
-        return drift_results
-
-    def fast_anomaly_detection_with_realtime_data(self, prism_core_db=None, start: str = None, 
-                                                 end: str = None, test_data_path: str = None, 
-                                                 test_datasets: Dict = None):
-        """
-        실시간 데이터베이스 연동 빠른 이상탐지 수행
-        
-        Args:
-            prism_core_db: 실시간 데이터베이스 연결
-            start: 시작 시간 (데이터베이스 모드)
-            end: 종료 시간 (데이터베이스 모드)
-            test_data_path: 로컬 파일 경로 (파일 모드)
-            test_datasets: 직접 제공된 데이터 (직접 모드)
-            
-        Returns:
-            Tuple: (이상 LOT 리스트, SVG 시각화, 분석 결과, 드리프트 결과)
-        """
-        print("=== 실시간 데이터베이스 연동 이상탐지 수행 ===")
-        
-        # 1. 저장된 모델 로드
-        print("1. 저장된 모델 로딩 중...")
-        model, scaler, metadata = self.model_manager.load_model()
-        
-        if model is None:
-            print("저장된 모델이 없습니다. setup_and_train_model()을 먼저 실행하세요.")
-            return None, "", [], []
-        
-        self.detector.models['autoencoder'] = model
-        self.detector.scaler = scaler
-        self.detector.threshold = metadata['threshold']
-        feature_cols = metadata['feature_columns']
-        
-        print(f"모델 로드 완료: {metadata['model_version']}")
-        print(f"특성 수: {len(feature_cols)}")
-        print(f"임계값: {metadata['threshold']}")
-        
-        # 2. 데이터 준비 (우선순위: 직접 제공 > 데이터베이스 > 파일)
-        if test_datasets is not None:
-            print("2. 직접 제공된 테스트 데이터 사용")
-            datasets = test_datasets
-            drift_results = []
-            
-        elif prism_core_db and start and end:
-            print("2. 실시간 데이터베이스에서 데이터 로딩")
-            datasets = self.load_real_time_data_from_database(prism_core_db, start, end)
-            
-            if not datasets:
-                return [], "", [], []
+                anomaly_indices = values[(values > threshold_upper) | (values < threshold_lower)].index
                 
-            # 정상 상태 프로파일 드리프트 감지
-            drift_results = self.detect_profile_drifts(datasets)
-            
-        elif test_data_path:
-            print("2. 로컬 파일에서 테스트 데이터 로딩")
-            datasets = self.detector.load_local_data_and_explore(test_data_path)
-            drift_results = []
-            
-        else:
-            print("테스트 데이터가 제공되지 않았습니다.")
-            return None, "", [], []
-        
-        # 3. 빠른 이상탐지 수행
-        print("3. 이상탐지 수행 중...")
-        result_df = self.detector.predict_with_trained_model(datasets, feature_cols)
-        
-        if result_df is None:
-            return [], "", [], drift_results
-        
-        # 4. 결과 분석 및 시각화
-        print("4. 결과 분석 및 시각화 중...")
-        analysis_results = self.detector.analyze_results(result_df)
-        svg_content = self.detector.visualize_results(result_df)
-        
-        # 5. 이상 LOT 추출
-        anomalies = result_df[result_df['predicted_anomaly']] if 'predicted_anomaly' in result_df.columns else pd.DataFrame()
-        anomaly_records = anomalies.to_dict('records') if len(anomalies) > 0 else []
-        
-        # 6. 결과 요약
-        print(f"실시간 이상탐지 완료!")
-        print(f"- 총 {len(result_df)}개 LOT 분석")
-        print(f"- {len(anomaly_records)}개 이상 LOT 탐지")
-        print(f"- {len(drift_results)}개 프로파일 드리프트 감지")
-        
-        # 데이터 품질 요약
-        if self.validation_results:
-            avg_quality = np.mean([r['data_quality_score'] for r in self.validation_results])
-            print(f"- 평균 데이터 품질: {avg_quality:.1f}점")
-        
-        return anomaly_records, svg_content, analysis_results, drift_results
+                for idx in anomaly_indices:
+                    anomalies.append({
+                        'table_name': table_name,
+                        'column': column,
+                        'value': float(values[idx]),
+                        'threshold_upper': float(threshold_upper),
+                        'threshold_lower': float(threshold_lower),
+                        'anomaly_score': float(abs(values[idx] - mean) / std),
+                        'timestamp': data.loc[idx, 'timestamp'] if 'timestamp' in data.columns else None,
+                        'equipment_id': data.loc[idx, 'equipment_id'] if 'equipment_id' in data.columns else None,
+                    })
     
-    def fast_anomaly_detection(self, test_data_path: str = None, test_datasets: Dict = None):
-        """
-        시나리오 B: 저장된 모델로 빠른 이상탐지 수행 (기존 메서드 - 호환성 유지)
-        """
-        print("=== 시나리오 B: 빠른 이상탐지 수행 ===")
-        
-        # 1. 저장된 모델 로드
-        print("1. 저장된 모델 로딩 중...")
-        model, scaler, metadata = self.model_manager.load_model()
-        
-        if model is None:
-            print("저장된 모델이 없습니다. setup_and_train_model()을 먼저 실행하세요.")
-            return None, "", []
-        
-        self.detector.models['autoencoder'] = model
-        self.detector.scaler = scaler
-        self.detector.threshold = metadata['threshold']
-        feature_cols = metadata['feature_columns']
-        
-        print(f"모델 로드 완료: {metadata['model_version']}")
-        print(f"특성 수: {len(feature_cols)}")
-        print(f"임계값: {metadata['threshold']}")
-        
-        # 2. 테스트 데이터 준비
-        if test_datasets is None:
-            if test_data_path:
-                print("2. 테스트 데이터 로딩 중...")
-                test_datasets = self.detector.load_local_data_and_explore(test_data_path)
-            else:
-                print("테스트 데이터가 제공되지 않았습니다.")
-                return None, "", []
-        
-        # 3. 빠른 이상탐지 수행
-        print("3. 이상탐지 수행 중...")
-        result_df = self.detector.predict_with_trained_model(test_datasets, feature_cols)
-        
-        if result_df is None:
-            return [], "", []
-        
-        # 4. 결과 분석 및 시각화
-        print("4. 결과 분석 및 시각화 중...")
-        analysis_results = self.detector.analyze_results(result_df)
-        svg_content = self.detector.visualize_results(result_df)
-        
-        # 5. 이상 LOT 추출
-        anomalies = result_df[result_df['predicted_anomaly']] if 'predicted_anomaly' in result_df.columns else pd.DataFrame()
-        anomaly_records = anomalies.to_dict('records') if len(anomalies) > 0 else []
-        
-        print(f"빠른 이상탐지 완료!")
-        print(f"- 총 {len(result_df)}개 LOT 분석")
-        print(f"- {len(anomaly_records)}개 이상 LOT 탐지")
-        
-        return anomaly_records, svg_content, analysis_results
-        model_status = self.get_model_status()
-        normal_state_summary = self.normal_state_manager.get_all_profiles_summary()
-        
-        return {
-            'model_status': model_status,
-            'normal_state_profiles': normal_state_summary,
-            'data_quality_summary': {
-                'total_validations': len(self.validation_results),
-                'average_quality_score': np.mean([r['data_quality_score'] for r in self.validation_results]) if self.validation_results else 0,
-                'critical_issues': sum(len(r['anomalies']) for r in self.validation_results),
-                'last_validation': self.validation_results[-1]['validation_timestamp'] if self.validation_results else None
-            },
-            'system_timestamp': datetime.now().isoformat()
-        }
-
-# 편의 함수들
-def setup_model_training(data_path: str, model_dir: str = "models"):
-    """
-    모델 설정 및 훈련 (최초 1회 실행)
-    """
-    monitor = EnhancedSemiconductorRealTimeMonitor(model_dir=model_dir)
-    return monitor.setup_and_train_model(data_path)
-
-def detect_anomalies_fast(test_data_path: str = None, test_datasets: Dict = None, model_dir: str = "models"):
-    """
-    시나리오 B: 빠른 이상탐지 수행 (로컬 파일 모드)
-    """
-    monitor = EnhancedSemiconductorRealTimeMonitor(model_dir=model_dir)
-    return monitor.fast_anomaly_detection(test_data_path, test_datasets)
-
-def detect_anomalies_realtime(prism_core_db, start: str, end: str, model_dir: str = "models"):
-    """
-    실시간 데이터베이스 연동 이상탐지 수행
+    except Exception as e:
+        print(f"기본 이상탐지 중 오류: {e}")
     
-    Args:
-        prism_core_db: PrismCoreDataBase 인스턴스
-        start: 시작 시간 (ISO format)
-        end: 종료 시간 (ISO format)
-        model_dir: 모델 저장 디렉토리
-        
-    Returns:
-        Tuple: (이상 LOT 리스트, SVG 시각화, 분석 결과, 드리프트 결과)
-    """
-    monitor = EnhancedSemiconductorRealTimeMonitor(model_dir=model_dir)
-    return monitor.fast_anomaly_detection_with_realtime_data(
-        prism_core_db=prism_core_db, 
-        start=start, 
-        end=end
-    )
-
-def get_model_info(model_dir: str = "models"):
-    """
-    저장된 모델 정보 조회
-    """
-    monitor = EnhancedSemiconductorRealTimeMonitor(model_dir=model_dir)
-    return monitor.get_model_status()
-
-def get_system_status(model_dir: str = "models"):
-    """
-    전체 시스템 상태 조회 (모델 + 정상 상태 프로파일 + 데이터 품질)
-    """
-    monitor = EnhancedSemiconductorRealTimeMonitor(model_dir=model_dir)
-    return monitor.get_system_status()
-
-def get_normal_state_summary(model_dir: str = "models"):
-    """
-    정상 상태 프로파일 요약 조회
-    """
-    manager = NormalStateManager()
-    return manager.get_all_profiles_summary()
-
-def detect_equipment_drift(prism_core_db, equipment_id: str, process_step: str, 
-                          start: str, end: str, model_dir: str = "models"):
-    """
-    특정 장비의 프로파일 드리프트 감지
-    
-    Args:
-        prism_core_db: 데이터베이스 연결
-        equipment_id: 장비 ID  
-        process_step: 공정 단계
-        start: 시작 시간
-        end: 종료 시간
-        
-    Returns:
-        Dict: 드리프트 감지 결과
-    """
-    monitor = EnhancedSemiconductorRealTimeMonitor(model_dir=model_dir)
-    
-    # 해당 기간 데이터 로딩
-    datasets = monitor.load_real_time_data_from_database(prism_core_db, start, end)
-    
-    # 해당 장비 데이터만 필터링
-    equipment_data = None
-    for table_key, df in datasets.items():
-        if 'equipment_id' in df.columns or 'EQUIPMENT_ID' in df.columns:
-            equipment_col = 'equipment_id' if 'equipment_id' in df.columns else 'EQUIPMENT_ID'
-            equipment_df = df[df[equipment_col] == equipment_id]
-            
-            if len(equipment_df) > 0:
-                equipment_data = equipment_df
-                break
-    
-    if equipment_data is None or len(equipment_data) == 0:
-        return {
-            'status': 'no_data',
-            'message': f'장비 {equipment_id}의 데이터가 없습니다.',
-            'equipment_id': equipment_id,
-            'process_step': process_step
-        }
-    
-    # 드리프트 감지
-    return monitor.normal_state_manager.detect_profile_drift(
-        equipment_id, process_step, equipment_data
-    )
+    return anomalies

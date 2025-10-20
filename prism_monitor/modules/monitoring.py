@@ -1,6 +1,9 @@
+import os
+import time
 import pandas as pd
 import json
 
+from glob import glob
 from tinydb import TinyDB, Query
 
 from prism_monitor.data.database import PrismCoreDataBase
@@ -18,28 +21,29 @@ def monitoring_event_output(status="complete", anomaly_detected=True, descriptio
     }
     return res
 
-
-def monitoring_event_detect(monitor_db: TinyDB, prism_core_db: PrismCoreDataBase, start: str, end: str, task_id: str):
-    anomalies, svg, analysis, drift_results = detect_anomalies_realtime(prism_core_db, start=start, end=end)
+def monitoring_event_detect(monitor_db: TinyDB, prism_core_db, start: str, end: str, task_id: str):
+    """모니터링 이벤트 감지 함수"""
+    # detect_anomalies_realtime가 이제 5개 값을 반환 (drift_svg 추가)
+    anomalies, drift_results, analysis, vis_json = detect_anomalies_realtime(prism_core_db, start=start, end=end)
 
     event_record = {
         "task_id": task_id,
         "records": analysis,
         "validation": {
             "anomalies": anomalies,
-            "drift_results": drift_results
+            "drift_results": drift_results,
         }
     }
-    print(analysis)
+    print('analysis=', analysis)
     
     Event = Query()
-    monitor_db.table('EventDetectHistory').upsert(event_record, Event.task_id == task_id)
-
+    monitor_db.table('EventDetectHistory').upsert({'task_id':task_id, 'records':analysis}, Event.task_id == task_id)
+    print(event_record)
     return {
         'result': {
             'status': 'complete',
             'anomalies': True if len(anomalies) else False,
-            'svg': svg
+            'drift_detected': True if len(drift_results) else False,  # 드리프트 감지 여부 추가
         }
     }
 
@@ -96,14 +100,26 @@ def monitoring_event_precursor(monitor_db: TinyDB, prism_core_db: PrismCoreDataB
     end_time = pd.to_datetime(end, utc=True)
 
     datasets = {}
-    for table_name in prism_core_db.get_tables():
-        df = prism_core_db.get_table_data(table_name)
-        if 'timestamp' in df.columns:
-            df['timestamp'] = pd.to_datetime(df['timestamp'], utc=True, errors='coerce')
-            df = df[(df['timestamp'] >= start_time) & (df['timestamp'] <= end_time)]
-        datasets[table_name] = df
+    try:
+        raise ValueError('use local data')
+        for table_name in prism_core_db.get_tables():
+            df = prism_core_db.get_table_data(table_name)
+            if 'timestamp' in df.columns:
+                df['timestamp'] = pd.to_datetime(df['timestamp'], utc=True, errors='coerce')
+                df = df[(df['timestamp'] >= start_time) & (df['timestamp'] <= end_time)]
+            datasets[table_name] = df
+    except Exception as e:
+        print(f"dataset error raised {e}, use local data")
+        data_paths = glob('prism_monitor/data/Industrial_DB_sample/*.csv')
+        for data_path in data_paths:
+            df = pd.read_csv(data_path)
+            table_name = os.path.basename(data_path).split('.csv')[0].lower()
+            if 'timestamp' in df.columns:
+                df['timestamp'] = pd.to_datetime(df['timestamp'], utc=True, errors='coerce')
+                df = df[(df['timestamp'] >= start_time) & (df['timestamp'] <= end_time)]
+            datasets[table_name] = df
+
     res = precursor(datasets)
-    print(res)
     Event = Query()
     monitor_db.table('EventPrecursorHistory').upsert(res, Event.task_id == task_id)
 
@@ -139,6 +155,8 @@ def monitoring_event_evaluate_risk(llm_url, monitor_db: TinyDB, task_id, topk=5)
         task_instructions=task_instructions,
         task_instructions_history=task_instructions_history
     )
+
+
     return {
         'eventEvaluation':event_evaluation,
         'predictionEvaluation':prediction_evaluation,
@@ -152,3 +170,30 @@ def monitoring_dashboard_update(field: str = "line_id", type: str = "LINE", stat
         "code": 200,
         "message": "대시보드 업데이트 완료"
     }
+
+# 아래 코드가 원래 코드 이 부분 주석 지우면 됨
+# def monitoring_real_time(prism_core_db):
+#     """모니터링 이벤트 감지 함수"""
+#     # detect_anomalies_realtime가 이제 5개 값을 반환 (drift_svg 추가)
+#     end = time.now()
+#     start = time.now() - pd.Timedelta(minutes=10)
+#     anomalies, drift_results, analysis, vis_json = detect_anomalies_realtime(prism_core_db, start=start, end=end)
+#     result = vis_json
+
+#     return {
+#         'result': result
+#     }
+
+def monitoring_real_time(prism_core_db):
+    """모니터링 이벤트 감지 함수"""
+    end = pd.Timestamp.now()
+    start = end - pd.Timedelta(minutes=10)
+    
+    anomalies, drift_results, analysis, vis_json = detect_anomalies_realtime(
+        prism_core_db,
+        start=start.isoformat(),  # 문자열로 변환
+        end=end.isoformat()       # 문자열로 변환
+    )
+    print(vis_json)
+    
+    return {'visJson': vis_json}  # vis_json 직접 반환

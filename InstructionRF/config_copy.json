@@ -1,0 +1,12 @@
+{
+  "server": {
+    "llm_api_url": "http://localhost:8000/api/agents",
+    "db_api_url": "http://localhost:8000/api/db",
+    "timeout": 30
+  },
+  "model": {
+    "name": "qwen-1.5b",
+    "max_tokens": 2000,
+    "temperature": 0.1
+  }
+}
