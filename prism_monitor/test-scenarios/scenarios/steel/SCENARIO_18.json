@@ -1,0 +1,751 @@
+{
+  "scenario_id": "SCENARIO_18",
+  "version": "1.0",
+  "created_date": "2025-10-14",
+  "metadata": {
+    "title": "철강 전로 공정 슬래그 조성 예측 분석",
+    "title_en": "Steel Converter Slag Composition Predictive Analysis",
+    "industry": "steel",
+    "process": "Converter",
+    "workflow_type": "monitoring_prediction",
+    "workflow_level": 2,
+    "complexity": "medium",
+    "description": "전로 공정에서 온도와 산소 유량 변화로 인한 슬래그 조성 변화를 감지하고, 향후 탈탄 효율 및 강 품질에 미칠 영향을 예측하는 시나리오. 슬래그 조성은 정련 효율, 탈황, 탈인 성능에 직접적인 영향을 미침",
+    "description_en": "Scenario for detecting slag composition changes due to temperature and oxygen flow variations in converter process, and predicting future decarburization efficiency and steel quality impact. Slag composition directly affects refining efficiency, desulfurization, and dephosphorization performance",
+    "tags": [
+      "steel",
+      "converter",
+      "slag",
+      "temperature",
+      "oxygen",
+      "refining",
+      "quality_prediction"
+    ]
+  },
+  "query": {
+    "text": "전로의 TEMPERATURE와 OXYGEN_FLOW가 변동하고 있습니다. SLAG_COMPOSITION 상태를 예측해주세요.",
+    "text_en": "Converter TEMPERATURE and OXYGEN_FLOW are fluctuating. Please predict SLAG_COMPOSITION status.",
+    "time_range": {
+      "start": "2025-05-01T00:00:00Z",
+      "end": "2025-05-01T08:00:00Z"
+    },
+    "user_id": "steel_process_engineer_02",
+    "priority": "high",
+    "expected_workflow": "monitoring_prediction"
+  },
+  "timeseries_data": {
+    "source_file": "/test_data/steel/converter_data.csv",
+    "parameters": [
+      {
+        "name": "TEMPERATURE",
+        "unit": "°C",
+        "description": "전로 용강 온도",
+        "normal_range": [
+          1600,
+          1680
+        ],
+        "critical_threshold": 1720
+      },
+      {
+        "name": "OXYGEN_FLOW",
+        "unit": "Nm³/min",
+        "description": "산소 취입량",
+        "normal_range": [
+          400,
+          500
+        ],
+        "critical_threshold": 550
+      },
+      {
+        "name": "LANCE_POSITION",
+        "unit": "mm",
+        "description": "랜스 높이",
+        "normal_range": [
+          1400,
+          1600
+        ],
+        "critical_threshold": 1700
+      },
+      {
+        "name": "PRESSURE",
+        "unit": "kPa",
+        "description": "전로 내압",
+        "normal_range": [
+          95,
+          105
+        ],
+        "critical_threshold": 110
+      },
+      {
+        "name": "SLAG_COMPOSITION",
+        "unit": "%CaO",
+        "description": "슬래그 염기도 (CaO 함량)",
+        "normal_range": [
+          45,
+          55
+        ],
+        "critical_threshold": 60
+      }
+    ],
+    "sampling_interval": "10s",
+    "data_points": 2880,
+    "time_range": {
+      "start": "2025-05-01T00:00:00Z",
+      "end": "2025-05-01T08:00:00Z"
+    },
+    "anomaly_info": {
+      "type": "temperature_oxygen_fluctuation",
+      "description": "온도와 산소 유량 변동으로 슬래그 조성 변화",
+      "start_time": "2025-05-01T05:00:00Z",
+      "peak_time": "2025-05-01T08:00:00Z",
+      "affected_parameters": [
+        "TEMPERATURE",
+        "OXYGEN_FLOW",
+        "SLAG_COMPOSITION"
+      ]
+    }
+  },
+  "agent_workflow": {
+    "step_1_user_to_orchestration": {
+      "from": "User",
+      "to": "Orchestration Agent",
+      "timestamp": "2025-05-01T08:00:00Z",
+      "api_endpoint": "GET /api/v1/orchestrate",
+      "request": {
+        "query": "전로의 TEMPERATURE와 OXYGEN_FLOW가 변동하고 있습니다. SLAG_COMPOSITION 상태를 예측해주세요.",
+        "time_range": {
+          "start": "2025-05-01T00:00:00Z",
+          "end": "2025-05-01T08:00:00Z"
+        },
+        "user_id": "steel_process_engineer_02",
+        "priority": "high"
+      },
+      "response": {
+        "status": "success",
+        "workflow_id": "wf_steel_converter_002",
+        "workflow_type": "monitoring_prediction",
+        "message": "철강 전로 공정 슬래그 조성 예측 워크플로우를 시작합니다.",
+        "next_agent": "Monitoring Agent"
+      }
+    },
+    "step_2_orchestration_to_monitoring": {
+      "from": "Orchestration Agent",
+      "to": "Monitoring Agent",
+      "timestamp": "2025-05-01T08:00:05Z",
+      "api_endpoint": "POST /api/v1/workflow/start",
+      "request": {
+        "workflow_id": "wf_steel_converter_002",
+        "workflow_type": "monitoring_prediction",
+        "task": "analyze_converter_process_variation",
+        "query": {
+          "text": "전로의 TEMPERATURE와 OXYGEN_FLOW가 변동하고 있습니다. SLAG_COMPOSITION 상태를 예측해주세요.",
+          "time_range": {
+            "start": "2025-05-01T00:00:00Z",
+            "end": "2025-05-01T08:00:00Z"
+          }
+        },
+        "context": {
+          "industry": "steel",
+          "process": "Converter",
+          "priority": "high"
+        }
+      },
+      "response": {
+        "status": "success",
+        "workflow_id": "wf_steel_converter_002",
+        "agent": "Monitoring Agent",
+        "analysis_result": {
+          "anomaly_detected": true,
+          "anomaly_type": "process_parameter_fluctuation",
+          "severity": "high",
+          "affected_parameters": [
+            {
+              "name": "TEMPERATURE",
+              "current_value": 1695.0,
+              "normal_range": [
+                1600,
+                1680
+              ],
+              "deviation": 15.0,
+              "fluctuation_amplitude": 42.0,
+              "status": "elevated_and_unstable"
+            },
+            {
+              "name": "OXYGEN_FLOW",
+              "current_value": 485.0,
+              "normal_range": [
+                400,
+                500
+              ],
+              "deviation": 0.0,
+              "fluctuation_amplitude": 68.0,
+              "status": "normal_but_unstable"
+            },
+            {
+              "name": "SLAG_COMPOSITION",
+              "current_value": 52.8,
+              "normal_range": [
+                45,
+                55
+              ],
+              "deviation": 0.0,
+              "status": "normal_high"
+            },
+            {
+              "name": "LANCE_POSITION",
+              "current_value": 1520.0,
+              "normal_range": [
+                1400,
+                1600
+              ],
+              "deviation": 0.0,
+              "status": "normal"
+            },
+            {
+              "name": "PRESSURE",
+              "current_value": 101.2,
+              "normal_range": [
+                95,
+                105
+              ],
+              "deviation": 0.0,
+              "status": "normal"
+            }
+          ],
+          "trend_analysis": {
+            "TEMPERATURE": {
+              "direction": "fluctuating",
+              "pattern": "oscillation",
+              "amplitude": 42.0,
+              "frequency": "약 15-20회/시간",
+              "duration": "3 hours",
+              "statistical_significance": 0.96,
+              "baseline": 1640.0
+            },
+            "OXYGEN_FLOW": {
+              "direction": "fluctuating",
+              "pattern": "irregular",
+              "amplitude": 68.0,
+              "duration": "3 hours",
+              "correlation_with_temperature": 0.68
+            },
+            "SLAG_COMPOSITION": {
+              "direction": "increasing",
+              "rate": 2.6,
+              "correlation_with_temperature": 0.72,
+              "interpretation": "온도 상승으로 CaO 함량 증가 추세"
+            }
+          },
+          "root_cause_hypothesis": [
+            "산소 랜스 제어 불안정 (자동 제어 시스템 오류)",
+            "원료 장입량 변동 (석회석, 철광석)",
+            "용선 조성 편차 (Si, Mn 함량 변동)",
+            "랜스 노즐 막힘으로 산소 분산 불균일",
+            "전로 내화물 용손으로 열 손실 증가"
+          ],
+          "refining_impact_assessment": {
+            "decarburization_efficiency": {
+              "current": "약 85% (정상: 90-95%)",
+              "trend": "감소 추세",
+              "concern": "탄소 함량 목표 미달 위험"
+            },
+            "desulfurization_performance": {
+              "current": "약 78% (정상: 80-85%)",
+              "trend": "감소 추세",
+              "concern": "황 함량 기준 초과 위험"
+            },
+            "slag_basicity": {
+              "current": "2.8 (CaO/SiO2)",
+              "target": "2.5-3.0",
+              "status": "정상 범위 상한",
+              "trend": "증가 추세"
+            }
+          },
+          "quality_risk_assessment": {
+            "steel_grade_impact": "중간 탄소강 품질 저하 우려",
+            "carbon_content_deviation": "±0.02% (목표: ±0.01%)",
+            "sulfur_content_risk": "0.015% 초과 가능 (목표: ≤0.012%)",
+            "phosphorus_content": "정상 범위 (≤0.020%)"
+          },
+          "recommendation": "예측 분석을 통한 향후 슬래그 조성 및 품질 영향 파악 필요",
+          "summary_report": "## 철강 전로 공정 변동 감지 결과\n\n### 이상 감지\n- **이상 유형**: 공정 파라미터 변동 (Process Parameter Fluctuation)\n- **심각도**: 높음 (High)\n- **감지 시간**: 2025-05-01 08:00:00 UTC\n- **이상 시작 시점**: 2025-05-01 05:00:00 UTC (3시간 전)\n\n### 주요 지표 현황\n| 파라미터 | 현재값 | 정상범위 | 편차 | 변동폭 | 상태 |\n|---------|--------|----------|------|--------|------|\n| 용강 온도 | 1695°C | 1600-1680°C | +15°C | ±42°C | ⚠️ 상승 및 불안정 |\n| 산소 유량 | 485 Nm³/min | 400-500 Nm³/min | 0 | ±68 Nm³/min | ⚠️ 정상이나 불안정 |\n| 슬래그 염기도 | 52.8% CaO | 45-55% | 0 | - | ⚠️ 정상 상한 |\n| 랜스 높이 | 1520mm | 1400-1600mm | 0 | - | ✅ 정상 |\n| 전로 내압 | 101.2 kPa | 95-105 kPa | 0 | - | ✅ 정상 |\n\n### 변동 패턴 분석\n\n**온도 변동**\n- **패턴**: 진동 (Oscillation)\n- **진폭**: ±42°C (기준선 1640°C)\n- **빈도**: 약 15-20회/시간\n- **지속 시간**: 3시간\n- **통계적 유의성**: 96%\n\n**산소 유량 변동**\n- **패턴**: 불규칙 (Irregular)\n- **진폭**: ±68 Nm³/min\n- **온도 상관관계**: 0.68 (중간 정도 양의 상관)\n\n**슬래그 조성 변화**\n- **변화 방향**: 증가 추세\n- **증가율**: +2.6% CaO/시간\n- **온도 상관관계**: 0.72 (강한 양의 상관)\n- **해석**: 온도 상승으로 CaO 함량 증가\n\n### 원인 분석\n\n1. **산소 랜스 제어 불안정** (가능성 높음)\n   - 자동 제어 시스템 오류\n   - PLC 파라미터 부적합\n   - 피드백 센서 불량\n\n2. **원료 장입량 변동** (가능성 높음)\n   - 석회석 투입량 변화\n   - 철광석 조성 편차\n\n3. **용선 조성 편차** (가능성 중간)\n   - Si, Mn 함량 변동\n   - 고로 조업 변화 영향\n\n4. **랜스 노즐 막힘** (가능성 중간)\n   - 산소 분산 불균일\n   - 국부적 과산화\n\n5. **전로 내화물 용손** (가능성 낮음)\n   - 열 손실 증가\n   - 온도 제어 어려움\n\n### 정련 성능 영향\n\n**탈탄 효율**\n- 현재: 약 85% (정상: 90-95%)\n- 추세: 감소\n- 우려: 탄소 함량 목표 미달 위험\n\n**탈황 성능**\n- 현재: 약 78% (정상: 80-85%)\n- 추세: 감소\n- 우려: 황 함량 기준(≤0.012%) 초과 위험\n\n**슬래그 염기도**\n- 현재: 2.8 (CaO/SiO2)\n- 목표: 2.5-3.0\n- 상태: 정상 범위 상한\n- 추세: 증가 중\n\n### 품질 리스크\n\n- **강종 영향**: 중간 탄소강 품질 저하 우려\n- **탄소 함량**: ±0.02% 편차 (목표: ±0.01%)\n- **황 함량**: 0.015% 초과 가능 (목표: ≤0.012%)\n- **인 함량**: 정상 범위 (≤0.020%)\n\n### 권고사항\n예측 모델을 통해 향후 슬래그 조성 변화 및 강 품질에 미칠 영향을 정량적으로 파악할 필요가 있습니다."
+        },
+        "next_step": "prediction_analysis"
+      }
+    },
+    "step_3_monitoring_to_orchestration": {
+      "from": "Monitoring Agent",
+      "to": "Orchestration Agent",
+      "timestamp": "2025-05-01T08:00:25Z",
+      "api_endpoint": "POST /api/v1/orchestrate/report",
+      "request": {
+        "status": "success",
+        "workflow_id": "wf_steel_converter_002",
+        "agent": "Predictive Agent",
+        "prediction_result": {
+          "forecast_completed": true,
+          "model_used": "Metallurgical Kinetics Model for Converter Process",
+          "model_accuracy": 0.91,
+          "forecast_horizon": "2 heats",
+          "predictions": [
+            {
+              "heat_number": "다음 Heat (Heat N+1)",
+              "timestamp_end": "2025-05-01T08:25:00Z",
+              "SLAG_COMPOSITION": {
+                "predicted_value": 56.5,
+                "confidence_interval": [
+                  55.2,
+                  57.8
+                ],
+                "confidence_level": 0.95,
+                "normal_range_upper": 55.0,
+                "status": "above_normal"
+              },
+              "slag_basicity": {
+                "predicted_value": 3.15,
+                "confidence_interval": [
+                  3.05,
+                  3.25
+                ],
+                "target_range": [
+                  2.5,
+                  3.0
+                ],
+                "status": "above_target"
+              },
+              "decarburization_efficiency": {
+                "predicted_value": 0.82,
+                "target": 0.9,
+                "deficiency": 0.08
+              }
+            },
+            {
+              "heat_number": "다다음 Heat (Heat N+2)",
+              "timestamp_end": "2025-05-01T08:50:00Z",
+              "SLAG_COMPOSITION": {
+                "predicted_value": 59.2,
+                "confidence_interval": [
+                  57.6,
+                  60.8
+                ],
+                "confidence_level": 0.95,
+                "critical_threshold": 60.0,
+                "status": "approaching_critical"
+              },
+              "slag_basicity": {
+                "predicted_value": 3.38,
+                "confidence_interval": [
+                  3.25,
+                  3.51
+                ],
+                "target_range": [
+                  2.5,
+                  3.0
+                ],
+                "status": "critical_high",
+                "deviation": 0.38
+              },
+              "decarburization_efficiency": {
+                "predicted_value": 0.78,
+                "target": 0.9,
+                "deficiency": 0.12
+              }
+            }
+          ],
+          "quality_forecast": {
+            "carbon_content_deviation": {
+              "heat_n_plus_1": {
+                "predicted_deviation": "+0.018%",
+                "target_tolerance": "±0.010%",
+                "status": "out_of_tolerance"
+              },
+              "heat_n_plus_2": {
+                "predicted_deviation": "+0.025%",
+                "target_tolerance": "±0.010%",
+                "status": "significant_deviation"
+              }
+            },
+            "sulfur_content_forecast": {
+              "heat_n_plus_1": {
+                "predicted_value": "0.014%",
+                "specification": "≤0.012%",
+                "status": "above_spec"
+              },
+              "heat_n_plus_2": {
+                "predicted_value": "0.016%",
+                "specification": "≤0.012%",
+                "status": "significantly_above_spec"
+              }
+            },
+            "steel_grade_classification": {
+              "heat_n_plus_1": "B급 (품질 저하)",
+              "heat_n_plus_2": "C급 (불량)"
+            }
+          },
+          "production_impact": {
+            "defect_probability": {
+              "heat_n_plus_1": 0.65,
+              "heat_n_plus_2": 0.88
+            },
+            "expected_yield_loss": {
+              "heat_n_plus_1": "약 8톤 (Heat당 200톤 기준)",
+              "heat_n_plus_2": "약 18톤",
+              "total_2_heats": "약 26톤"
+            },
+            "rework_requirement": {
+              "heat_n_plus_1": "재정련 필요 가능성 높음",
+              "heat_n_plus_2": "재정련 필수"
+            },
+            "economic_loss": {
+              "material_loss": "약 1,300만원 (26톤 × 50만원/톤)",
+              "rework_cost": "약 800만원 (에너지 + 시간)",
+              "total_loss": "약 2,100만원"
+            }
+          },
+          "metallurgical_analysis": {
+            "slag_viscosity_forecast": {
+              "heat_n_plus_1": "증가 예상 (높은 CaO 함량)",
+              "heat_n_plus_2": "과도하게 증가 (슬래그 유동성 저하)",
+              "impact": "슬래그-메탈 반응 저해"
+            },
+            "refining_kinetics": {
+              "slag_metal_equilibrium": "불균형 상태 지속",
+              "oxygen_utilization": "비효율적 (과도한 슬래그 생성)",
+              "lance_optimization_needed": true
+            }
+          },
+          "recommendation": "즉시 석회석 투입량 감소 및 산소 랜스 제어 조정 필요",
+          "summary_report": "## 철강 전로 공정 슬래그 조성 예측 결과\n\n### 예측 모델 정보\n- **모델**: 제강 야금 반응 속도론 모델\n- **정확도**: 91%\n- **예측 구간**: 향후 2 Heat\n\n### 슬래그 조성 예측 (CaO 함량)\n\n| Heat | 예측값 | 신뢰구간 (95%) | 정상범위 | 상태 |\n|------|--------|----------------|----------|------|\n| 현재 | 52.8% | - | 45-55% | ⚠️ 정상 상한 |\n| N+1 | **56.5%** | 55.2-57.8% | 45-55% | 🚨 **범위 초과** |\n| N+2 | **59.2%** | 57.6-60.8% | 45-55% | 🚨 **임계 근접** |\n\n(임계값: 60% CaO)\n\n### 슬래그 염기도 예측 (CaO/SiO2)\n\n| Heat | 예측값 | 신뢰구간 (95%) | 목표범위 | 편차 | 상태 |\n|------|--------|----------------|----------|------|------|\n| 현재 | 2.80 | - | 2.5-3.0 | +0.30 | ⚠️ 목표 상한 |\n| N+1 | **3.15** | 3.05-3.25 | 2.5-3.0 | **+0.65** | 🚨 **목표 초과** |\n| N+2 | **3.38** | 3.25-3.51 | 2.5-3.0 | **+0.88** | 🚨 **과도 초과** |\n\n### 탈탄 효율 예측\n\n| Heat | 예측 효율 | 목표 효율 | 결손 | 상태 |\n|------|----------|----------|------|------|\n| 현재 | 85% | 90% | -5% | ⚠️ |\n| N+1 | **82%** | 90% | **-8%** | 🚨 |\n| N+2 | **78%** | 90% | **-12%** | 🚨 |\n\n### 품질 예측\n\n**탄소 함량 편차**\n\n| Heat | 예측 편차 | 공차 | 상태 |\n|------|-----------|------|------|\n| N+1 | +0.018% | ±0.010% | 🚨 공차 초과 |\n| N+2 | +0.025% | ±0.010% | 🚨 심각한 초과 |\n\n**황 함량 예측**\n\n| Heat | 예측값 | 사양 | 상태 |\n|------|--------|------|------|\n| N+1 | 0.014% | ≤0.012% | 🚨 사양 초과 |\n| N+2 | 0.016% | ≤0.012% | 🚨 심각한 초과 |\n\n**강 등급 분류**\n\n| Heat | 예측 등급 | 목표 등급 | 평가 |\n|------|----------|----------|------|\n| N+1 | B급 | A급 | ⚠️ 품질 저하 |\n| N+2 | C급 | A급 | 🚨 불량 |\n\n### 생산 영향 예측\n\n**불량 발생 확률**\n- Heat N+1: 65%\n- Heat N+2: **88%**\n\n**예상 수율 손실**\n- Heat N+1: 약 8톤 (Heat당 200톤 기준)\n- Heat N+2: 약 18톤\n- **총 손실**: 약 26톤 (2 Heats)\n\n**재정련 필요성**\n- Heat N+1: 재정련 필요 가능성 높음\n- Heat N+2: **재정련 필수**\n\n**경제적 손실**\n| 항목 | 금액 |\n|------|------|\n| 재료 손실 | 약 1,300만원 (26톤 × 50만원/톤) |\n| 재정련 비용 | 약 800만원 (에너지 + 시간) |\n| **총 손실** | **약 2,100만원** |\n\n### 야금학적 분석\n\n**슬래그 점도 예측**\n- Heat N+1: 증가 예상 (높은 CaO 함량)\n- Heat N+2: **과도하게 증가** (슬래그 유동성 저하)\n- **영향**: 슬래그-메탈 반응 저해, 정련 효율 급감\n\n**정련 반응 속도론**\n- 슬래그-메탈 평형: 불균형 지속\n- 산소 이용 효율: 비효율적 (과도한 슬래그 생성)\n- **랜스 최적화 필요**: 높이 조정 + 산소 유량 안정화\n\n### 권고사항\n\n현재 추세가 지속될 경우 2 Heats 내에 다음과 같은 문제가 발생합니다:\n\n- 🚨 슬래그 염기도 과도 증가 (3.38, 목표 2.5-3.0)\n- 🚨 탈탄 효율 12% 저하 (78%, 목표 90%)\n- 💰 총 2,100만원 손실 (재료 + 재정련)\n- ⚠️ 강 품질 C급으로 하락\n\n**즉시 조치**:\n1. 석회석 투입량 15-20% 감소\n2. 산소 랜스 제어 시스템 점검 및 안정화\n3. 랜스 높이 최적화 (현재 1520mm → 1480mm 권장)"
+        },
+        "next_step": "return_to_orchestration"
+      },
+      "response": {
+        "status": "success",
+        "workflow_id": "wf_steel_converter_002",
+        "message": "Monitoring 완료. Predictive Agent로 전달.",
+        "next_step": "prediction_analysis"
+      }
+    },
+    "step_4_orchestration_to_prediction": {
+      "from": "Orchestration Agent",
+      "to": "Predictive Agent",
+      "timestamp": "2025-05-01T08:00:25Z",
+      "api_endpoint": "POST /api/v1/prediction/run-direct",
+      "request": {
+        "workflow_id": "wf_steel_converter_002",
+        "prediction_task": "slag_composition_quality_forecast",
+        "input_data": {
+          "time_range": {
+            "start": "2025-05-01T00:00:00Z",
+            "end": "2025-05-01T08:00:00Z"
+          },
+          "parameters": [
+            "TEMPERATURE",
+            "OXYGEN_FLOW",
+            "LANCE_POSITION",
+            "PRESSURE",
+            "SLAG_COMPOSITION"
+          ],
+          "current_state": {
+            "TEMPERATURE": 1695.0,
+            "OXYGEN_FLOW": 485.0,
+            "LANCE_POSITION": 1520.0,
+            "PRESSURE": 101.2,
+            "SLAG_COMPOSITION": 52.8
+          },
+          "anomaly_context": {
+            "type": "process_parameter_fluctuation",
+            "severity": "high",
+            "temperature_amplitude": 42.0,
+            "oxygen_amplitude": 68.0,
+            "slag_increase_rate": 2.6
+          }
+        },
+        "forecast_horizon": "2_heats",
+        "model_type": "metallurgical_kinetics_model",
+        "query": "모니터링 결과 압연 온도가 1,142°C로 임계치(1,180°C)의 96.8%에 도달했으며 지속 상승 중입니다(+1.85°C/분). 가열로 제어 불량이 주요 원인입니다. 현재 상승률이 계속될 경우 향후 50분간 온도와 제품 품질이 어떻게 전개될지 예측해주세요. 특히 임계치 도달 시점과 판재 손상 가능성을 분석해주세요."
+      },
+      "response": {
+        "status": "success",
+        "workflow_id": "wf_steel_converter_002",
+        "agent": "Predictive Agent",
+        "prediction_result": {
+          "forecast_completed": true,
+          "model_used": "Metallurgical Kinetics Model for Converter Process",
+          "model_accuracy": 0.91,
+          "forecast_horizon": "2 heats",
+          "predictions": [
+            {
+              "heat_number": "다음 Heat (Heat N+1)",
+              "timestamp_end": "2025-05-01T08:25:00Z",
+              "SLAG_COMPOSITION": {
+                "predicted_value": 56.5,
+                "confidence_interval": [
+                  55.2,
+                  57.8
+                ],
+                "confidence_level": 0.95,
+                "normal_range_upper": 55.0,
+                "status": "above_normal"
+              },
+              "slag_basicity": {
+                "predicted_value": 3.15,
+                "confidence_interval": [
+                  3.05,
+                  3.25
+                ],
+                "target_range": [
+                  2.5,
+                  3.0
+                ],
+                "status": "above_target"
+              },
+              "decarburization_efficiency": {
+                "predicted_value": 0.82,
+                "target": 0.9,
+                "deficiency": 0.08
+              }
+            },
+            {
+              "heat_number": "다다음 Heat (Heat N+2)",
+              "timestamp_end": "2025-05-01T08:50:00Z",
+              "SLAG_COMPOSITION": {
+                "predicted_value": 59.2,
+                "confidence_interval": [
+                  57.6,
+                  60.8
+                ],
+                "confidence_level": 0.95,
+                "critical_threshold": 60.0,
+                "status": "approaching_critical"
+              },
+              "slag_basicity": {
+                "predicted_value": 3.38,
+                "confidence_interval": [
+                  3.25,
+                  3.51
+                ],
+                "target_range": [
+                  2.5,
+                  3.0
+                ],
+                "status": "critical_high",
+                "deviation": 0.38
+              },
+              "decarburization_efficiency": {
+                "predicted_value": 0.78,
+                "target": 0.9,
+                "deficiency": 0.12
+              }
+            }
+          ],
+          "quality_forecast": {
+            "carbon_content_deviation": {
+              "heat_n_plus_1": {
+                "predicted_deviation": "+0.018%",
+                "target_tolerance": "±0.010%",
+                "status": "out_of_tolerance"
+              },
+              "heat_n_plus_2": {
+                "predicted_deviation": "+0.025%",
+                "target_tolerance": "±0.010%",
+                "status": "significant_deviation"
+              }
+            },
+            "sulfur_content_forecast": {
+              "heat_n_plus_1": {
+                "predicted_value": "0.014%",
+                "specification": "≤0.012%",
+                "status": "above_spec"
+              },
+              "heat_n_plus_2": {
+                "predicted_value": "0.016%",
+                "specification": "≤0.012%",
+                "status": "significantly_above_spec"
+              }
+            },
+            "steel_grade_classification": {
+              "heat_n_plus_1": "B급 (품질 저하)",
+              "heat_n_plus_2": "C급 (불량)"
+            }
+          },
+          "production_impact": {
+            "defect_probability": {
+              "heat_n_plus_1": 0.65,
+              "heat_n_plus_2": 0.88
+            },
+            "expected_yield_loss": {
+              "heat_n_plus_1": "약 8톤 (Heat당 200톤 기준)",
+              "heat_n_plus_2": "약 18톤",
+              "total_2_heats": "약 26톤"
+            },
+            "rework_requirement": {
+              "heat_n_plus_1": "재정련 필요 가능성 높음",
+              "heat_n_plus_2": "재정련 필수"
+            },
+            "economic_loss": {
+              "material_loss": "약 1,300만원 (26톤 × 50만원/톤)",
+              "rework_cost": "약 800만원 (에너지 + 시간)",
+              "total_loss": "약 2,100만원"
+            }
+          },
+          "metallurgical_analysis": {
+            "slag_viscosity_forecast": {
+              "heat_n_plus_1": "증가 예상 (높은 CaO 함량)",
+              "heat_n_plus_2": "과도하게 증가 (슬래그 유동성 저하)",
+              "impact": "슬래그-메탈 반응 저해"
+            },
+            "refining_kinetics": {
+              "slag_metal_equilibrium": "불균형 상태 지속",
+              "oxygen_utilization": "비효율적 (과도한 슬래그 생성)",
+              "lance_optimization_needed": true
+            }
+          },
+          "recommendation": "즉시 석회석 투입량 감소 및 산소 랜스 제어 조정 필요",
+          "summary_report": "## 철강 전로 공정 슬래그 조성 예측 결과\n\n### 예측 모델 정보\n- **모델**: 제강 야금 반응 속도론 모델\n- **정확도**: 91%\n- **예측 구간**: 향후 2 Heat\n\n### 슬래그 조성 예측 (CaO 함량)\n\n| Heat | 예측값 | 신뢰구간 (95%) | 정상범위 | 상태 |\n|------|--------|----------------|----------|------|\n| 현재 | 52.8% | - | 45-55% | ⚠️ 정상 상한 |\n| N+1 | **56.5%** | 55.2-57.8% | 45-55% | 🚨 **범위 초과** |\n| N+2 | **59.2%** | 57.6-60.8% | 45-55% | 🚨 **임계 근접** |\n\n(임계값: 60% CaO)\n\n### 슬래그 염기도 예측 (CaO/SiO2)\n\n| Heat | 예측값 | 신뢰구간 (95%) | 목표범위 | 편차 | 상태 |\n|------|--------|----------------|----------|------|------|\n| 현재 | 2.80 | - | 2.5-3.0 | +0.30 | ⚠️ 목표 상한 |\n| N+1 | **3.15** | 3.05-3.25 | 2.5-3.0 | **+0.65** | 🚨 **목표 초과** |\n| N+2 | **3.38** | 3.25-3.51 | 2.5-3.0 | **+0.88** | 🚨 **과도 초과** |\n\n### 탈탄 효율 예측\n\n| Heat | 예측 효율 | 목표 효율 | 결손 | 상태 |\n|------|----------|----------|------|------|\n| 현재 | 85% | 90% | -5% | ⚠️ |\n| N+1 | **82%** | 90% | **-8%** | 🚨 |\n| N+2 | **78%** | 90% | **-12%** | 🚨 |\n\n### 품질 예측\n\n**탄소 함량 편차**\n\n| Heat | 예측 편차 | 공차 | 상태 |\n|------|-----------|------|------|\n| N+1 | +0.018% | ±0.010% | 🚨 공차 초과 |\n| N+2 | +0.025% | ±0.010% | 🚨 심각한 초과 |\n\n**황 함량 예측**\n\n| Heat | 예측값 | 사양 | 상태 |\n|------|--------|------|------|\n| N+1 | 0.014% | ≤0.012% | 🚨 사양 초과 |\n| N+2 | 0.016% | ≤0.012% | 🚨 심각한 초과 |\n\n**강 등급 분류**\n\n| Heat | 예측 등급 | 목표 등급 | 평가 |\n|------|----------|----------|------|\n| N+1 | B급 | A급 | ⚠️ 품질 저하 |\n| N+2 | C급 | A급 | 🚨 불량 |\n\n### 생산 영향 예측\n\n**불량 발생 확률**\n- Heat N+1: 65%\n- Heat N+2: **88%**\n\n**예상 수율 손실**\n- Heat N+1: 약 8톤 (Heat당 200톤 기준)\n- Heat N+2: 약 18톤\n- **총 손실**: 약 26톤 (2 Heats)\n\n**재정련 필요성**\n- Heat N+1: 재정련 필요 가능성 높음\n- Heat N+2: **재정련 필수**\n\n**경제적 손실**\n| 항목 | 금액 |\n|------|------|\n| 재료 손실 | 약 1,300만원 (26톤 × 50만원/톤) |\n| 재정련 비용 | 약 800만원 (에너지 + 시간) |\n| **총 손실** | **약 2,100만원** |\n\n### 야금학적 분석\n\n**슬래그 점도 예측**\n- Heat N+1: 증가 예상 (높은 CaO 함량)\n- Heat N+2: **과도하게 증가** (슬래그 유동성 저하)\n- **영향**: 슬래그-메탈 반응 저해, 정련 효율 급감\n\n**정련 반응 속도론**\n- 슬래그-메탈 평형: 불균형 지속\n- 산소 이용 효율: 비효율적 (과도한 슬래그 생성)\n- **랜스 최적화 필요**: 높이 조정 + 산소 유량 안정화\n\n### 권고사항\n\n현재 추세가 지속될 경우 2 Heats 내에 다음과 같은 문제가 발생합니다:\n\n- 🚨 슬래그 염기도 과도 증가 (3.38, 목표 2.5-3.0)\n- 🚨 탈탄 효율 12% 저하 (78%, 목표 90%)\n- 💰 총 2,100만원 손실 (재료 + 재정련)\n- ⚠️ 강 품질 C급으로 하락\n\n**즉시 조치**:\n1. 석회석 투입량 15-20% 감소\n2. 산소 랜스 제어 시스템 점검 및 안정화\n3. 랜스 높이 최적화 (현재 1520mm → 1480mm 권장)"
+        },
+        "next_step": "return_to_orchestration"
+      }
+    },
+    "step_5_prediction_to_orchestration": {
+      "from": "Predictive Agent",
+      "to": "Orchestration Agent",
+      "timestamp": "2025-05-01T08:00:55Z",
+      "api_endpoint": "POST /api/v1/orchestrate/report",
+      "request": {
+        "workflow_id": "wf_steel_converter_002",
+        "status": "completed",
+        "results": {
+          "monitoring_result": "process_parameter_fluctuation_detected",
+          "prediction_result": "quality_degradation_forecasted"
+        }
+      },
+      "response": {
+        "status": "success",
+        "workflow_id": "wf_steel_converter_002",
+        "message": "워크플로우 완료. 사용자에게 결과 전달.",
+        "next_step": "return_to_user"
+      }
+    },
+    "step_6_orchestration_to_user": {
+      "from": "Orchestration Agent",
+      "to": "User",
+      "timestamp": "2025-05-01T08:01:00Z",
+      "api_endpoint": "N/A",
+      "request": {},
+      "response": {
+        "status": "success",
+        "workflow_id": "wf_steel_converter_002",
+        "workflow_type": "monitoring_prediction",
+        "summary": "전로 공정에서 온도(1695°C, ±42°C 변동)와 산소 유량(±68 Nm³/min 변동)이 불안정하며, 슬래그 CaO 함량이 52.8%로 정상 범위 상한에 도달했습니다. 예측 분석 결과, 현재 추세가 지속될 경우 다음 Heat(N+1)에서 슬래그 염기도가 3.15(목표 2.5-3.0)로 증가하고 탈탄 효율이 82%(목표 90%)로 저하되어 탄소 함량 +0.018% 편차 및 황 함량 0.014%(사양 ≤0.012%) 초과가 예상됩니다. 다다음 Heat(N+2)에서는 슬래그 염기도 3.38, 탈탄 효율 78%로 더욱 악화되어 C급 불량으로 분류될 확률이 88%입니다. 2 Heats 동안 약 26톤의 수율 손실과 2,100만원의 경제적 손실이 예상됩니다. 즉시 석회석 투입량을 15-20% 감소하고 산소 랜스 제어를 안정화해야 합니다.",
+        "detailed_results": {
+          "monitoring": {
+            "anomaly_type": "process_parameter_fluctuation",
+            "severity": "high",
+            "temperature": 1695.0,
+            "temperature_amplitude": 42.0,
+            "oxygen_flow_amplitude": 68.0,
+            "slag_composition": 52.8,
+            "decarburization_efficiency": 0.85
+          },
+          "prediction": {
+            "slag_composition_n_plus_2": 59.2,
+            "slag_basicity_n_plus_2": 3.38,
+            "decarburization_efficiency_n_plus_2": 0.78,
+            "carbon_deviation_n_plus_2": 0.025,
+            "sulfur_content_n_plus_2": 0.016,
+            "defect_probability_n_plus_2": 0.88,
+            "yield_loss_total": 26,
+            "economic_loss_total": 21000000,
+            "forecast_accuracy": 0.91
+          }
+        },
+        "recommendations": [
+          "석회석 투입량 15-20% 감소",
+          "산소 랜스 제어 시스템 점검 및 안정화",
+          "랜스 높이 1520mm → 1480mm로 조정",
+          "용선 조성 (Si, Mn) 사전 분석 강화",
+          "슬래그 샘플링 주기 단축 (Heat당 2회 → 3회)"
+        ],
+        "full_report": "## 🏭 철강 전로 공정 슬래그 조성 예측 분석 결과\n\n---\n\n### 📊 1. 현황 모니터링 결과\n\n**이상 감지 정보**\n- **이상 유형**: 공정 파라미터 변동 (Process Parameter Fluctuation)\n- **심각도**: 높음 (High)\n- **감지 시간**: 2025-05-01 08:00:00 UTC\n- **이상 시작**: 2025-05-01 05:00:00 UTC (3시간 전)\n- **공정**: BOF 전로 정련\n\n**주요 지표 현황**\n| 파라미터 | 현재값 | 정상범위 | 편차 | 변동폭 | 상태 |\n|---------|--------|----------|------|--------|------|\n| **용강 온도** | **1695°C** | 1600-1680°C | +15°C | **±42°C** | ⚠️ **상승 및 불안정** |\n| 산소 유량 | 485 Nm³/min | 400-500 Nm³/min | 0 | **±68 Nm³/min** | ⚠️ **정상이나 불안정** |\n| 슬래그 CaO | 52.8% | 45-55% | 0 | - | ⚠️ 정상 상한 |\n| 랜스 높이 | 1520mm | 1400-1600mm | 0 | - | ✅ 정상 |\n| 전로 내압 | 101.2 kPa | 95-105 kPa | 0 | - | ✅ 정상 |\n\n**변동 패턴 분석**\n- **온도**: 진동 패턴, ±42°C, 15-20회/시간\n- **산소**: 불규칙 패턴, ±68 Nm³/min\n- **온도-산소 상관**: 0.68 (중간 정도)\n- **온도-슬래그 상관**: 0.72 (강함)\n\n**정련 성능**\n- 탈탄 효율: 85% (정상: 90-95%)\n- 탈황 성능: 78% (정상: 80-85%)\n- 슬래그 염기도: 2.8 (목표: 2.5-3.0)\n\n---\n\n### 🔮 2. 예측 분석 결과\n\n**예측 모델**: 제강 야금 반응 속도론 모델 (정확도 91%)\n\n**슬래그 CaO 함량 예측**\n| Heat | 예측값 | 신뢰구간 (95%) | 정상범위 | 상태 |\n|------|--------|----------------|----------|------|\n| 현재 | 52.8% | - | 45-55% | ⚠️ 정상 상한 |\n| N+1 | **56.5%** | 55.2-57.8% | 45-55% | 🚨 **범위 초과** |\n| N+2 | **59.2%** | 57.6-60.8% | 45-55% | 🚨 **임계 근접 (60%)** |\n\n**슬래그 염기도 예측 (CaO/SiO2)**\n| Heat | 예측값 | 목표범위 | 편차 | 상태 |\n|------|--------|----------|------|------|\n| 현재 | 2.80 | 2.5-3.0 | +0.30 | ⚠️ |\n| N+1 | **3.15** | 2.5-3.0 | **+0.65** | 🚨 **초과** |\n| N+2 | **3.38** | 2.5-3.0 | **+0.88** | 🚨 **과도 초과** |\n\n**탈탄 효율 예측**\n| Heat | 예측 효율 | 목표 | 결손 | 영향 |\n|------|----------|------|------|------|\n| 현재 | 85% | 90% | -5% | ⚠️ |\n| N+1 | **82%** | 90% | **-8%** | 🚨 탄소 함량 증가 |\n| N+2 | **78%** | 90% | **-12%** | 🚨 심각한 증가 |\n\n---\n\n### ⚗️ 3. 품질 예측\n\n**탄소 함량 편차**\n| Heat | 예측 편차 | 공차 | 판정 |\n|------|-----------|------|------|\n| N+1 | **+0.018%** | ±0.010% | 🚨 **공차 초과** |\n| N+2 | **+0.025%** | ±0.010% | 🚨 **심각한 초과** |\n\n**황 함량 예측**\n| Heat | 예측값 | 사양 | 판정 |\n|------|--------|------|------|\n| N+1 | **0.014%** | ≤0.012% | 🚨 **사양 초과** |\n| N+2 | **0.016%** | ≤0.012% | 🚨 **심각한 초과** |\n\n**강 등급 분류 예측**\n| Heat | 예측 등급 | 목표 등급 | 강등 |\n|------|----------|----------|------|\n| N+1 | B급 | A급 | 1단계 ⚠️ |\n| N+2 | **C급** | A급 | **2단계** 🚨 |\n\n**불량 발생 확률**\n- Heat N+1: **65%**\n- Heat N+2: **88%**\n\n---\n\n### 💰 4. 생산 및 경제적 영향\n\n**수율 손실 예측** (Heat당 200톤 기준)\n| Heat | 예상 손실 | 비율 |\n|------|----------|------|\n| N+1 | 약 8톤 | 4% |\n| N+2 | 약 18톤 | 9% |\n| **합계 (2 Heats)** | **26톤** | **6.5%** |\n\n**재정련 필요성**\n- Heat N+1: 재정련 필요 가능성 높음 (65%)\n- Heat N+2: **재정련 필수** (88%)\n\n**경제적 손실**\n| 항목 | 금액 | 산출 |\n|------|------|------|\n| 재료 손실 | 1,300만원 | 26톤 × 50만원/톤 |\n| 재정련 비용 | 800만원 | 에너지 + 시간 + 부원료 |\n| **총 손실** | **2,100만원** | - |\n\n---\n\n### 🔬 5. 야금학적 분석\n\n**슬래그 점도 예측**\n- Heat N+1: 증가 예상 (높은 CaO 함량)\n- Heat N+2: **과도하게 증가** (CaO 59.2%)\n- **영향**: 슬래그 유동성 저하 → 슬래그-메탈 반응 저해\n\n**정련 반응 속도론**\n- **슬래그-메탈 평형**: 불균형 지속\n- **산소 이용 효율**: 비효율적\n  - 과도한 슬래그 생성\n  - 탈탄 반응 속도 저하\n- **랜스 최적화 필요**: 높이 조정 + 산소 유량 안정화\n\n**화학 반응 분석**\n- CaO + SiO₂ → CaSiO₃ (과도한 반응)\n- FeO + C → Fe + CO (저해됨)\n- FeS + CaO → CaS + FeO (저하됨)\n\n---\n\n### 🎯 6. 권고사항\n\n**즉시 조치** (다음 Heat 전) ⚡\n\n1. ✅ **석회석 투입량 감소** (우선순위 1)\n   - 현재 대비 15-20% 감소\n   - 목표: 슬래그 염기도 2.5-2.8로 낮춤\n   - 예상 소요: Heat 시작 전 조정\n\n2. 🔧 **산소 랜스 제어 안정화** (우선순위 2)\n   - 자동 제어 시스템 점검\n   - PLC 파라미터 튜닝\n   - 센서 교정\n   - 예상 소요: 1-2시간\n\n3. 📏 **랜스 높이 조정** (우선순위 3)\n   - 현재: 1520mm → 권장: **1480mm**\n   - 목적: 산소 분산 개선, 국부 과산화 방지\n   - 예상 효과: 온도 안정화, 균일한 탈탄\n\n**단기 조치** (1-2일 내)\n\n4. 🔍 **용선 조성 사전 분석 강화**\n   - Si, Mn 함량 정밀 측정\n   - 석회석 투입량 사전 계산\n\n5. 📊 **슬래그 샘플링 주기 단축**\n   - 현재: Heat당 2회 → **Heat당 3회**\n   - 조성 변화 실시간 모니터링\n\n6. 🏭 **랜스 노즐 점검**\n   - 노즐 막힘 여부 확인\n   - 필요 시 교체\n\n**중기 조치** (1주일 내)\n\n7. 🤖 **자동 제어 시스템 고도화**\n   - 온도-산소 피드백 루프 개선\n   - AI 기반 예측 제어 도입 검토\n\n8. 📝 **작업 표준 개정**\n   - 석회석 투입 기준 재설정\n   - 랜스 높이 최적화 가이드라인\n\n---\n\n### 📋 7. 종합 결론\n\n전로 공정에서 온도와 산소 유량 불안정으로 슬래그 조성이 악화되고 있으며, 현재 추세가 지속될 경우:\n\n- 🚨 **2 Heats 내 슬래그 염기도 3.38로 과도 증가** (목표 2.5-3.0)\n- 📉 **탈탄 효율 78%로 저하** (목표 90%)\n- 💰 **총 2,100만원 손실 예상** (재료 + 재정련)\n- ⚠️ **강 품질 C급으로 하락** (불량률 88%)\n- ❌ **탄소 +0.025%, 황 0.016% 사양 초과**\n\n**즉시 조치**:\n1. ✅ 석회석 투입량 15-20% 감소\n2. 🔧 산소 랜스 제어 안정화\n3. 📏 랜스 높이 1480mm로 조정\n\n조치 완료 시 슬래그 조성을 정상화하고 품질 저하를 방지할 수 있습니다."
+      }
+    }
+  },
+  "expected_answer": {
+    "workflow_type": "monitoring_prediction",
+    "agents_involved": [
+      "Orchestration",
+      "Monitoring",
+      "Predictive"
+    ],
+    "key_findings": {
+      "anomaly_detected": true,
+      "anomaly_type": "process_parameter_fluctuation",
+      "temperature": 1695.0,
+      "temperature_amplitude": 42.0,
+      "oxygen_flow_amplitude": 68.0,
+      "slag_composition": 52.8,
+      "defect_forecasted": true,
+      "slag_composition_n_plus_2": 59.2,
+      "slag_basicity_n_plus_2": 3.38,
+      "defect_probability_n_plus_2": 0.88,
+      "yield_loss_total": 26,
+      "economic_loss_total": 21000000
+    },
+    "recommendations": [
+      "석회석 투입량 15-20% 감소",
+      "산소 랜스 제어 안정화",
+      "랜스 높이 1480mm로 조정",
+      "용선 조성 사전 분석 강화",
+      "슬래그 샘플링 주기 단축"
+    ],
+    "economic_impact": {
+      "material_loss": 13000000,
+      "rework_cost": 8000000,
+      "total_loss": 21000000
+    }
+  },
+  "test_validation": {
+    "validate_workflow": {
+      "expected_steps": 5,
+      "required_agents": [
+        "Orchestration",
+        "Monitoring",
+        "Predictive"
+      ],
+      "workflow_sequence": [
+        "User → Orchestration",
+        "Orchestration → Monitoring",
+        "Monitoring → Predictive",
+        "Predictive → Orchestration",
+        "Orchestration → User"
+      ]
+    },
+    "validate_monitoring": {
+      "must_detect_anomaly": true,
+      "must_identify_fluctuation": true,
+      "must_analyze_trend": true,
+      "must_assess_refining_impact": true,
+      "must_recommend_prediction": true
+    },
+    "validate_prediction": {
+      "must_forecast_slag_composition": true,
+      "must_predict_quality_impact": true,
+      "must_calculate_defect_probability": true,
+      "must_estimate_economic_loss": true,
+      "forecast_horizon_min_heats": 2,
+      "must_recommend_action": true
+    },
+    "validate_api_compliance": {
+      "all_requests_valid": true,
+      "all_responses_valid": true,
+      "endpoints_match_spec": true
+    },
+    "performance_criteria": {
+      "total_workflow_time_max_seconds": 90,
+      "prediction_accuracy_min": 0.9,
+      "forecast_horizon_min_heats": 2,
+      "economic_impact_required": true
+    }
+  }
+}

@@ -1,0 +1,1537 @@
+{
+  "scenario_id": "SCENARIO_16",
+  "version": "1.0",
+  "created_date": "2025-10-14",
+  "metadata": {
+    "title": "배터리 전체 생산 라인 안전 준수성 검증",
+    "title_en": "Battery Full Production Line Safety Compliance Verification",
+    "industry": "battery",
+    "process": "Full Production",
+    "workflow_type": "full_compliance",
+    "workflow_level": 4,
+    "complexity": "very_high",
+    "description": "배터리 전체 생산 라인에서 온도 증가로 인한 안전 이슈를 감지하고, 향후 위험을 예측하여 최적 제어를 수행한 후 국제 안전 규제(UN 38.3, IEC 62133, UL 1642) 준수 여부를 검증하는 통합 시나리오",
+    "description_en": "Integrated scenario for detecting safety issues from temperature increase in full battery production line, predicting future risks, performing optimal control, and verifying compliance with international safety regulations (UN 38.3, IEC 62133, UL 1642)",
+    "tags": [
+      "battery",
+      "full_production",
+      "temperature",
+      "safety",
+      "compliance",
+      "un38.3",
+      "iec62133",
+      "ul1642"
+    ]
+  },
+  "query": {
+    "text": "배터리 생산 라인의 TEMPERATURE가 증가 추세입니다. 예측 및 제어를 수행하고 안전 규제 준수 여부를 확인해주세요.",
+    "text_en": "Battery production line TEMPERATURE is showing an increasing trend. Please perform prediction and control, and verify safety regulation compliance.",
+    "time_range": {
+      "start": "2025-05-01T00:00:00Z",
+      "end": "2025-05-01T14:00:00Z"
+    },
+    "user_id": "battery_production_director",
+    "priority": "critical",
+    "expected_workflow": "full_compliance"
+  },
+  "timeseries_data": {
+    "source_file": "/test_data/battery/production_data.csv",
+    "parameters": [
+      {
+        "name": "TEMPERATURE",
+        "unit": "°C",
+        "description": "생산 라인 온도",
+        "normal_range": [
+          20,
+          30
+        ],
+        "critical_threshold": 45
+      },
+      {
+        "name": "VOLTAGE",
+        "unit": "V",
+        "description": "셀 전압",
+        "normal_range": [
+          3.6,
+          3.8
+        ],
+        "critical_threshold": 4.2
+      },
+      {
+        "name": "CURRENT",
+        "unit": "A",
+        "description": "충전 전류",
+        "normal_range": [
+          0.5,
+          1.5
+        ],
+        "critical_threshold": 2.0
+      },
+      {
+        "name": "CAPACITY",
+        "unit": "mAh",
+        "description": "셀 용량",
+        "normal_range": [
+          2900,
+          3100
+        ],
+        "critical_threshold": 2800
+      },
+      {
+        "name": "SOC",
+        "unit": "%",
+        "description": "충전 상태",
+        "normal_range": [
+          0,
+          100
+        ],
+        "critical_threshold": 105
+      }
+    ],
+    "sampling_interval": "10s",
+    "data_points": 5040,
+    "time_range": {
+      "start": "2025-05-01T00:00:00Z",
+      "end": "2025-05-01T14:00:00Z"
+    },
+    "anomaly_info": {
+      "type": "temperature_increase",
+      "description": "생산 라인 온도가 25°C에서 38°C로 서서히 증가",
+      "start_time": "2025-05-01T08:00:00Z",
+      "peak_time": "2025-05-01T14:00:00Z",
+      "affected_parameters": [
+        "TEMPERATURE",
+        "VOLTAGE"
+      ]
+    }
+  },
+  "agent_workflow": {
+    "step_1_user_to_orchestration": {
+      "from": "User",
+      "to": "Orchestration Agent",
+      "timestamp": "2025-05-01T14:00:00Z",
+      "api_endpoint": "GET /api/v1/orchestrate",
+      "request": {
+        "query": "배터리 생산 라인의 TEMPERATURE가 증가 추세입니다. 예측 및 제어를 수행하고 안전 규제 준수 여부를 확인해주세요.",
+        "time_range": {
+          "start": "2025-05-01T00:00:00Z",
+          "end": "2025-05-01T14:00:00Z"
+        },
+        "user_id": "battery_production_director",
+        "priority": "critical"
+      },
+      "response": {
+        "status": "success",
+        "workflow_id": "wf_battery_production_004",
+        "workflow_type": "full_compliance",
+        "message": "배터리 전체 생산 라인 안전 준수성 검증 워크플로우를 시작합니다.",
+        "next_agent": "Monitoring Agent"
+      }
+    },
+    "step_2_orchestration_to_monitoring": {
+      "from": "Orchestration Agent",
+      "to": "Monitoring Agent",
+      "timestamp": "2025-05-01T14:00:05Z",
+      "api_endpoint": "POST /api/v1/workflow/start",
+      "request": {
+        "workflow_id": "wf_battery_production_004",
+        "workflow_type": "full_compliance",
+        "task": "analyze_temperature_increase",
+        "query": {
+          "text": "배터리 생산 라인의 TEMPERATURE가 증가 추세입니다. 예측 및 제어를 수행하고 안전 규제 준수 여부를 확인해주세요.",
+          "time_range": {
+            "start": "2025-05-01T00:00:00Z",
+            "end": "2025-05-01T14:00:00Z"
+          }
+        },
+        "context": {
+          "industry": "battery",
+          "process": "Full Production",
+          "priority": "critical"
+        }
+      },
+      "response": {
+        "status": "success",
+        "workflow_id": "wf_battery_production_004",
+        "agent": "Monitoring Agent",
+        "analysis_result": {
+          "anomaly_detected": true,
+          "anomaly_type": "temperature_increase",
+          "severity": "critical",
+          "affected_parameters": [
+            {
+              "name": "TEMPERATURE",
+              "current_value": 38.0,
+              "normal_range": [
+                20,
+                30
+              ],
+              "deviation": 8.0,
+              "status": "elevated"
+            },
+            {
+              "name": "VOLTAGE",
+              "current_value": 3.75,
+              "normal_range": [
+                3.6,
+                3.8
+              ],
+              "deviation": 0.0,
+              "status": "normal"
+            },
+            {
+              "name": "CURRENT",
+              "current_value": 1.08,
+              "normal_range": [
+                0.5,
+                1.5
+              ],
+              "deviation": 0.0,
+              "status": "normal"
+            },
+            {
+              "name": "CAPACITY",
+              "current_value": 3010,
+              "normal_range": [
+                2900,
+                3100
+              ],
+              "deviation": 0.0,
+              "status": "normal"
+            },
+            {
+              "name": "SOC",
+              "current_value": 65.2,
+              "normal_range": [
+                0,
+                100
+              ],
+              "deviation": 0.0,
+              "status": "normal"
+            }
+          ],
+          "trend_analysis": {
+            "TEMPERATURE": {
+              "direction": "increasing",
+              "rate": 2.17,
+              "duration": "6 hours",
+              "statistical_significance": 0.98,
+              "baseline": 25.0
+            },
+            "VOLTAGE": {
+              "direction": "stable",
+              "correlation_with_temperature": 0.31
+            }
+          },
+          "root_cause_hypothesis": [
+            "냉각 시스템 효율 저하 (필터 막힘, 냉매 부족)",
+            "생산 속도 증가로 인한 발열량 증가",
+            "외부 기온 상승 (계절적 요인)",
+            "설비 노후화로 인한 열 방출 증가",
+            "환기 시스템 불량"
+          ],
+          "safety_risk_assessment": {
+            "thermal_runaway_risk": "medium",
+            "fire_hazard": "low_to_medium",
+            "explosion_risk": "low",
+            "worker_safety": "concern",
+            "product_quality_impact": "moderate"
+          },
+          "regulatory_concern": {
+            "affected_standards": [
+              "UN 38.3 (운송 안전 테스트)",
+              "IEC 62133 (전기 안전 표준)",
+              "UL 1642 (리튬 배터리 안전 표준)"
+            ],
+            "temperature_limits": {
+              "un_38_3": "72시간 동안 -40°C ~ +75°C",
+              "iec_62133": "충전 중 최대 70°C",
+              "ul_1642": "정상 운전 시 최대 60°C"
+            },
+            "current_status": "정상 범위 내이나 증가 추세 우려"
+          },
+          "recommendation": "예측 분석, 제어 최적화 및 안전 준수성 검증 필요",
+          "summary_report": "## 배터리 생산 라인 온도 이상 감지 결과\n\n### 이상 감지\n- **이상 유형**: 생산 라인 온도 증가 (Temperature Increase)\n- **심각도**: 치명적 (Critical)\n- **감지 시간**: 2025-05-01 14:00:00 UTC\n\n### 주요 지표 현황\n| 파라미터 | 현재값 | 정상범위 | 편차 | 상태 |\n|---------|--------|----------|------|------|\n| 생산 온도 | 38.0°C | 20-30°C | +8.0°C | ⚠️ 정상 초과 |\n| 셀 전압 | 3.75 V | 3.6-3.8 V | 0 | ✅ 정상 |\n| 충전 전류 | 1.08 A | 0.5-1.5 A | 0 | ✅ 정상 |\n| 셀 용량 | 3010 mAh | 2900-3100 mAh | 0 | ✅ 정상 |\n| 충전 상태 | 65.2% | 0-100% | 0 | ✅ 정상 |\n\n### 추세 분석\n- **온도 증가율**: +2.17°C/시간 (지난 6시간 동안)\n- **기준선 온도**: 25.0°C\n- **현재 편차**: +13.0°C (기준선 대비)\n- **통계적 유의성**: 98%\n\n### 원인 가설\n1. 냉각 시스템 효율 저하 (필터 막힘, 냉매 부족)\n2. 생산 속도 증가로 인한 발열량 증가\n3. 외부 기온 상승 (계절적 요인)\n4. 설비 노후화로 인한 열 방출 증가\n5. 환기 시스템 불량\n\n### 안전 리스크 평가\n- **열폭주 위험**: 중간 (Medium)\n- **화재 위험**: 낮음~중간 (Low to Medium)\n- **폭발 위험**: 낮음 (Low)\n- **작업자 안전**: 우려 (Concern)\n- **제품 품질 영향**: 보통 (Moderate)\n\n### 규제 관련 우려사항\n\n**적용 규제**\n- UN 38.3 (운송 안전 테스트)\n- IEC 62133 (전기 안전 표준)\n- UL 1642 (리튬 배터리 안전 표준)\n\n**온도 한계**\n- UN 38.3: 72시간 동안 -40°C ~ +75°C\n- IEC 62133: 충전 중 최대 70°C\n- UL 1642: 정상 운전 시 최대 60°C\n\n**현재 상태**: 38°C로 정상 범위 내이나, 증가 추세로 인한 향후 위험 존재\n\n### 권고사항\n예측 모델을 통한 향후 온도 추이 분석, 최적 제어 수행 및 안전 규제 준수 여부 검증이 필요합니다."
+        },
+        "next_step": "prediction_analysis"
+      }
+    },
+    "step_3_monitoring_to_orchestration": {
+      "from": "Monitoring Agent",
+      "to": "Orchestration Agent",
+      "timestamp": "2025-05-01T14:00:30Z",
+      "api_endpoint": "POST /api/v1/orchestrate/report",
+      "request": {
+        "workflow_id": "wf_battery_production_004",
+        "status": "completed",
+        "results": {
+          "status": "success",
+          "workflow_id": "wf_battery_production_004",
+          "agent": "Predictive Agent",
+          "prediction_result": {
+            "forecast_completed": true,
+            "model_used": "Thermal Dynamics Model with Safety Constraints",
+            "model_accuracy": 0.92,
+            "forecast_horizon": "6 hours",
+            "predictions": [
+              {
+                "timestamp": "2025-05-01T16:00:00Z",
+                "TEMPERATURE": {
+                  "predicted_value": 42.3,
+                  "confidence_interval": [
+                    41.8,
+                    42.8
+                  ],
+                  "confidence_level": 0.95
+                }
+              },
+              {
+                "timestamp": "2025-05-01T18:00:00Z",
+                "TEMPERATURE": {
+                  "predicted_value": 46.6,
+                  "confidence_interval": [
+                    45.9,
+                    47.3
+                  ],
+                  "confidence_level": 0.95,
+                  "critical_threshold_exceeded": true
+                }
+              },
+              {
+                "timestamp": "2025-05-01T20:00:00Z",
+                "TEMPERATURE": {
+                  "predicted_value": 50.9,
+                  "confidence_interval": [
+                    50.0,
+                    51.8
+                  ],
+                  "confidence_level": 0.95,
+                  "critical_threshold_exceeded": true
+                }
+              }
+            ],
+            "safety_threshold_analysis": {
+              "critical_threshold": 45.0,
+              "expected_threshold_crossing": "2025-05-01T17:30:00Z",
+              "time_to_critical": "3.5 hours",
+              "ul_1642_limit": 60.0,
+              "expected_ul_limit_approach": "2025-05-01T20:00:00Z",
+              "time_to_ul_limit": "6 hours"
+            },
+            "safety_risk_forecast": {
+              "thermal_runaway_probability_2h": 0.08,
+              "thermal_runaway_probability_4h": 0.25,
+              "thermal_runaway_probability_6h": 0.48,
+              "fire_hazard_level_progression": "low → medium → high",
+              "worker_exposure_risk": "heat_stress_concern"
+            },
+            "production_impact": {
+              "quality_degradation": {
+                "2h_scenario": "용량 감소 예상 -1.5%",
+                "4h_scenario": "용량 감소 예상 -3.2%",
+                "6h_scenario": "용량 감소 예상 -5.8%"
+              },
+              "production_shutdown_risk": {
+                "threshold_temperature": 50.0,
+                "shutdown_probability_6h": 0.75
+              },
+              "estimated_loss": {
+                "2h_scenario": "약 800만원 (생산 지연)",
+                "4h_scenario": "약 2,200만원 (품질 저하 + 지연)",
+                "6h_scenario": "약 5,500만원 (생산 중단 + 품질 불량)"
+              }
+            },
+            "regulatory_compliance_forecast": {
+              "un_38_3_status": {
+                "temperature_limit": 75.0,
+                "predicted_max_6h": 50.9,
+                "compliance": "expected_compliant",
+                "margin": 24.1
+              },
+              "iec_62133_status": {
+                "temperature_limit": 70.0,
+                "predicted_max_6h": 50.9,
+                "compliance": "expected_compliant",
+                "margin": 19.1
+              },
+              "ul_1642_status": {
+                "temperature_limit": 60.0,
+                "predicted_max_6h": 50.9,
+                "compliance": "expected_compliant",
+                "margin": 9.1,
+                "concern": "margin_narrowing"
+              },
+              "overall_concern": "UL 1642 여유도 감소 우려"
+            },
+            "recommendation": "3.5시간 내 냉각 시스템 개선 필요 - 온도 상승 억제 권장",
+            "summary_report": "## 배터리 생산 라인 온도 예측 결과\n\n### 예측 모델 정보\n- **모델**: 열역학 모델 + 안전 제약 조건\n- **정확도**: 92%\n- **예측 구간**: 향후 6시간\n\n### 온도 예측 추이 (제어 없이)\n| 시간 | 예측 온도 | 신뢰구간 (95%) | 임계값 초과 | 열폭주 확률 |\n|------|-----------|----------------|-------------|-------------|\n| 현재 | 38.0°C | - | - | - |\n| +2시간 | 42.3°C | 41.8-42.8°C | - | 8% |\n| +4시간 | **46.6°C** | 45.9-47.3°C | ✅ (45°C) | 25% |\n| +6시간 | **50.9°C** | 50.0-51.8°C | ✅ (45°C) | **48%** |\n\n(임계값: 45°C, UL 1642 한계: 60°C)\n\n### 안전 임계값 분석\n- **임계 온도**: 45°C\n- **임계값 도달 예상**: **2025-05-01 17:30 UTC (3.5시간 후)**\n- **UL 1642 한계**: 60°C\n- **한계 접근 예상**: 2025-05-01 20:00 UTC (6시간 후)\n\n### 안전 리스크 예측\n- **열폭주 확률**:\n  - 2시간 후: 8%\n  - 4시간 후: 25%\n  - **6시간 후: 48%** 🚨\n- **화재 위험 수준 변화**: 낮음 → 중간 → **높음**\n- **작업자 노출 위험**: 열 스트레스 우려\n\n### 생산 영향 예측\n\n**품질 저하**\n| 시나리오 | 용량 감소 | 영향 |\n|---------|----------|------|\n| 2시간 후 조치 | -1.5% | 경미 |\n| 4시간 후 조치 | -3.2% | 보통 |\n| 6시간 후 조치 | -5.8% | 심각 |\n\n**생산 중단 위험**\n- 중단 임계 온도: 50°C\n- **6시간 후 중단 확률**: 75%\n\n**예상 손실**\n| 시나리오 | 손실 내역 | 총 손실 |\n|---------|----------|--------|\n| 2시간 후 | 생산 지연 | 800만원 |\n| 4시간 후 | 품질 저하 + 지연 | 2,200만원 |\n| 6시간 후 | **생산 중단 + 품질 불량** | **5,500만원** |\n\n### 규제 준수 예측 (6시간 후)\n\n| 규제 | 온도 한계 | 예측 최대값 | 준수 여부 | 여유도 | 우려사항 |\n|------|----------|------------|----------|--------|----------|\n| UN 38.3 | 75°C | 50.9°C | ✅ 준수 예상 | 24.1°C | - |\n| IEC 62133 | 70°C | 50.9°C | ✅ 준수 예상 | 19.1°C | - |\n| UL 1642 | 60°C | 50.9°C | ✅ 준수 예상 | **9.1°C** | ⚠️ **여유도 감소** |\n\n**종합 우려사항**: UL 1642 여유도 감소로 안전 마진 축소\n\n### 권고사항\n현재 추세가 지속될 경우 3.5시간 후 임계 온도(45°C)를 초과하고, 6시간 후 열폭주 확률이 48%에 달합니다. 또한 생산 중단 확률 75%, 손실 5,500만원이 예상됩니다. **3.5시간 내 냉각 시스템 개선**을 통해 온도 상승을 억제할 것을 권장합니다."
+          },
+          "next_step": "control_optimization"
+        }
+      },
+      "response": {
+        "status": "success",
+        "workflow_id": "wf_battery_production_004",
+        "message": "Monitoring 완료. Predictive Agent로 전달.",
+        "next_step": "prediction_analysis"
+      }
+    },
+    "step_4_orchestration_to_prediction": {
+      "from": "Orchestration Agent",
+      "to": "Predictive Agent",
+      "timestamp": "2025-05-01T14:00:30Z",
+      "api_endpoint": "POST /api/v1/prediction/run-direct",
+      "request": {
+        "workflow_id": "wf_battery_production_004",
+        "prediction_task": "temperature_safety_forecast",
+        "input_data": {
+          "time_range": {
+            "start": "2025-05-01T00:00:00Z",
+            "end": "2025-05-01T14:00:00Z"
+          },
+          "parameters": [
+            "TEMPERATURE",
+            "VOLTAGE",
+            "CURRENT",
+            "CAPACITY",
+            "SOC"
+          ],
+          "current_state": {
+            "TEMPERATURE": 38.0,
+            "VOLTAGE": 3.75,
+            "CURRENT": 1.08,
+            "CAPACITY": 3010,
+            "SOC": 65.2
+          },
+          "anomaly_context": {
+            "type": "temperature_increase",
+            "severity": "critical",
+            "trend": "increasing",
+            "rate": 2.17
+          }
+        },
+        "forecast_horizon": "6_hours",
+        "model_type": "thermal_dynamics_model",
+        "query": "모니터링 결과 충방전 사이클 테스트에서 용량 유지율이 78.5%로 기준(85%)을 7.6% 미달하며 지속 저하 중입니다. 내부 저항 증가와 전해액 열화가 주요 원인입니다. 현재 추세가 계속될 경우 향후 80분간 용량과 수명이 어떻게 전개될지 예측해주세요. 특히 품질 불량 임계치 도달 시점과 리콜 가능성을 분석해주세요."
+      },
+      "response": {
+        "status": "success",
+        "workflow_id": "wf_battery_production_004",
+        "agent": "Predictive Agent",
+        "prediction_result": {
+          "forecast_completed": true,
+          "model_used": "Thermal Dynamics Model with Safety Constraints",
+          "model_accuracy": 0.92,
+          "forecast_horizon": "6 hours",
+          "predictions": [
+            {
+              "timestamp": "2025-05-01T16:00:00Z",
+              "TEMPERATURE": {
+                "predicted_value": 42.3,
+                "confidence_interval": [
+                  41.8,
+                  42.8
+                ],
+                "confidence_level": 0.95
+              }
+            },
+            {
+              "timestamp": "2025-05-01T18:00:00Z",
+              "TEMPERATURE": {
+                "predicted_value": 46.6,
+                "confidence_interval": [
+                  45.9,
+                  47.3
+                ],
+                "confidence_level": 0.95,
+                "critical_threshold_exceeded": true
+              }
+            },
+            {
+              "timestamp": "2025-05-01T20:00:00Z",
+              "TEMPERATURE": {
+                "predicted_value": 50.9,
+                "confidence_interval": [
+                  50.0,
+                  51.8
+                ],
+                "confidence_level": 0.95,
+                "critical_threshold_exceeded": true
+              }
+            }
+          ],
+          "safety_threshold_analysis": {
+            "critical_threshold": 45.0,
+            "expected_threshold_crossing": "2025-05-01T17:30:00Z",
+            "time_to_critical": "3.5 hours",
+            "ul_1642_limit": 60.0,
+            "expected_ul_limit_approach": "2025-05-01T20:00:00Z",
+            "time_to_ul_limit": "6 hours"
+          },
+          "safety_risk_forecast": {
+            "thermal_runaway_probability_2h": 0.08,
+            "thermal_runaway_probability_4h": 0.25,
+            "thermal_runaway_probability_6h": 0.48,
+            "fire_hazard_level_progression": "low → medium → high",
+            "worker_exposure_risk": "heat_stress_concern"
+          },
+          "production_impact": {
+            "quality_degradation": {
+              "2h_scenario": "용량 감소 예상 -1.5%",
+              "4h_scenario": "용량 감소 예상 -3.2%",
+              "6h_scenario": "용량 감소 예상 -5.8%"
+            },
+            "production_shutdown_risk": {
+              "threshold_temperature": 50.0,
+              "shutdown_probability_6h": 0.75
+            },
+            "estimated_loss": {
+              "2h_scenario": "약 800만원 (생산 지연)",
+              "4h_scenario": "약 2,200만원 (품질 저하 + 지연)",
+              "6h_scenario": "약 5,500만원 (생산 중단 + 품질 불량)"
+            }
+          },
+          "regulatory_compliance_forecast": {
+            "un_38_3_status": {
+              "temperature_limit": 75.0,
+              "predicted_max_6h": 50.9,
+              "compliance": "expected_compliant",
+              "margin": 24.1
+            },
+            "iec_62133_status": {
+              "temperature_limit": 70.0,
+              "predicted_max_6h": 50.9,
+              "compliance": "expected_compliant",
+              "margin": 19.1
+            },
+            "ul_1642_status": {
+              "temperature_limit": 60.0,
+              "predicted_max_6h": 50.9,
+              "compliance": "expected_compliant",
+              "margin": 9.1,
+              "concern": "margin_narrowing"
+            },
+            "overall_concern": "UL 1642 여유도 감소 우려"
+          },
+          "recommendation": "3.5시간 내 냉각 시스템 개선 필요 - 온도 상승 억제 권장",
+          "summary_report": "## 배터리 생산 라인 온도 예측 결과\n\n### 예측 모델 정보\n- **모델**: 열역학 모델 + 안전 제약 조건\n- **정확도**: 92%\n- **예측 구간**: 향후 6시간\n\n### 온도 예측 추이 (제어 없이)\n| 시간 | 예측 온도 | 신뢰구간 (95%) | 임계값 초과 | 열폭주 확률 |\n|------|-----------|----------------|-------------|-------------|\n| 현재 | 38.0°C | - | - | - |\n| +2시간 | 42.3°C | 41.8-42.8°C | - | 8% |\n| +4시간 | **46.6°C** | 45.9-47.3°C | ✅ (45°C) | 25% |\n| +6시간 | **50.9°C** | 50.0-51.8°C | ✅ (45°C) | **48%** |\n\n(임계값: 45°C, UL 1642 한계: 60°C)\n\n### 안전 임계값 분석\n- **임계 온도**: 45°C\n- **임계값 도달 예상**: **2025-05-01 17:30 UTC (3.5시간 후)**\n- **UL 1642 한계**: 60°C\n- **한계 접근 예상**: 2025-05-01 20:00 UTC (6시간 후)\n\n### 안전 리스크 예측\n- **열폭주 확률**:\n  - 2시간 후: 8%\n  - 4시간 후: 25%\n  - **6시간 후: 48%** 🚨\n- **화재 위험 수준 변화**: 낮음 → 중간 → **높음**\n- **작업자 노출 위험**: 열 스트레스 우려\n\n### 생산 영향 예측\n\n**품질 저하**\n| 시나리오 | 용량 감소 | 영향 |\n|---------|----------|------|\n| 2시간 후 조치 | -1.5% | 경미 |\n| 4시간 후 조치 | -3.2% | 보통 |\n| 6시간 후 조치 | -5.8% | 심각 |\n\n**생산 중단 위험**\n- 중단 임계 온도: 50°C\n- **6시간 후 중단 확률**: 75%\n\n**예상 손실**\n| 시나리오 | 손실 내역 | 총 손실 |\n|---------|----------|--------|\n| 2시간 후 | 생산 지연 | 800만원 |\n| 4시간 후 | 품질 저하 + 지연 | 2,200만원 |\n| 6시간 후 | **생산 중단 + 품질 불량** | **5,500만원** |\n\n### 규제 준수 예측 (6시간 후)\n\n| 규제 | 온도 한계 | 예측 최대값 | 준수 여부 | 여유도 | 우려사항 |\n|------|----------|------------|----------|--------|----------|\n| UN 38.3 | 75°C | 50.9°C | ✅ 준수 예상 | 24.1°C | - |\n| IEC 62133 | 70°C | 50.9°C | ✅ 준수 예상 | 19.1°C | - |\n| UL 1642 | 60°C | 50.9°C | ✅ 준수 예상 | **9.1°C** | ⚠️ **여유도 감소** |\n\n**종합 우려사항**: UL 1642 여유도 감소로 안전 마진 축소\n\n### 권고사항\n현재 추세가 지속될 경우 3.5시간 후 임계 온도(45°C)를 초과하고, 6시간 후 열폭주 확률이 48%에 달합니다. 또한 생산 중단 확률 75%, 손실 5,500만원이 예상됩니다. **3.5시간 내 냉각 시스템 개선**을 통해 온도 상승을 억제할 것을 권장합니다."
+        },
+        "next_step": "control_optimization"
+      }
+    },
+    "step_5_prediction_to_orchestration": {
+      "from": "Predictive Agent",
+      "to": "Orchestration Agent",
+      "timestamp": "2025-05-01T14:01:00Z",
+      "api_endpoint": "POST /api/v1/orchestrate/report",
+      "request": {
+        "workflow_id": "wf_battery_production_004",
+        "status": "completed",
+        "results": {
+          "status": "success",
+          "workflow_id": "wf_battery_production_004",
+          "agent": "AutoControl Agent",
+          "control_result": {
+            "optimization_completed": true,
+            "control_method": "Adaptive PID Control with Thermal Management",
+            "optimization_algorithm": "Model Predictive Control (MPC)",
+            "optimal_parameters": {
+              "COOLING_CAPACITY": {
+                "current": "100% (기준)",
+                "optimal": "140%",
+                "change": "+40%",
+                "unit": "%",
+                "rationale": "냉각 성능 강화로 온도 상승 억제"
+              },
+              "AIRFLOW_RATE": {
+                "current": "2500 CFM",
+                "optimal": "3200 CFM",
+                "change": "+700 CFM",
+                "unit": "CFM",
+                "rationale": "환기 증대로 열 방출 촉진"
+              },
+              "PRODUCTION_SPEED": {
+                "current": "100%",
+                "optimal": "95%",
+                "change": "-5%",
+                "unit": "%",
+                "rationale": "발열량 감소 (임시 조치)"
+              }
+            },
+            "predicted_improvement": {
+              "TEMPERATURE_2h": {
+                "without_control": 42.3,
+                "with_control": 31.5,
+                "improvement": -10.8
+              },
+              "TEMPERATURE_4h": {
+                "without_control": 46.6,
+                "with_control": 28.8,
+                "improvement": -17.8
+              },
+              "TEMPERATURE_6h": {
+                "without_control": 50.9,
+                "with_control": 27.2,
+                "improvement": -23.7
+              }
+            },
+            "control_sequence": [
+              {
+                "step": 1,
+                "time": "2025-05-01T14:01:00Z",
+                "action": "냉각 시스템 가동률 증가",
+                "value": "100% → 120% (+20%)",
+                "duration": "30분"
+              },
+              {
+                "step": 2,
+                "time": "2025-05-01T14:31:00Z",
+                "action": "환기 팬 속도 증가",
+                "value": "2500 CFM → 2850 CFM (+350 CFM)",
+                "duration": "30분"
+              },
+              {
+                "step": 3,
+                "time": "2025-05-01T15:01:00Z",
+                "action": "생산 속도 임시 감소",
+                "value": "100% → 95% (-5%)",
+                "duration": "1시간"
+              },
+              {
+                "step": 4,
+                "time": "2025-05-01T16:01:00Z",
+                "action": "냉각 시스템 최대 가동",
+                "value": "120% → 140% (+20%)",
+                "duration": "1시간"
+              },
+              {
+                "step": 5,
+                "time": "2025-05-01T17:01:00Z",
+                "action": "환기 팬 최대 속도",
+                "value": "2850 CFM → 3200 CFM (+350 CFM)",
+                "duration": "지속"
+              },
+              {
+                "step": 6,
+                "time": "2025-05-01T18:01:00Z",
+                "action": "온도 안정화 확인 후 생산 속도 복귀",
+                "value": "95% → 100% (+5%)",
+                "duration": "지속"
+              }
+            ],
+            "execution_plan": {
+              "total_duration": "4시간",
+              "expected_stabilization": "2025-05-01T18:01:00Z",
+              "monitoring_interval": "5분",
+              "rollback_conditions": [
+                "TEMPERATURE > 42°C",
+                "냉각 시스템 과부하",
+                "생산 품질 저하"
+              ]
+            },
+            "safety_improvement": {
+              "thermal_runaway_reduction": {
+                "without_control_6h": 0.48,
+                "with_control_6h": 0.02,
+                "reduction": "96%"
+              },
+              "fire_hazard_level": {
+                "without_control": "high",
+                "with_control": "low"
+              },
+              "worker_safety": {
+                "without_control": "heat_stress_risk",
+                "with_control": "safe"
+              }
+            },
+            "production_benefit": {
+              "quality_preservation": {
+                "capacity_loss_without_control": "5.8%",
+                "capacity_loss_with_control": "0.5%",
+                "quality_improvement": "5.3%p"
+              },
+              "production_continuity": {
+                "shutdown_probability_without_control": 0.75,
+                "shutdown_probability_with_control": 0.05,
+                "continuity_improvement": "93%"
+              }
+            },
+            "economic_benefit_analysis": {
+              "control_implementation_cost": {
+                "cooling_energy_increase": "약 120만원 (4시간 최대 가동)",
+                "production_speed_reduction": "약 180만원 (1시간 5% 감소)",
+                "total_cost": "약 300만원"
+              },
+              "loss_prevention": {
+                "without_control_6h_loss": 55000000,
+                "with_control_6h_loss": 3000000,
+                "prevented_loss": 52000000
+              },
+              "net_benefit": 51700000,
+              "roi": "약 172배",
+              "payback_period": "즉시 (손실 방지)"
+            },
+            "regulatory_compliance_enhancement": {
+              "ul_1642_margin": {
+                "without_control": "9.1°C (협소)",
+                "with_control": "32.8°C (충분)",
+                "improvement": "3.6배 증가"
+              },
+              "overall_safety_margin": "대폭 개선"
+            },
+            "safety_validation": {
+              "all_constraints_satisfied": true,
+              "safety_margin": 0.22,
+              "risk_level": "low",
+              "approval_required": false
+            },
+            "summary_report": "## 배터리 생산 라인 열 관리 최적 제어 결과\n\n### 제어 최적화 완료\n- **제어 방법**: 적응형 PID 제어 + 열 관리\n- **최적화 알고리즘**: 모델 예측 제어 (MPC)\n- **안전성 검증**: 통과 ✅\n\n### 최적 제어 파라미터\n| 파라미터 | 현재값 | 최적값 | 변화량 | 사유 |\n|---------|--------|--------|--------|------|\n| 냉각 가동률 | 100% | **140%** | +40% | 냉각 성능 강화 |\n| 환기 유량 | 2500 CFM | **3200 CFM** | +700 CFM | 열 방출 촉진 |\n| 생산 속도 | 100% | **95%** | -5% | 발열량 감소 (임시) |\n\n### 온도 예상 개선 효과\n| 시점 | 제어 없이 | 제어 적용 시 | 개선폭 | 상태 |\n|------|-----------|-------------|--------|------|\n| +2시간 | 42.3°C | **31.5°C** | -10.8°C | ✅ 정상 |\n| +4시간 | 46.6°C | **28.8°C** | -17.8°C | ✅ 정상 |\n| +6시간 | 50.9°C | **27.2°C** | -23.7°C | ✅ 정상 |\n\n(목표: ≤ 30°C, 임계값: 45°C)\n\n### 제어 실행 계획\n1. **1단계** (0-30분): 냉각 100% → 120%\n2. **2단계** (30-60분): 환기 2500 → 2850 CFM\n3. **3단계** (1-2시간): 생산 속도 100% → 95%\n4. **4단계** (2-3시간): 냉각 120% → 140%\n5. **5단계** (3-4시간): 환기 2850 → 3200 CFM\n6. **6단계** (4시간~): 생산 속도 복귀 100%\n\n**총 소요 시간**: 4시간  \n**예상 안정화**: 2025-05-01 18:01 UTC\n\n### 안전성 개선\n\n**열폭주 위험 감소**\n- 제어 없이 (6시간): 48%\n- 제어 적용 시 (6시간): **2%**\n- **감소율**: 96% 🎉\n\n**화재 위험 수준**\n- 제어 없이: 높음 (High)\n- 제어 적용 시: **낮음 (Low)**\n\n**작업자 안전**\n- 제어 없이: 열 스트레스 위험\n- 제어 적용 시: **안전 (Safe)**\n\n### 생산 효과\n\n**품질 보존**\n- 용량 손실 (제어 없이): 5.8%\n- 용량 손실 (제어 적용): **0.5%**\n- **품질 개선**: 5.3%p\n\n**생산 연속성**\n- 중단 확률 (제어 없이): 75%\n- 중단 확률 (제어 적용): **5%**\n- **연속성 개선**: 93%\n\n### 경제적 효과\n\n**제어 비용**\n- 냉각 에너지 증가: 약 120만원\n- 생산 속도 감소: 약 180만원\n- **총 비용**: 약 300만원\n\n**손실 방지**\n- 제어 없이 손실 (6h): 5,500만원\n- 제어 적용 손실 (6h): 300만원\n- **방지 손실**: 5,200만원\n\n**경제성 분석**\n- 순 편익: **5,170만원**\n- **ROI**: 약 **172배**\n- 회수 기간: **즉시** (손실 방지)\n\n### 규제 준수 강화\n\n**UL 1642 여유도 개선**\n- 제어 없이: 9.1°C (협소)\n- 제어 적용 시: **32.8°C (충분)**\n- **개선**: 3.6배 증가 ✅\n\n**종합 안전 마진**: 대폭 개선\n\n### 안전성 검증\n- ✅ 모든 운전 제약조건 만족\n- ✅ 안전 여유도: 22%\n- ✅ 리스크 수준: 낮음\n- ✅ 승인 불필요 (자동 실행 가능)\n\n### 권고사항\n최적 제어 파라미터를 즉시 적용하여 온도 상승을 억제하고 5,170만원의 손실을 방지할 것을 강력히 권장합니다.",
+            "auto_execution_enabled": true,
+            "execution_status": "ready_to_execute"
+          },
+          "next_step": "compliance_verification"
+        }
+      },
+      "response": {
+        "status": "success",
+        "workflow_id": "wf_battery_production_004",
+        "message": "Prediction 완료. AutoControl Agent로 전달.",
+        "next_step": "control_optimization"
+      }
+    },
+    "step_6_orchestration_to_autocontrol": {
+      "from": "Orchestration Agent",
+      "to": "AutoControl Agent",
+      "timestamp": "2025-05-01T14:01:00Z",
+      "api_endpoint": "POST /api/v1/autocontrol/run-direct",
+      "request": {
+        "workflow_id": "wf_battery_production_004",
+        "control_task": "optimize_thermal_management",
+        "current_state": {
+          "TEMPERATURE": 38.0,
+          "VOLTAGE": 3.75,
+          "CURRENT": 1.08,
+          "CAPACITY": 3010,
+          "SOC": 65.2
+        },
+        "target_state": {
+          "TEMPERATURE": "<=28",
+          "cooling_system": "optimize"
+        },
+        "constraints": {
+          "TEMPERATURE": {
+            "max": 30.0,
+            "critical": 45.0,
+            "rate_limit": 5.0
+          },
+          "cooling_capacity": {
+            "max_increase": 150
+          },
+          "production_continuity": "maintain",
+          "optimization_time": "minimize"
+        },
+        "prediction_context": {
+          "forecast_severity": "critical",
+          "time_to_critical": "3.5_hours",
+          "thermal_runaway_probability_6h": 0.48,
+          "production_loss_risk": 55000000
+        },
+        "control_method": "adaptive_pid_with_cooling",
+        "query": "예측 결과 48분 후 용량 유지율이 72.3%로 하락하고 내부 저항이 35% 증가하여 품질 불량 및 리콜 위험이 높아집니다. 약 6,200만원의 손실이 예상됩니다. 용량 유지율을 목표치 85% 이상으로 회복하기 위한 최적 제어 파라미터(충전 전류, 전압 범위, 온도 관리)를 계산하고 안전하게 적용해주세요."
+      },
+      "response": {
+        "status": "success",
+        "workflow_id": "wf_battery_production_004",
+        "agent": "AutoControl Agent",
+        "control_result": {
+          "optimization_completed": true,
+          "control_method": "Adaptive PID Control with Thermal Management",
+          "optimization_algorithm": "Model Predictive Control (MPC)",
+          "optimal_parameters": {
+            "COOLING_CAPACITY": {
+              "current": "100% (기준)",
+              "optimal": "140%",
+              "change": "+40%",
+              "unit": "%",
+              "rationale": "냉각 성능 강화로 온도 상승 억제"
+            },
+            "AIRFLOW_RATE": {
+              "current": "2500 CFM",
+              "optimal": "3200 CFM",
+              "change": "+700 CFM",
+              "unit": "CFM",
+              "rationale": "환기 증대로 열 방출 촉진"
+            },
+            "PRODUCTION_SPEED": {
+              "current": "100%",
+              "optimal": "95%",
+              "change": "-5%",
+              "unit": "%",
+              "rationale": "발열량 감소 (임시 조치)"
+            }
+          },
+          "predicted_improvement": {
+            "TEMPERATURE_2h": {
+              "without_control": 42.3,
+              "with_control": 31.5,
+              "improvement": -10.8
+            },
+            "TEMPERATURE_4h": {
+              "without_control": 46.6,
+              "with_control": 28.8,
+              "improvement": -17.8
+            },
+            "TEMPERATURE_6h": {
+              "without_control": 50.9,
+              "with_control": 27.2,
+              "improvement": -23.7
+            }
+          },
+          "control_sequence": [
+            {
+              "step": 1,
+              "time": "2025-05-01T14:01:00Z",
+              "action": "냉각 시스템 가동률 증가",
+              "value": "100% → 120% (+20%)",
+              "duration": "30분"
+            },
+            {
+              "step": 2,
+              "time": "2025-05-01T14:31:00Z",
+              "action": "환기 팬 속도 증가",
+              "value": "2500 CFM → 2850 CFM (+350 CFM)",
+              "duration": "30분"
+            },
+            {
+              "step": 3,
+              "time": "2025-05-01T15:01:00Z",
+              "action": "생산 속도 임시 감소",
+              "value": "100% → 95% (-5%)",
+              "duration": "1시간"
+            },
+            {
+              "step": 4,
+              "time": "2025-05-01T16:01:00Z",
+              "action": "냉각 시스템 최대 가동",
+              "value": "120% → 140% (+20%)",
+              "duration": "1시간"
+            },
+            {
+              "step": 5,
+              "time": "2025-05-01T17:01:00Z",
+              "action": "환기 팬 최대 속도",
+              "value": "2850 CFM → 3200 CFM (+350 CFM)",
+              "duration": "지속"
+            },
+            {
+              "step": 6,
+              "time": "2025-05-01T18:01:00Z",
+              "action": "온도 안정화 확인 후 생산 속도 복귀",
+              "value": "95% → 100% (+5%)",
+              "duration": "지속"
+            }
+          ],
+          "execution_plan": {
+            "total_duration": "4시간",
+            "expected_stabilization": "2025-05-01T18:01:00Z",
+            "monitoring_interval": "5분",
+            "rollback_conditions": [
+              "TEMPERATURE > 42°C",
+              "냉각 시스템 과부하",
+              "생산 품질 저하"
+            ]
+          },
+          "safety_improvement": {
+            "thermal_runaway_reduction": {
+              "without_control_6h": 0.48,
+              "with_control_6h": 0.02,
+              "reduction": "96%"
+            },
+            "fire_hazard_level": {
+              "without_control": "high",
+              "with_control": "low"
+            },
+            "worker_safety": {
+              "without_control": "heat_stress_risk",
+              "with_control": "safe"
+            }
+          },
+          "production_benefit": {
+            "quality_preservation": {
+              "capacity_loss_without_control": "5.8%",
+              "capacity_loss_with_control": "0.5%",
+              "quality_improvement": "5.3%p"
+            },
+            "production_continuity": {
+              "shutdown_probability_without_control": 0.75,
+              "shutdown_probability_with_control": 0.05,
+              "continuity_improvement": "93%"
+            }
+          },
+          "economic_benefit_analysis": {
+            "control_implementation_cost": {
+              "cooling_energy_increase": "약 120만원 (4시간 최대 가동)",
+              "production_speed_reduction": "약 180만원 (1시간 5% 감소)",
+              "total_cost": "약 300만원"
+            },
+            "loss_prevention": {
+              "without_control_6h_loss": 55000000,
+              "with_control_6h_loss": 3000000,
+              "prevented_loss": 52000000
+            },
+            "net_benefit": 51700000,
+            "roi": "약 172배",
+            "payback_period": "즉시 (손실 방지)"
+          },
+          "regulatory_compliance_enhancement": {
+            "ul_1642_margin": {
+              "without_control": "9.1°C (협소)",
+              "with_control": "32.8°C (충분)",
+              "improvement": "3.6배 증가"
+            },
+            "overall_safety_margin": "대폭 개선"
+          },
+          "safety_validation": {
+            "all_constraints_satisfied": true,
+            "safety_margin": 0.22,
+            "risk_level": "low",
+            "approval_required": false
+          },
+          "summary_report": "## 배터리 생산 라인 열 관리 최적 제어 결과\n\n### 제어 최적화 완료\n- **제어 방법**: 적응형 PID 제어 + 열 관리\n- **최적화 알고리즘**: 모델 예측 제어 (MPC)\n- **안전성 검증**: 통과 ✅\n\n### 최적 제어 파라미터\n| 파라미터 | 현재값 | 최적값 | 변화량 | 사유 |\n|---------|--------|--------|--------|------|\n| 냉각 가동률 | 100% | **140%** | +40% | 냉각 성능 강화 |\n| 환기 유량 | 2500 CFM | **3200 CFM** | +700 CFM | 열 방출 촉진 |\n| 생산 속도 | 100% | **95%** | -5% | 발열량 감소 (임시) |\n\n### 온도 예상 개선 효과\n| 시점 | 제어 없이 | 제어 적용 시 | 개선폭 | 상태 |\n|------|-----------|-------------|--------|------|\n| +2시간 | 42.3°C | **31.5°C** | -10.8°C | ✅ 정상 |\n| +4시간 | 46.6°C | **28.8°C** | -17.8°C | ✅ 정상 |\n| +6시간 | 50.9°C | **27.2°C** | -23.7°C | ✅ 정상 |\n\n(목표: ≤ 30°C, 임계값: 45°C)\n\n### 제어 실행 계획\n1. **1단계** (0-30분): 냉각 100% → 120%\n2. **2단계** (30-60분): 환기 2500 → 2850 CFM\n3. **3단계** (1-2시간): 생산 속도 100% → 95%\n4. **4단계** (2-3시간): 냉각 120% → 140%\n5. **5단계** (3-4시간): 환기 2850 → 3200 CFM\n6. **6단계** (4시간~): 생산 속도 복귀 100%\n\n**총 소요 시간**: 4시간  \n**예상 안정화**: 2025-05-01 18:01 UTC\n\n### 안전성 개선\n\n**열폭주 위험 감소**\n- 제어 없이 (6시간): 48%\n- 제어 적용 시 (6시간): **2%**\n- **감소율**: 96% 🎉\n\n**화재 위험 수준**\n- 제어 없이: 높음 (High)\n- 제어 적용 시: **낮음 (Low)**\n\n**작업자 안전**\n- 제어 없이: 열 스트레스 위험\n- 제어 적용 시: **안전 (Safe)**\n\n### 생산 효과\n\n**품질 보존**\n- 용량 손실 (제어 없이): 5.8%\n- 용량 손실 (제어 적용): **0.5%**\n- **품질 개선**: 5.3%p\n\n**생산 연속성**\n- 중단 확률 (제어 없이): 75%\n- 중단 확률 (제어 적용): **5%**\n- **연속성 개선**: 93%\n\n### 경제적 효과\n\n**제어 비용**\n- 냉각 에너지 증가: 약 120만원\n- 생산 속도 감소: 약 180만원\n- **총 비용**: 약 300만원\n\n**손실 방지**\n- 제어 없이 손실 (6h): 5,500만원\n- 제어 적용 손실 (6h): 300만원\n- **방지 손실**: 5,200만원\n\n**경제성 분석**\n- 순 편익: **5,170만원**\n- **ROI**: 약 **172배**\n- 회수 기간: **즉시** (손실 방지)\n\n### 규제 준수 강화\n\n**UL 1642 여유도 개선**\n- 제어 없이: 9.1°C (협소)\n- 제어 적용 시: **32.8°C (충분)**\n- **개선**: 3.6배 증가 ✅\n\n**종합 안전 마진**: 대폭 개선\n\n### 안전성 검증\n- ✅ 모든 운전 제약조건 만족\n- ✅ 안전 여유도: 22%\n- ✅ 리스크 수준: 낮음\n- ✅ 승인 불필요 (자동 실행 가능)\n\n### 권고사항\n최적 제어 파라미터를 즉시 적용하여 온도 상승을 억제하고 5,170만원의 손실을 방지할 것을 강력히 권장합니다.",
+          "auto_execution_enabled": true,
+          "execution_status": "ready_to_execute"
+        },
+        "next_step": "compliance_verification"
+      }
+    },
+    "step_7_autocontrol_to_orchestration": {
+      "from": "AutoControl Agent",
+      "to": "Orchestration Agent",
+      "timestamp": "2025-05-01T14:01:45Z",
+      "api_endpoint": "POST /api/v1/orchestrate/report",
+      "request": {
+        "workflow_id": "wf_battery_production_004",
+        "status": "completed",
+        "results": {
+          "status": "success",
+          "workflow_id": "wf_battery_production_004",
+          "agent": "ComplianceCheck Agent",
+          "compliance_result": {
+            "verification_completed": true,
+            "overall_compliance": "compliant_after_control",
+            "regulations_checked": [
+              {
+                "regulation_name": "UN 38.3 (운송 안전 테스트)",
+                "regulation_code": "UN Manual of Tests and Criteria, Part III, subsection 38.3",
+                "relevant_sections": [
+                  "온도 테스트 (T.1 ~ T.8)",
+                  "충격 테스트",
+                  "진동 테스트"
+                ],
+                "requirements": {
+                  "temperature_test": "72시간 동안 -40°C ~ +75°C 노출 후 이상 없음",
+                  "thermal_abuse": "130°C에서 30분간 이상 없음",
+                  "short_circuit": "외부 단락 테스트 통과"
+                },
+                "current_compliance": {
+                  "current_temperature": 38.0,
+                  "temperature_limit": 75.0,
+                  "margin": 37.0,
+                  "status": "compliant",
+                  "concern": "증가 추세로 인한 미래 리스크"
+                },
+                "after_control_compliance": {
+                  "predicted_temperature": 27.2,
+                  "temperature_limit": 75.0,
+                  "margin": 47.8,
+                  "status": "fully_compliant",
+                  "confidence": 0.96
+                },
+                "test_recommendations": [
+                  "정기 온도 사이클 테스트 (월 1회)",
+                  "고온 노출 테스트 (분기 1회)",
+                  "운송 시뮬레이션 테스트"
+                ]
+              },
+              {
+                "regulation_name": "IEC 62133 (전기 안전 표준)",
+                "regulation_code": "IEC 62133-2:2017 (리튬 이온 배터리)",
+                "relevant_sections": [
+                  "충전 중 온도 상승 (Clause 8.3.4)",
+                  "과충전 테스트",
+                  "외부 단락 테스트"
+                ],
+                "requirements": {
+                  "charging_temperature": "충전 중 최대 70°C",
+                  "normal_operation": "정상 운전 시 60°C 이하 권장",
+                  "overcharge_protection": "과충전 보호 회로 필수"
+                },
+                "current_compliance": {
+                  "current_temperature": 38.0,
+                  "charging_limit": 70.0,
+                  "margin": 32.0,
+                  "status": "compliant",
+                  "concern": "정상 운전 권장값(60°C) 대비 여유도 감소 중"
+                },
+                "after_control_compliance": {
+                  "predicted_temperature": 27.2,
+                  "charging_limit": 70.0,
+                  "margin": 42.8,
+                  "normal_operation_margin": 32.8,
+                  "status": "fully_compliant",
+                  "confidence": 0.95
+                },
+                "test_recommendations": [
+                  "충전 온도 모니터링 시스템 강화",
+                  "과충전 보호 회로 정기 점검",
+                  "IEC 62133-2 인증 갱신 (3년 주기)"
+                ]
+              },
+              {
+                "regulation_name": "UL 1642 (리튬 배터리 안전 표준)",
+                "regulation_code": "UL 1642:2020 (리튬 배터리)",
+                "relevant_sections": [
+                  "온도 테스트 (Section 19)",
+                  "과충전 테스트 (Section 20)",
+                  "외부 단락 (Section 21)"
+                ],
+                "requirements": {
+                  "normal_operation_temperature": "정상 운전 시 최대 60°C",
+                  "abnormal_operation_temperature": "비정상 시 최대 80°C (일시적)",
+                  "thermal_runaway_prevention": "열폭주 방지 설계 필수"
+                },
+                "current_compliance": {
+                  "current_temperature": 38.0,
+                  "normal_operation_limit": 60.0,
+                  "margin": 22.0,
+                  "status": "compliant",
+                  "concern": "예측 온도(50.9°C) 여유도 협소 (9.1°C)"
+                },
+                "after_control_compliance": {
+                  "predicted_temperature": 27.2,
+                  "normal_operation_limit": 60.0,
+                  "margin": 32.8,
+                  "status": "fully_compliant",
+                  "margin_improvement": "3.6배 증가",
+                  "confidence": 0.94
+                },
+                "test_recommendations": [
+                  "UL 1642 인증 테스트 (연 1회)",
+                  "열폭주 시뮬레이션 테스트",
+                  "온도 센서 교정 (분기 1회)"
+                ]
+              },
+              {
+                "regulation_name": "산업안전보건법 (Occupational Safety and Health Act)",
+                "regulation_code": "법률 제18426호",
+                "relevant_sections": [
+                  "제38조 (작업환경 측정)",
+                  "제39조 (건강진단)",
+                  "제125조 (보건조치)"
+                ],
+                "requirements": {
+                  "workplace_temperature": "작업장 온도 10-30°C 권장",
+                  "heat_stress_prevention": "고온 작업 시 휴식 시간 보장",
+                  "monitoring_frequency": "작업환경 측정 6개월마다"
+                },
+                "current_compliance": {
+                  "current_temperature": 38.0,
+                  "workplace_recommended_max": 30.0,
+                  "exceedance": 8.0,
+                  "status": "non_compliant",
+                  "worker_risk": "열 스트레스 우려",
+                  "immediate_action_required": true
+                },
+                "after_control_compliance": {
+                  "predicted_temperature": 27.2,
+                  "workplace_recommended_max": 30.0,
+                  "margin": 2.8,
+                  "status": "compliant",
+                  "worker_safety": "안전",
+                  "confidence": 0.93
+                },
+                "recommendations": [
+                  "즉시 냉각 시스템 가동",
+                  "작업자 휴식 시간 확대 (임시)",
+                  "고온 경보 시스템 설치",
+                  "개인 보호 장비 (냉각 조끼) 지급"
+                ]
+              }
+            ],
+            "compliance_summary": {
+              "total_regulations_checked": 4,
+              "currently_compliant": 3,
+              "currently_non_compliant": 1,
+              "after_control_compliant": 4,
+              "after_control_non_compliant": 0,
+              "overall_status": "compliant_after_control"
+            },
+            "risk_mitigation": {
+              "current_risks": [
+                "UL 1642 여유도 협소 (제어 없이 9.1°C)",
+                "산업안전보건법 위반 (작업장 온도 38°C > 30°C)",
+                "작업자 열 스트레스 위험"
+              ],
+              "risks_after_control": [
+                "모든 주요 리스크 해소",
+                "안전 마진 대폭 개선"
+              ],
+              "residual_risks": [
+                "정기 온도 모니터링 필요 (낮은 리스크)",
+                "냉각 시스템 유지보수 (낮은 리스크)"
+              ]
+            },
+            "certification_status": {
+              "current_certifications": [
+                "UL 1642 인증 (2023-08-15 발급, 2026-08-15 만료)",
+                "IEC 62133-2 인증 (2022-11-20 발급, 2025-11-20 만료)",
+                "KC 인증 (국내 전기용품안전인증)"
+              ],
+              "renewal_required": [
+                "IEC 62133-2 인증 갱신 (2025-11-20, 7개월 후)"
+              ],
+              "test_schedule": [
+                "UL 1642 연례 감사 (2025-08-15)",
+                "UN 38.3 샘플 테스트 (분기별)"
+              ]
+            },
+            "summary_report": "## 배터리 생산 라인 안전 규제 준수성 검증 결과\n\n### 검증 개요\n- **검증 완료**: ✅\n- **검증 규제 수**: 4개\n- **전체 준수 여부**: 제어 후 완전 준수\n\n---\n\n### 1. UN 38.3 (운송 안전 테스트)\n\n**규제 정보**\n- 규제 코드: UN Manual of Tests and Criteria, Part III, subsection 38.3\n- 적용 대상: 리튬 이온 배터리 운송 안전\n\n**요구사항**\n- 온도 테스트: 72시간 동안 -40°C ~ +75°C 노출 후 이상 없음\n- 열 남용 테스트: 130°C에서 30분간 이상 없음\n\n**현재 준수 상태**\n| 항목 | 값 | 상태 |\n|------|-----|------|\n| 현재 온도 | 38.0°C | ✅ 준수 (한계 75°C) |\n| 여유도 | 37.0°C | 충분 |\n| 우려사항 | 증가 추세 | ⚠️ 미래 리스크 |\n\n**제어 후 예상 상태**\n| 항목 | 값 | 상태 |\n|------|-----|------|\n| 예상 온도 | 27.2°C | ✅ **완전 준수** |\n| 여유도 | 47.8°C | **매우 충분** |\n| 신뢰도 | 96% | 높음 |\n\n**테스트 권장사항**\n- 정기 온도 사이클 테스트 (월 1회)\n- 고온 노출 테스트 (분기 1회)\n- 운송 시뮬레이션 테스트\n\n---\n\n### 2. IEC 62133 (전기 안전 표준)\n\n**규제 정보**\n- 규제 코드: IEC 62133-2:2017 (리튬 이온 배터리)\n- 적용 대상: 전기 안전 요구사항\n\n**요구사항**\n- 충전 중 온도: 최대 70°C\n- 정상 운전: 60°C 이하 권장\n- 과충전 보호: 회로 필수\n\n**현재 준수 상태**\n| 항목 | 값 | 상태 |\n|------|-----|------|\n| 현재 온도 | 38.0°C | ✅ 준수 (한계 70°C) |\n| 여유도 | 32.0°C | 충분 |\n| 우려사항 | 정상 운전 권장 대비 | ⚠️ 여유도 감소 중 |\n\n**제어 후 예상 상태**\n| 항목 | 값 | 상태 |\n|------|-----|------|\n| 예상 온도 | 27.2°C | ✅ **완전 준수** |\n| 충전 한계 여유도 | 42.8°C | **매우 충분** |\n| 정상 운전 여유도 | 32.8°C | **매우 충분** |\n| 신뢰도 | 95% | 높음 |\n\n**테스트 권장사항**\n- 충전 온도 모니터링 시스템 강화\n- 과충전 보호 회로 정기 점검\n- IEC 62133-2 인증 갱신 (2025-11-20, 7개월 후)\n\n---\n\n### 3. UL 1642 (리튬 배터리 안전 표준)\n\n**규제 정보**\n- 규제 코드: UL 1642:2020\n- 적용 대상: 리튬 배터리 제품 안전\n\n**요구사항**\n- 정상 운전: 최대 60°C\n- 비정상 운전: 최대 80°C (일시적)\n- 열폭주 방지: 설계 필수\n\n**현재 준수 상태**\n| 항목 | 값 | 상태 |\n|------|-----|------|\n| 현재 온도 | 38.0°C | ✅ 준수 (한계 60°C) |\n| 여유도 | 22.0°C | 충분 |\n| **우려사항** | **예측 온도 50.9°C** | ⚠️ **여유도 9.1°C로 협소** |\n\n**제어 후 예상 상태**\n| 항목 | 값 | 상태 |\n|------|-----|------|\n| 예상 온도 | 27.2°C | ✅ **완전 준수** |\n| 여유도 | 32.8°C | **매우 충분** |\n| **여유도 개선** | **3.6배 증가** | ✅ **대폭 개선** |\n| 신뢰도 | 94% | 높음 |\n\n**테스트 권장사항**\n- UL 1642 인증 테스트 (연 1회)\n- 열폭주 시뮬레이션 테스트\n- 온도 센서 교정 (분기 1회)\n\n---\n\n### 4. 산업안전보건법 (Occupational Safety and Health Act)\n\n**규제 정보**\n- 법률 번호: 제18426호\n- 적용 대상: 작업장 안전 및 보건\n\n**요구사항**\n- 작업장 온도: 10-30°C 권장\n- 고온 작업: 휴식 시간 보장\n- 작업환경 측정: 6개월마다\n\n**현재 준수 상태**\n| 항목 | 값 | 상태 |\n|------|-----|------|\n| 현재 온도 | **38.0°C** | 🚨 **부적합** (권장 30°C 초과) |\n| 초과량 | +8.0°C | - |\n| 작업자 위험 | 열 스트레스 우려 | ⚠️ **즉시 조치 필요** |\n\n**제어 후 예상 상태**\n| 항목 | 값 | 상태 |\n|------|-----|------|\n| 예상 온도 | **27.2°C** | ✅ **적합** (권장 범위 내) |\n| 여유도 | 2.8°C | 충분 |\n| 작업자 안전 | **안전** | ✅ **개선** |\n| 신뢰도 | 93% | 높음 |\n\n**권장사항**\n- ✅ **즉시 냉각 시스템 가동** (가장 중요)\n- 작업자 휴식 시간 확대 (임시 조치)\n- 고온 경보 시스템 설치\n- 개인 보호 장비 (냉각 조끼) 지급\n\n---\n\n### 종합 준수성 요약\n\n| 규제 | 현재 상태 | 제어 후 상태 |\n|------|----------|-------------|\n| UN 38.3 | ✅ 준수 | ✅ 완전 준수 |\n| IEC 62133 | ✅ 준수 | ✅ 완전 준수 |\n| UL 1642 | ✅ 준수 (우려) | ✅ 완전 준수 |\n| 산업안전보건법 | 🚨 **부적합** | ✅ **적합** |\n\n**총 검증 규제**: 4개  \n**현재 준수**: 3개 준수, 1개 부적합  \n**제어 후 준수**: **4개 모두 적합** ✅\n\n---\n\n### 리스크 완화\n\n**현재 리스크**\n- 🚨 산업안전보건법 위반 (작업장 온도 38°C > 30°C)\n- ⚠️ UL 1642 여유도 협소 (제어 없이 9.1°C)\n- ⚠️ 작업자 열 스트레스 위험\n\n**제어 후 리스크**\n- ✅ 모든 주요 리스크 해소\n- ✅ 안전 마진 대폭 개선 (UL 1642 여유도 3.6배 증가)\n\n**잔여 리스크** (낮음)\n- 정기 온도 모니터링 필요\n- 냉각 시스템 유지보수\n\n---\n\n### 인증 현황\n\n**보유 인증**\n- ✅ UL 1642 인증 (2023-08-15 ~ 2026-08-15)\n- ✅ IEC 62133-2 인증 (2022-11-20 ~ 2025-11-20)\n- ✅ KC 인증 (국내 전기용품안전인증)\n\n**갱신 일정**\n- ⚠️ IEC 62133-2 인증 갱신 필요 (2025-11-20, **7개월 후**)\n- UL 1642 연례 감사 (2025-08-15)\n- UN 38.3 샘플 테스트 (분기별)\n\n---\n\n### 최종 권고사항\n\n1. ✅ **즉시 최적 제어 실행** (가장 중요)\n   - 현재 산업안전보건법 위반 상태\n   - 제어 적용 시 모든 규제 준수\n\n2. 📊 **제어 후 지속 모니터링**\n   - 온도 연속 측정 (5분 간격)\n   - 4시간 후 안정화 확인\n\n3. 🏆 **인증 유지 관리**\n   - IEC 62133-2 갱신 준비 (7개월 후)\n   - 정기 테스트 일정 준수\n\n4. 🔬 **근본 원인 분석**\n   - 냉각 시스템 점검 (필터, 냉매)\n   - 환기 시스템 개선\n   - 외부 기온 영향 대책\n\n---\n\n**결론**: 제어 실행을 통해 산업안전보건법 위반을 해소하고 모든 국제 안전 규제(UN 38.3, IEC 62133, UL 1642)를 완전히 준수할 수 있으며, 작업자 안전과 제품 품질을 동시에 확보할 수 있습니다."
+          },
+          "next_step": "return_to_orchestration"
+        }
+      },
+      "response": {
+        "status": "success",
+        "workflow_id": "wf_battery_production_004",
+        "message": "AutoControl 완료. ComplianceCheck Agent로 전달.",
+        "next_step": "compliance_verification"
+      }
+    },
+    "step_8_orchestration_to_compliance": {
+      "from": "Orchestration Agent",
+      "to": "ComplianceCheck Agent",
+      "timestamp": "2025-05-01T14:01:45Z",
+      "api_endpoint": "POST /api/v1/compliance/check",
+      "request": {
+        "workflow_id": "wf_battery_production_004",
+        "compliance_task": "verify_battery_safety_regulations",
+        "industry": "battery",
+        "process": "Full Production",
+        "current_state": {
+          "TEMPERATURE": 38.0,
+          "VOLTAGE": 3.75,
+          "CURRENT": 1.08,
+          "CAPACITY": 3010,
+          "SOC": 65.2
+        },
+        "predicted_state_after_control": {
+          "TEMPERATURE": 27.2,
+          "VOLTAGE": 3.75,
+          "CURRENT": 1.08,
+          "CAPACITY": 3025,
+          "SOC": 65.2
+        },
+        "control_actions": {
+          "COOLING_CAPACITY": {
+            "from": "100%",
+            "to": "140%",
+            "change": "+40%"
+          },
+          "AIRFLOW_RATE": {
+            "from": 2500,
+            "to": 3200,
+            "change": "+700 CFM"
+          },
+          "PRODUCTION_SPEED": {
+            "from": "100%",
+            "to": "95% (임시)",
+            "change": "-5%"
+          }
+        },
+        "regulations_to_check": [
+          "UN 38.3 (운송 안전 테스트)",
+          "IEC 62133 (전기 안전 표준)",
+          "UL 1642 (리튬 배터리 안전 표준)",
+          "산업안전보건법 (Occupational Safety and Health Act)"
+        ],
+        "query": "배터리 충방전 제어 조치가 완료되었습니다. 충전 전류를 조정하고 전압 범위 및 온도 관리를 최적화했습니다. 이 제어 조치가 전기용품안전관리법 배터리 안전 기준, UN38.3 운송 안전 기준, KC 인증 성능 요구사항 등 관련 규제를 모두 준수하는지 검증해주세요. 제어 후 용량 유지율 86.2%, 내부 저항 22 mΩ로 예상됩니다."
+      },
+      "response": {
+        "status": "success",
+        "workflow_id": "wf_battery_production_004",
+        "agent": "ComplianceCheck Agent",
+        "compliance_result": {
+          "verification_completed": true,
+          "overall_compliance": "compliant_after_control",
+          "regulations_checked": [
+            {
+              "regulation_name": "UN 38.3 (운송 안전 테스트)",
+              "regulation_code": "UN Manual of Tests and Criteria, Part III, subsection 38.3",
+              "relevant_sections": [
+                "온도 테스트 (T.1 ~ T.8)",
+                "충격 테스트",
+                "진동 테스트"
+              ],
+              "requirements": {
+                "temperature_test": "72시간 동안 -40°C ~ +75°C 노출 후 이상 없음",
+                "thermal_abuse": "130°C에서 30분간 이상 없음",
+                "short_circuit": "외부 단락 테스트 통과"
+              },
+              "current_compliance": {
+                "current_temperature": 38.0,
+                "temperature_limit": 75.0,
+                "margin": 37.0,
+                "status": "compliant",
+                "concern": "증가 추세로 인한 미래 리스크"
+              },
+              "after_control_compliance": {
+                "predicted_temperature": 27.2,
+                "temperature_limit": 75.0,
+                "margin": 47.8,
+                "status": "fully_compliant",
+                "confidence": 0.96
+              },
+              "test_recommendations": [
+                "정기 온도 사이클 테스트 (월 1회)",
+                "고온 노출 테스트 (분기 1회)",
+                "운송 시뮬레이션 테스트"
+              ]
+            },
+            {
+              "regulation_name": "IEC 62133 (전기 안전 표준)",
+              "regulation_code": "IEC 62133-2:2017 (리튬 이온 배터리)",
+              "relevant_sections": [
+                "충전 중 온도 상승 (Clause 8.3.4)",
+                "과충전 테스트",
+                "외부 단락 테스트"
+              ],
+              "requirements": {
+                "charging_temperature": "충전 중 최대 70°C",
+                "normal_operation": "정상 운전 시 60°C 이하 권장",
+                "overcharge_protection": "과충전 보호 회로 필수"
+              },
+              "current_compliance": {
+                "current_temperature": 38.0,
+                "charging_limit": 70.0,
+                "margin": 32.0,
+                "status": "compliant",
+                "concern": "정상 운전 권장값(60°C) 대비 여유도 감소 중"
+              },
+              "after_control_compliance": {
+                "predicted_temperature": 27.2,
+                "charging_limit": 70.0,
+                "margin": 42.8,
+                "normal_operation_margin": 32.8,
+                "status": "fully_compliant",
+                "confidence": 0.95
+              },
+              "test_recommendations": [
+                "충전 온도 모니터링 시스템 강화",
+                "과충전 보호 회로 정기 점검",
+                "IEC 62133-2 인증 갱신 (3년 주기)"
+              ]
+            },
+            {
+              "regulation_name": "UL 1642 (리튬 배터리 안전 표준)",
+              "regulation_code": "UL 1642:2020 (리튬 배터리)",
+              "relevant_sections": [
+                "온도 테스트 (Section 19)",
+                "과충전 테스트 (Section 20)",
+                "외부 단락 (Section 21)"
+              ],
+              "requirements": {
+                "normal_operation_temperature": "정상 운전 시 최대 60°C",
+                "abnormal_operation_temperature": "비정상 시 최대 80°C (일시적)",
+                "thermal_runaway_prevention": "열폭주 방지 설계 필수"
+              },
+              "current_compliance": {
+                "current_temperature": 38.0,
+                "normal_operation_limit": 60.0,
+                "margin": 22.0,
+                "status": "compliant",
+                "concern": "예측 온도(50.9°C) 여유도 협소 (9.1°C)"
+              },
+              "after_control_compliance": {
+                "predicted_temperature": 27.2,
+                "normal_operation_limit": 60.0,
+                "margin": 32.8,
+                "status": "fully_compliant",
+                "margin_improvement": "3.6배 증가",
+                "confidence": 0.94
+              },
+              "test_recommendations": [
+                "UL 1642 인증 테스트 (연 1회)",
+                "열폭주 시뮬레이션 테스트",
+                "온도 센서 교정 (분기 1회)"
+              ]
+            },
+            {
+              "regulation_name": "산업안전보건법 (Occupational Safety and Health Act)",
+              "regulation_code": "법률 제18426호",
+              "relevant_sections": [
+                "제38조 (작업환경 측정)",
+                "제39조 (건강진단)",
+                "제125조 (보건조치)"
+              ],
+              "requirements": {
+                "workplace_temperature": "작업장 온도 10-30°C 권장",
+                "heat_stress_prevention": "고온 작업 시 휴식 시간 보장",
+                "monitoring_frequency": "작업환경 측정 6개월마다"
+              },
+              "current_compliance": {
+                "current_temperature": 38.0,
+                "workplace_recommended_max": 30.0,
+                "exceedance": 8.0,
+                "status": "non_compliant",
+                "worker_risk": "열 스트레스 우려",
+                "immediate_action_required": true
+              },
+              "after_control_compliance": {
+                "predicted_temperature": 27.2,
+                "workplace_recommended_max": 30.0,
+                "margin": 2.8,
+                "status": "compliant",
+                "worker_safety": "안전",
+                "confidence": 0.93
+              },
+              "recommendations": [
+                "즉시 냉각 시스템 가동",
+                "작업자 휴식 시간 확대 (임시)",
+                "고온 경보 시스템 설치",
+                "개인 보호 장비 (냉각 조끼) 지급"
+              ]
+            }
+          ],
+          "compliance_summary": {
+            "total_regulations_checked": 4,
+            "currently_compliant": 3,
+            "currently_non_compliant": 1,
+            "after_control_compliant": 4,
+            "after_control_non_compliant": 0,
+            "overall_status": "compliant_after_control"
+          },
+          "risk_mitigation": {
+            "current_risks": [
+              "UL 1642 여유도 협소 (제어 없이 9.1°C)",
+              "산업안전보건법 위반 (작업장 온도 38°C > 30°C)",
+              "작업자 열 스트레스 위험"
+            ],
+            "risks_after_control": [
+              "모든 주요 리스크 해소",
+              "안전 마진 대폭 개선"
+            ],
+            "residual_risks": [
+              "정기 온도 모니터링 필요 (낮은 리스크)",
+              "냉각 시스템 유지보수 (낮은 리스크)"
+            ]
+          },
+          "certification_status": {
+            "current_certifications": [
+              "UL 1642 인증 (2023-08-15 발급, 2026-08-15 만료)",
+              "IEC 62133-2 인증 (2022-11-20 발급, 2025-11-20 만료)",
+              "KC 인증 (국내 전기용품안전인증)"
+            ],
+            "renewal_required": [
+              "IEC 62133-2 인증 갱신 (2025-11-20, 7개월 후)"
+            ],
+            "test_schedule": [
+              "UL 1642 연례 감사 (2025-08-15)",
+              "UN 38.3 샘플 테스트 (분기별)"
+            ]
+          },
+          "summary_report": "## 배터리 생산 라인 안전 규제 준수성 검증 결과\n\n### 검증 개요\n- **검증 완료**: ✅\n- **검증 규제 수**: 4개\n- **전체 준수 여부**: 제어 후 완전 준수\n\n---\n\n### 1. UN 38.3 (운송 안전 테스트)\n\n**규제 정보**\n- 규제 코드: UN Manual of Tests and Criteria, Part III, subsection 38.3\n- 적용 대상: 리튬 이온 배터리 운송 안전\n\n**요구사항**\n- 온도 테스트: 72시간 동안 -40°C ~ +75°C 노출 후 이상 없음\n- 열 남용 테스트: 130°C에서 30분간 이상 없음\n\n**현재 준수 상태**\n| 항목 | 값 | 상태 |\n|------|-----|------|\n| 현재 온도 | 38.0°C | ✅ 준수 (한계 75°C) |\n| 여유도 | 37.0°C | 충분 |\n| 우려사항 | 증가 추세 | ⚠️ 미래 리스크 |\n\n**제어 후 예상 상태**\n| 항목 | 값 | 상태 |\n|------|-----|------|\n| 예상 온도 | 27.2°C | ✅ **완전 준수** |\n| 여유도 | 47.8°C | **매우 충분** |\n| 신뢰도 | 96% | 높음 |\n\n**테스트 권장사항**\n- 정기 온도 사이클 테스트 (월 1회)\n- 고온 노출 테스트 (분기 1회)\n- 운송 시뮬레이션 테스트\n\n---\n\n### 2. IEC 62133 (전기 안전 표준)\n\n**규제 정보**\n- 규제 코드: IEC 62133-2:2017 (리튬 이온 배터리)\n- 적용 대상: 전기 안전 요구사항\n\n**요구사항**\n- 충전 중 온도: 최대 70°C\n- 정상 운전: 60°C 이하 권장\n- 과충전 보호: 회로 필수\n\n**현재 준수 상태**\n| 항목 | 값 | 상태 |\n|------|-----|------|\n| 현재 온도 | 38.0°C | ✅ 준수 (한계 70°C) |\n| 여유도 | 32.0°C | 충분 |\n| 우려사항 | 정상 운전 권장 대비 | ⚠️ 여유도 감소 중 |\n\n**제어 후 예상 상태**\n| 항목 | 값 | 상태 |\n|------|-----|------|\n| 예상 온도 | 27.2°C | ✅ **완전 준수** |\n| 충전 한계 여유도 | 42.8°C | **매우 충분** |\n| 정상 운전 여유도 | 32.8°C | **매우 충분** |\n| 신뢰도 | 95% | 높음 |\n\n**테스트 권장사항**\n- 충전 온도 모니터링 시스템 강화\n- 과충전 보호 회로 정기 점검\n- IEC 62133-2 인증 갱신 (2025-11-20, 7개월 후)\n\n---\n\n### 3. UL 1642 (리튬 배터리 안전 표준)\n\n**규제 정보**\n- 규제 코드: UL 1642:2020\n- 적용 대상: 리튬 배터리 제품 안전\n\n**요구사항**\n- 정상 운전: 최대 60°C\n- 비정상 운전: 최대 80°C (일시적)\n- 열폭주 방지: 설계 필수\n\n**현재 준수 상태**\n| 항목 | 값 | 상태 |\n|------|-----|------|\n| 현재 온도 | 38.0°C | ✅ 준수 (한계 60°C) |\n| 여유도 | 22.0°C | 충분 |\n| **우려사항** | **예측 온도 50.9°C** | ⚠️ **여유도 9.1°C로 협소** |\n\n**제어 후 예상 상태**\n| 항목 | 값 | 상태 |\n|------|-----|------|\n| 예상 온도 | 27.2°C | ✅ **완전 준수** |\n| 여유도 | 32.8°C | **매우 충분** |\n| **여유도 개선** | **3.6배 증가** | ✅ **대폭 개선** |\n| 신뢰도 | 94% | 높음 |\n\n**테스트 권장사항**\n- UL 1642 인증 테스트 (연 1회)\n- 열폭주 시뮬레이션 테스트\n- 온도 센서 교정 (분기 1회)\n\n---\n\n### 4. 산업안전보건법 (Occupational Safety and Health Act)\n\n**규제 정보**\n- 법률 번호: 제18426호\n- 적용 대상: 작업장 안전 및 보건\n\n**요구사항**\n- 작업장 온도: 10-30°C 권장\n- 고온 작업: 휴식 시간 보장\n- 작업환경 측정: 6개월마다\n\n**현재 준수 상태**\n| 항목 | 값 | 상태 |\n|------|-----|------|\n| 현재 온도 | **38.0°C** | 🚨 **부적합** (권장 30°C 초과) |\n| 초과량 | +8.0°C | - |\n| 작업자 위험 | 열 스트레스 우려 | ⚠️ **즉시 조치 필요** |\n\n**제어 후 예상 상태**\n| 항목 | 값 | 상태 |\n|------|-----|------|\n| 예상 온도 | **27.2°C** | ✅ **적합** (권장 범위 내) |\n| 여유도 | 2.8°C | 충분 |\n| 작업자 안전 | **안전** | ✅ **개선** |\n| 신뢰도 | 93% | 높음 |\n\n**권장사항**\n- ✅ **즉시 냉각 시스템 가동** (가장 중요)\n- 작업자 휴식 시간 확대 (임시 조치)\n- 고온 경보 시스템 설치\n- 개인 보호 장비 (냉각 조끼) 지급\n\n---\n\n### 종합 준수성 요약\n\n| 규제 | 현재 상태 | 제어 후 상태 |\n|------|----------|-------------|\n| UN 38.3 | ✅ 준수 | ✅ 완전 준수 |\n| IEC 62133 | ✅ 준수 | ✅ 완전 준수 |\n| UL 1642 | ✅ 준수 (우려) | ✅ 완전 준수 |\n| 산업안전보건법 | 🚨 **부적합** | ✅ **적합** |\n\n**총 검증 규제**: 4개  \n**현재 준수**: 3개 준수, 1개 부적합  \n**제어 후 준수**: **4개 모두 적합** ✅\n\n---\n\n### 리스크 완화\n\n**현재 리스크**\n- 🚨 산업안전보건법 위반 (작업장 온도 38°C > 30°C)\n- ⚠️ UL 1642 여유도 협소 (제어 없이 9.1°C)\n- ⚠️ 작업자 열 스트레스 위험\n\n**제어 후 리스크**\n- ✅ 모든 주요 리스크 해소\n- ✅ 안전 마진 대폭 개선 (UL 1642 여유도 3.6배 증가)\n\n**잔여 리스크** (낮음)\n- 정기 온도 모니터링 필요\n- 냉각 시스템 유지보수\n\n---\n\n### 인증 현황\n\n**보유 인증**\n- ✅ UL 1642 인증 (2023-08-15 ~ 2026-08-15)\n- ✅ IEC 62133-2 인증 (2022-11-20 ~ 2025-11-20)\n- ✅ KC 인증 (국내 전기용품안전인증)\n\n**갱신 일정**\n- ⚠️ IEC 62133-2 인증 갱신 필요 (2025-11-20, **7개월 후**)\n- UL 1642 연례 감사 (2025-08-15)\n- UN 38.3 샘플 테스트 (분기별)\n\n---\n\n### 최종 권고사항\n\n1. ✅ **즉시 최적 제어 실행** (가장 중요)\n   - 현재 산업안전보건법 위반 상태\n   - 제어 적용 시 모든 규제 준수\n\n2. 📊 **제어 후 지속 모니터링**\n   - 온도 연속 측정 (5분 간격)\n   - 4시간 후 안정화 확인\n\n3. 🏆 **인증 유지 관리**\n   - IEC 62133-2 갱신 준비 (7개월 후)\n   - 정기 테스트 일정 준수\n\n4. 🔬 **근본 원인 분석**\n   - 냉각 시스템 점검 (필터, 냉매)\n   - 환기 시스템 개선\n   - 외부 기온 영향 대책\n\n---\n\n**결론**: 제어 실행을 통해 산업안전보건법 위반을 해소하고 모든 국제 안전 규제(UN 38.3, IEC 62133, UL 1642)를 완전히 준수할 수 있으며, 작업자 안전과 제품 품질을 동시에 확보할 수 있습니다."
+        },
+        "next_step": "return_to_orchestration"
+      }
+    },
+    "step_9_compliance_to_orchestration": {
+      "from": "ComplianceCheck Agent",
+      "to": "Orchestration Agent",
+      "timestamp": "2025-05-01T14:02:35Z",
+      "api_endpoint": "POST /api/v1/orchestrate/report",
+      "request": {
+        "workflow_id": "wf_battery_production_004",
+        "status": "completed",
+        "results": {
+          "monitoring_result": "temperature_increase_detected",
+          "prediction_result": "safety_risk_forecasted",
+          "control_result": "optimal_thermal_management_calculated",
+          "compliance_result": "compliant_after_control",
+          "execution_ready": true
+        }
+      },
+      "response": {
+        "status": "success",
+        "workflow_id": "wf_battery_production_004",
+        "message": "워크플로우 완료. 사용자에게 결과 전달.",
+        "next_step": "return_to_user"
+      }
+    },
+    "step_10_orchestration_to_user": {
+      "from": "Orchestration Agent",
+      "to": "User",
+      "timestamp": "2025-05-01T14:02:40Z",
+      "api_endpoint": "N/A",
+      "request": {},
+      "response": {
+        "status": "success",
+        "workflow_id": "wf_battery_production_004",
+        "workflow_type": "full_compliance",
+        "summary": "배터리 생산 라인에서 온도가 38°C로 상승하여 정상 범위(20-30°C)를 8°C 초과했으며, 시간당 2.17°C씩 증가하는 추세입니다. 예측 분석 결과, 제어하지 않을 경우 6시간 후 온도가 50.9°C까지 상승하여 열폭주 확률 48%, 생산 중단 확률 75%, 손실 5,500만원이 예상됩니다. 최적 제어 분석 결과, 냉각 가동률을 140%로, 환기를 3200 CFM으로 증대하면 6시간 후 온도를 27.2°C로 낮춰 모든 안전 리스크를 제거할 수 있습니다. 규제 준수 검증 결과, 현재 산업안전보건법을 위반하고 있으나(작업장 온도 38°C > 30°C), 제어 후 UN 38.3, IEC 62133, UL 1642, 산업안전보건법 4개 규제를 모두 준수합니다. 제어 비용은 약 300만원이며, 5,170만원의 순 편익(ROI 172배)을 얻을 수 있어 즉시 실행을 권장합니다.",
+        "detailed_results": {
+          "monitoring": {
+            "anomaly_type": "temperature_increase",
+            "severity": "critical",
+            "current_temperature": 38.0,
+            "normal_range_max": 30.0,
+            "deviation": 8.0,
+            "increase_rate": 2.17
+          },
+          "prediction": {
+            "temperature_6h_no_control": 50.9,
+            "thermal_runaway_probability_6h": 0.48,
+            "production_shutdown_probability_6h": 0.75,
+            "expected_loss_6h": 55000000,
+            "forecast_accuracy": 0.92
+          },
+          "control": {
+            "optimal_cooling_capacity": "140%",
+            "optimal_airflow_rate": 3200,
+            "execution_time": "4시간",
+            "temperature_6h_with_control": 27.2,
+            "thermal_runaway_probability_reduction": 0.96,
+            "net_benefit": 51700000,
+            "roi": 172
+          },
+          "compliance": {
+            "regulations_checked": 4,
+            "currently_compliant": 3,
+            "currently_non_compliant": 1,
+            "after_control_compliant": 4,
+            "overall_status": "compliant_after_control",
+            "ul_1642_margin_improvement": "3.6배"
+          }
+        },
+        "recommendations": [
+          "즉시 최적 제어 파라미터 적용 (냉각 140%, 환기 3200 CFM)",
+          "제어 실행 후 5분 간격으로 온도 모니터링",
+          "4시간 후 안정화 확인 및 규제 준수 검증",
+          "냉각 시스템 근본 원인 분석 (필터, 냉매 점검)",
+          "IEC 62133-2 인증 갱신 준비 (7개월 후)"
+        ],
+        "full_report": "## 🔋 배터리 전체 생산 라인 안전 준수성 검증 분석 결과\n\n---\n\n### 📊 1. 현황 모니터링 결과\n\n**이상 감지 정보**\n- **이상 유형**: 생산 라인 온도 증가 (Temperature Increase)\n- **심각도**: 치명적 (Critical)\n- **감지 시간**: 2025-05-01 14:00:00 UTC\n- **이상 시작**: 2025-05-01 08:00:00 UTC (6시간 전)\n\n**주요 지표 현황**\n| 파라미터 | 현재값 | 정상범위 | 편차 | 상태 |\n|---------|--------|----------|------|------|\n| **생산 온도** | **38.0°C** | 20-30°C | **+8.0°C** | ⚠️ **정상 초과** |\n| 셀 전압 | 3.75 V | 3.6-3.8 V | 0 | ✅ 정상 |\n| 충전 전류 | 1.08 A | 0.5-1.5 A | 0 | ✅ 정상 |\n| 셀 용량 | 3010 mAh | 2900-3100 mAh | 0 | ✅ 정상 |\n| 충전 상태 | 65.2% | 0-100% | 0 | ✅ 정상 |\n\n**추세 분석**\n- 온도 증가율: **+2.17°C/시간** (지난 6시간)\n- 기준선 온도: 25.0°C\n- 현재 편차: +13.0°C (기준선 대비)\n- 통계적 유의성: 98%\n\n**안전 리스크 평가**\n- 열폭주 위험: 중간 (Medium)\n- 화재 위험: 낮음~중간 (Low to Medium)\n- 작업자 안전: **우려 (Concern)**\n- 제품 품질 영향: 보통 (Moderate)\n\n---\n\n### 🔮 2. 예측 분석 결과\n\n**예측 모델**: 열역학 모델 + 안전 제약 (정확도 92%)\n\n**온도 예측 추이 (제어 없이)**\n| 시간 | 예측 온도 | 신뢰구간 (95%) | 임계값 초과 | 열폭주 확률 |\n|------|-----------|----------------|-------------|-------------|\n| 현재 | 38.0°C | - | - | - |\n| +2시간 | 42.3°C | 41.8-42.8°C | - | 8% |\n| +4시간 | **46.6°C** | 45.9-47.3°C | ✅ (45°C) | 25% |\n| +6시간 | **50.9°C** | 50.0-51.8°C | ✅ (45°C) | **48%** 🚨 |\n\n(임계값: 45°C, UL 1642 한계: 60°C)\n\n**안전 임계값 분석**\n- 임계 온도 도달: **3.5시간 후** (45°C)\n- UL 1642 한계 접근: 6시간 후 (50.9°C, 여유 9.1°C)\n\n**안전 리스크 예측**\n- 열폭주 확률 (6h): **48%** 🚨\n- 화재 위험: 낮음 → 중간 → **높음**\n- 작업자: 열 스트레스 위험\n\n**생산 영향 예측**\n- 용량 감소 (6h): -5.8%\n- 생산 중단 확률 (6h): **75%**\n- **예상 손실 (6h): 5,500만원**\n\n---\n\n### ⚙️ 3. 최적 제어 결과\n\n**제어 방법**: 적응형 PID + 열 관리 (MPC)\n\n**최적 제어 파라미터**\n| 파라미터 | 현재값 | 최적값 | 변화량 | 사유 |\n|---------|--------|--------|--------|------|\n| 냉각 가동률 | 100% | **140%** | +40% | 냉각 성능 강화 |\n| 환기 유량 | 2500 CFM | **3200 CFM** | +700 CFM | 열 방출 촉진 |\n| 생산 속도 | 100% | **95%** | -5% | 발열량 감소 (임시) |\n\n**온도 예상 개선**\n| 시점 | 제어 없이 | 제어 적용 시 | 개선폭 |\n|------|-----------|-------------|--------|\n| +2시간 | 42.3°C | **31.5°C** | -10.8°C |\n| +4시간 | 46.6°C | **28.8°C** | -17.8°C |\n| +6시간 | 50.9°C | **27.2°C** | **-23.7°C** |\n\n**제어 실행 계획**\n1. (0-30분): 냉각 100% → 120%\n2. (30-60분): 환기 2500 → 2850 CFM\n3. (1-2h): 생산 속도 100% → 95%\n4. (2-3h): 냉각 120% → 140%\n5. (3-4h): 환기 2850 → 3200 CFM\n6. (4h~): 생산 속도 복귀 100%\n\n**총 소요 시간**: 4시간\n\n**안전성 개선**\n- 열폭주 위험: 48% → **2%** (96% 감소)\n- 화재 위험: 높음 → **낮음**\n- 작업자 안전: 위험 → **안전**\n\n**생산 효과**\n- 용량 손실: 5.8% → **0.5%**\n- 생산 중단 확률: 75% → **5%**\n\n**경제성**\n- 제어 비용: 약 300만원\n- 손실 방지: 5,200만원\n- **순 편익: 5,170만원**\n- **ROI: 172배**\n\n---\n\n### ✅ 4. 규제 준수성 검증 결과\n\n**검증 규제**: 4개\n\n#### 4.1 UN 38.3 (운송 안전)\n\n| 항목 | 현재 | 제어 후 |\n|------|------|--------|\n| 온도 | 38.0°C | **27.2°C** |\n| 한계 | 75°C | 75°C |\n| 여유도 | 37.0°C | **47.8°C** |\n| 준수 | ✅ | ✅ |\n\n#### 4.2 IEC 62133 (전기 안전)\n\n| 항목 | 현재 | 제어 후 |\n|------|------|--------|\n| 온도 | 38.0°C | **27.2°C** |\n| 충전 한계 | 70°C | 70°C |\n| 여유도 | 32.0°C | **42.8°C** |\n| 준수 | ✅ | ✅ |\n\n#### 4.3 UL 1642 (제품 안전)\n\n| 항목 | 현재 | 제어 없이 (6h) | 제어 후 (6h) |\n|------|------|---------------|-------------|\n| 온도 | 38.0°C | **50.9°C** | **27.2°C** |\n| 정상 운전 한계 | 60°C | 60°C | 60°C |\n| 여유도 | 22.0°C | **9.1°C** ⚠️ | **32.8°C** ✅ |\n| 준수 | ✅ | ✅ (협소) | ✅ (충분) |\n| **개선** | - | - | **3.6배 증가** 🎉 |\n\n#### 4.4 산업안전보건법 (작업장 안전)\n\n| 항목 | 현재 | 제어 후 |\n|------|------|--------|\n| 온도 | **38.0°C** | **27.2°C** |\n| 권장 한계 | 30°C | 30°C |\n| 초과량 | +8.0°C | -2.8°C |\n| 준수 | 🚨 **부적합** | ✅ **적합** |\n| 작업자 안전 | 열 스트레스 | **안전** |\n\n**종합 준수성**\n\n| 규제 | 현재 | 제어 후 |\n|------|------|--------|\n| UN 38.3 | ✅ | ✅ |\n| IEC 62133 | ✅ | ✅ |\n| UL 1642 | ✅ (우려) | ✅ (충분) |\n| 산업안전보건법 | 🚨 **부적합** | ✅ **적합** |\n\n**현재**: 3개 준수, 1개 부적합  \n**제어 후**: **4개 모두 준수** ✅\n\n---\n\n### 🏆 5. 인증 및 테스트 일정\n\n**보유 인증**\n- ✅ UL 1642 (2023-08-15 ~ 2026-08-15)\n- ✅ IEC 62133-2 (2022-11-20 ~ 2025-11-20)\n- ✅ KC 인증 (국내 전기용품안전)\n\n**갱신 일정**\n- ⚠️ **IEC 62133-2 갱신 필요** (2025-11-20, 7개월 후)\n- UL 1642 연례 감사 (2025-08-15)\n- UN 38.3 샘플 테스트 (분기별)\n\n---\n\n### 🎯 6. 최종 권고사항\n\n**즉시 조치** ⚡\n\n1. ✅ **최적 제어 즉시 실행** (가장 중요)\n   - 현재 산업안전보건법 위반 (작업장 38°C > 30°C)\n   - 제어 적용 시 모든 규제 준수\n   - 작업자 안전 확보\n\n2. 📊 **제어 후 지속 모니터링**\n   - 온도 측정: 5분 간격\n   - 4시간 후 안정화 확인\n   - 규제 준수 재검증\n\n3. 🔬 **근본 원인 분석**\n   - 냉각 시스템 점검 (필터, 냉매)\n   - 환기 시스템 개선\n   - 외부 기온 영향 대책\n\n4. 🏆 **인증 유지 관리**\n   - IEC 62133-2 갱신 준비 (7개월 후)\n   - 정기 테스트 일정 준수\n   - 온도 센서 교정 (분기 1회)\n\n**예상 효과**\n\n**4시간 후**:\n- ✅ 온도 27.2°C로 안정화\n- ✅ 모든 규제 준수\n- ✅ 작업자 안전 확보\n\n**6시간 후**:\n- ✅ 열폭주 확률: 48% → 2%\n- ✅ 생산 중단 방지 (75% → 5%)\n- ✅ 손실 방지: 5,170만원\n\n---\n\n### 📋 7. 종합 결론\n\n배터리 생산 라인에서 온도가 38°C로 상승하여 산업안전보건법을 위반하고 있으며, 현재 추세가 지속될 경우:\n\n- 🚨 **6시간 후 열폭주 확률 48%**\n- 💰 **생산 중단 및 5,500만원 손실**\n- ⚠️ **UL 1642 안전 마진 협소 (9.1°C)**\n- 🚫 **작업자 열 스트레스 위험**\n\n**즉시 조치 (냉각 140%, 환기 3200 CFM)를 통해**:\n- ✅ **모든 안전 규제 완전 준수** (UN 38.3, IEC 62133, UL 1642, 산업안전보건법)\n- ✅ **열폭주 확률 96% 감소** (48% → 2%)\n- ✅ **생산 연속성 확보** (중단 확률 75% → 5%)\n- 💰 **5,170만원 순 편익** (ROI 172배)\n\n즉시 실행을 강력히 권장합니다."
+      }
+    }
+  },
+  "expected_answer": {
+    "workflow_type": "full_compliance",
+    "agents_involved": [
+      "Orchestration",
+      "Monitoring",
+      "Predictive",
+      "AutoControl",
+      "ComplianceCheck"
+    ],
+    "key_findings": {
+      "anomaly_detected": true,
+      "anomaly_type": "temperature_increase",
+      "current_temperature": 38.0,
+      "normal_range_max": 30.0,
+      "deviation": 8.0,
+      "defect_forecasted": true,
+      "temperature_6h_no_control": 50.9,
+      "thermal_runaway_probability_6h": 0.48,
+      "optimal_control_found": true,
+      "optimal_cooling_capacity": "140%",
+      "optimal_airflow_rate": 3200,
+      "temperature_6h_with_control": 27.2,
+      "compliance_verified": true,
+      "regulations_compliant_after_control": 4
+    },
+    "recommendations": [
+      "즉시 최적 제어 파라미터 적용",
+      "제어 후 온도 연속 모니터링",
+      "규제 준수 재검증",
+      "냉각 시스템 근본 원인 분석",
+      "IEC 62133-2 인증 갱신 준비"
+    ],
+    "economic_impact": {
+      "control_cost": 3000000,
+      "prevented_loss": 52000000,
+      "net_benefit": 51700000,
+      "roi": 172
+    },
+    "compliance_impact": {
+      "current_compliant": 3,
+      "current_non_compliant": 1,
+      "after_control_compliant": 4,
+      "ul_1642_margin_improvement": "3.6배"
+    }
+  },
+  "test_validation": {
+    "validate_workflow": {
+      "expected_steps": 7,
+      "required_agents": [
+        "Orchestration",
+        "Monitoring",
+        "Predictive",
+        "AutoControl",
+        "ComplianceCheck"
+      ],
+      "workflow_sequence": [
+        "User → Orchestration",
+        "Orchestration → Monitoring",
+        "Monitoring → Predictive",
+        "Predictive → AutoControl",
+        "AutoControl → ComplianceCheck",
+        "ComplianceCheck → Orchestration",
+        "Orchestration → User"
+      ]
+    },
+    "validate_monitoring": {
+      "must_detect_anomaly": true,
+      "must_identify_temperature_increase": true,
+      "must_analyze_trend": true,
+      "must_assess_safety_risk": true,
+      "must_identify_regulatory_concern": true,
+      "must_recommend_prediction": true
+    },
+    "validate_prediction": {
+      "must_forecast_temperature": true,
+      "must_predict_safety_risk": true,
+      "must_calculate_thermal_runaway_probability": true,
+      "must_estimate_production_impact": true,
+      "must_assess_regulatory_compliance": true,
+      "forecast_horizon_min_hours": 6,
+      "must_recommend_control": true
+    },
+    "validate_control": {
+      "must_optimize_parameters": true,
+      "must_provide_sequence": true,
+      "must_verify_safety": true,
+      "must_calculate_benefit": true,
+      "must_improve_safety_margin": true,
+      "must_enable_execution": true
+    },
+    "validate_compliance": {
+      "must_check_regulations": true,
+      "min_regulations_checked": 3,
+      "must_verify_current_status": true,
+      "must_verify_after_control_status": true,
+      "must_identify_violations": true,
+      "must_assess_certification_status": true
+    },
+    "validate_api_compliance": {
+      "all_requests_valid": true,
+      "all_responses_valid": true,
+      "endpoints_match_spec": true
+    },
+    "performance_criteria": {
+      "total_workflow_time_max_seconds": 180,
+      "prediction_accuracy_min": 0.9,
+      "safety_margin_min": 0.15,
+      "roi_min": 50,
+      "regulations_compliant_after_control_min": 3
+    }
+  }
+}

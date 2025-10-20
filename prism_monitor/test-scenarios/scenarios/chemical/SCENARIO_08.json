@@ -1,0 +1,1562 @@
+{
+  "scenario_id": "SCENARIO_08",
+  "version": "1.0",
+  "created_date": "2025-10-14",
+  "metadata": {
+    "title": "화학 전체 공정 준수성 검증 및 최적 제어",
+    "title_en": "Chemical Full Process Compliance Verification and Optimal Control",
+    "industry": "chemical",
+    "process": "Full Process",
+    "workflow_type": "full_compliance",
+    "workflow_level": 4,
+    "complexity": "very_high",
+    "description": "화학 플랜트 전체 공정에서 촉매 투입 비율 증가로 인한 품질 및 환경 이슈를 감지하고, 향후 위험을 예측하여 최적 제어를 수행한 후 환경 규제 준수 여부를 검증하는 통합 시나리오",
+    "description_en": "Integrated scenario for detecting quality and environmental issues from increased catalyst ratio in full chemical plant process, predicting future risks, performing optimal control, and verifying environmental regulation compliance",
+    "tags": [
+      "chemical",
+      "full_process",
+      "catalyst",
+      "compliance",
+      "environmental",
+      "k-reach",
+      "optimization"
+    ]
+  },
+  "query": {
+    "text": "전체 공정에서 촉매 사용량이 증가하고 있어. 생산성은 좋아 보이는데 환경 배출 기준 초과가 걱정돼. 최적 운전 조건을 찾고 법규 준수 여부도 확인해줘.",
+    "text_en": "Catalyst usage is increasing across the entire process. Productivity looks good but I'm worried about exceeding environmental emission standards. Find optimal operating conditions and verify regulatory compliance.",
+    "time_range": {
+      "start": "2025-05-01T00:00:00Z",
+      "end": "2025-05-01T16:00:00Z"
+    },
+    "user_id": "chemical_manager_01",
+    "priority": "critical",
+    "expected_workflow": "full_compliance"
+  },
+  "timeseries_data": {
+    "source_file": "/test_data/chemical/full_process_data.csv",
+    "parameters": [
+      {
+        "name": "CATALYST_RATIO",
+        "unit": "%",
+        "description": "촉매 투입 비율",
+        "normal_range": [
+          0.25,
+          0.35
+        ],
+        "critical_threshold": 0.4
+      },
+      {
+        "name": "PRODUCTION_RATE",
+        "unit": "ton/h",
+        "description": "생산량",
+        "normal_range": [
+          45,
+          55
+        ],
+        "critical_threshold": 60
+      },
+      {
+        "name": "VOC_EMISSION",
+        "unit": "ppm",
+        "description": "휘발성 유기화합물 배출",
+        "normal_range": [
+          10,
+          30
+        ],
+        "critical_threshold": 50,
+        "regulatory_limit": 45
+      },
+      {
+        "name": "REACTOR_TEMP",
+        "unit": "°C",
+        "description": "반응기 온도",
+        "normal_range": [
+          245,
+          265
+        ],
+        "critical_threshold": 275
+      },
+      {
+        "name": "CONVERSION_RATE",
+        "unit": "%",
+        "description": "전환율",
+        "normal_range": [
+          88,
+          95
+        ],
+        "critical_threshold": 85
+      }
+    ],
+    "sampling_interval": "10s",
+    "data_points": 5760,
+    "time_range": {
+      "start": "2025-05-01T00:00:00Z",
+      "end": "2025-05-01T16:00:00Z"
+    },
+    "anomaly_info": {
+      "type": "catalyst_overuse_with_emission",
+      "description": "촉매 비율 증가로 생산성 향상되나 VOC 배출 증가",
+      "start_time": "2025-05-01T09:00:00Z",
+      "peak_time": "2025-05-01T16:00:00Z",
+      "affected_parameters": [
+        "CATALYST_RATIO",
+        "VOC_EMISSION",
+        "PRODUCTION_RATE"
+      ]
+    }
+  },
+  "agent_workflow": {
+    "step_1_user_to_orchestration": {
+      "from": "User",
+      "to": "Orchestration Agent",
+      "timestamp": "2025-05-01T16:00:00Z",
+      "api_endpoint": "GET /api/v1/orchestrate",
+      "request": {
+        "query": "전체 공정에서 촉매 사용량이 증가하고 있어. 생산성은 좋아 보이는데 환경 배출 기준 초과가 걱정돼. 최적 운전 조건을 찾고 법규 준수 여부도 확인해줘.",
+        "time_range": {
+          "start": "2025-05-01T00:00:00Z",
+          "end": "2025-05-01T16:00:00Z"
+        },
+        "user_id": "chemical_manager_01",
+        "priority": "critical"
+      },
+      "response": {
+        "status": "success",
+        "workflow_id": "wf_chem_full_004",
+        "workflow_type": "full_compliance",
+        "message": "화학 전체 공정 준수성 검증 워크플로우를 시작합니다.",
+        "next_agent": "Monitoring Agent"
+      }
+    },
+    "step_2_orchestration_to_monitoring": {
+      "from": "Orchestration Agent",
+      "to": "Monitoring Agent",
+      "timestamp": "2025-05-01T16:00:05Z",
+      "api_endpoint": "POST /api/v1/workflow/start",
+      "request": {
+        "workflow_id": "wf_chem_full_004",
+        "workflow_type": "full_compliance",
+        "task": "analyze_catalyst_emission_issue",
+        "query": {
+          "text": "전체 공정에서 촉매 사용량이 증가하고 있어. 생산성은 좋아 보이는데 환경 배출 기준 초과가 걱정돼. 최적 운전 조건을 찾고 법규 준수 여부도 확인해줘.",
+          "time_range": {
+            "start": "2025-05-01T00:00:00Z",
+            "end": "2025-05-01T16:00:00Z"
+          }
+        },
+        "context": {
+          "industry": "chemical",
+          "process": "Full Process",
+          "priority": "critical"
+        }
+      },
+      "response": {
+        "status": "success",
+        "workflow_id": "wf_chem_full_004",
+        "agent": "Monitoring Agent",
+        "analysis_result": {
+          "anomaly_detected": true,
+          "anomaly_type": "catalyst_overuse_with_emission_increase",
+          "severity": "critical",
+          "affected_parameters": [
+            {
+              "name": "CATALYST_RATIO",
+              "current_value": 0.38,
+              "normal_range": [
+                0.25,
+                0.35
+              ],
+              "deviation": 0.13,
+              "status": "elevated"
+            },
+            {
+              "name": "VOC_EMISSION",
+              "current_value": 48.2,
+              "normal_range": [
+                10,
+                30
+              ],
+              "regulatory_limit": 45,
+              "deviation": 18.2,
+              "status": "near_violation"
+            },
+            {
+              "name": "PRODUCTION_RATE",
+              "current_value": 56.8,
+              "normal_range": [
+                45,
+                55
+              ],
+              "deviation": 1.8,
+              "status": "elevated"
+            },
+            {
+              "name": "REACTOR_TEMP",
+              "current_value": 261.5,
+              "normal_range": [
+                245,
+                265
+              ],
+              "deviation": 0,
+              "status": "normal"
+            },
+            {
+              "name": "CONVERSION_RATE",
+              "current_value": 94.2,
+              "normal_range": [
+                88,
+                95
+              ],
+              "deviation": 0,
+              "status": "normal"
+            }
+          ],
+          "trend_analysis": {
+            "CATALYST_RATIO": {
+              "direction": "increasing",
+              "rate": 0.012,
+              "duration": "7 hours",
+              "statistical_significance": 0.96
+            },
+            "VOC_EMISSION": {
+              "direction": "increasing",
+              "rate": 2.4,
+              "duration": "7 hours",
+              "statistical_significance": 0.94,
+              "regulatory_risk": "high"
+            },
+            "PRODUCTION_RATE": {
+              "direction": "increasing",
+              "rate": 1.1,
+              "duration": "7 hours",
+              "statistical_significance": 0.89
+            }
+          },
+          "correlation_analysis": {
+            "CATALYST_RATIO_vs_PRODUCTION_RATE": {
+              "correlation": 0.87,
+              "relationship": "strong_positive",
+              "interpretation": "촉매 증가로 생산성 향상"
+            },
+            "CATALYST_RATIO_vs_VOC_EMISSION": {
+              "correlation": 0.91,
+              "relationship": "strong_positive",
+              "interpretation": "촉매 증가로 VOC 배출 증가"
+            }
+          },
+          "root_cause_hypothesis": [
+            "과도한 촉매 투입으로 부반응 증가 및 VOC 생성",
+            "높은 전환율 추구로 인한 촉매 과다 사용",
+            "촉매 활성 저하로 투입량 보상적 증가"
+          ],
+          "regulatory_concern": {
+            "regulation": "대기환경보전법 (Clean Air Conservation Act)",
+            "standard": "K-REACH VOC 배출 기준",
+            "current_level": 48.2,
+            "limit": 45.0,
+            "exceedance": 3.2,
+            "violation_risk": "imminent",
+            "time_to_violation": "estimated 1-2 hours"
+          },
+          "recommendation": "예측 분석, 제어 최적화 및 준수성 검증 필요",
+          "summary_report": "## 화학 전체 공정 이상 감지 결과\n\n### 이상 감지\n- **이상 유형**: 촉매 과다 사용 및 VOC 배출 증가\n- **심각도**: 치명적 (Critical)\n- **감지 시간**: 2025-05-01 16:00:00 UTC\n\n### 주요 지표 현황\n| 파라미터 | 현재값 | 정상범위 | 편차 | 상태 |\n|---------|--------|----------|------|------|\n| 촉매 비율 | 0.38% | 0.25-0.35% | +0.13%p | ⚠️ 과다 |\n| VOC 배출 | 48.2 ppm | 10-30 ppm | +18.2 ppm | 🚨 기준 근접 |\n| 생산량 | 56.8 ton/h | 45-55 ton/h | +1.8 ton/h | ⚠️ 과다 |\n| 반응기 온도 | 261.5°C | 245-265°C | 0 | ✅ 정상 |\n| 전환율 | 94.2% | 88-95% | 0 | ✅ 정상 |\n\n### 추세 분석\n- **촉매 비율 증가율**: +0.012%/10분 (지난 7시간 동안)\n- **VOC 배출 증가율**: +2.4 ppm/10분 (지난 7시간 동안)\n- **생산량 증가율**: +1.1 ton/h/10분 (지난 7시간 동안)\n\n### 상관관계 분석\n- 촉매 비율 ↔ 생산량: 강한 양의 상관관계 (0.87)\n- 촉매 비율 ↔ VOC 배출: 강한 양의 상관관계 (0.91)\n\n**해석**: 촉매 증가로 생산성은 향상되나 부반응으로 VOC 배출 급증\n\n### 규제 우려사항\n- **관련 법규**: 대기환경보전법 (Clean Air Conservation Act)\n- **기준**: K-REACH VOC 배출 기준 45.0 ppm\n- **현재 수준**: 48.2 ppm (기준 초과 3.2 ppm)\n- **위반 리스크**: 임박 (Imminent)\n- **예상 위반 시점**: 1-2시간 내\n\n### 원인 가설\n1. 과도한 촉매 투입으로 부반응 증가 및 VOC 생성\n2. 높은 전환율 추구로 인한 촉매 과다 사용\n3. 촉매 활성 저하로 투입량 보상적 증가\n\n### 권고사항\n예측 모델을 통한 향후 배출 추이 분석, 최적 제어를 통한 촉매 비율 조정 및 준수성 검증이 필요합니다."
+        },
+        "next_step": "prediction_analysis"
+      }
+    },
+    "step_3_monitoring_to_orchestration": {
+      "from": "Monitoring Agent",
+      "to": "Orchestration Agent",
+      "timestamp": "2025-05-01T16:00:30Z",
+      "api_endpoint": "POST /api/v1/orchestrate/report",
+      "request": {
+        "workflow_id": "wf_chem_full_004",
+        "status": "completed",
+        "results": {
+          "status": "success",
+          "workflow_id": "wf_chem_full_004",
+          "agent": "Predictive Agent",
+          "prediction_result": {
+            "forecast_completed": true,
+            "model_used": "LSTM with Regulatory Constraint Model",
+            "model_accuracy": 0.92,
+            "forecast_horizon": "4 hours",
+            "predictions": [
+              {
+                "timestamp": "2025-05-01T17:00:00Z",
+                "CATALYST_RATIO": {
+                  "predicted_value": 0.395,
+                  "confidence_interval": [
+                    0.388,
+                    0.402
+                  ],
+                  "confidence_level": 0.95
+                },
+                "VOC_EMISSION": {
+                  "predicted_value": 52.1,
+                  "confidence_interval": [
+                    50.3,
+                    53.9
+                  ],
+                  "confidence_level": 0.95,
+                  "regulatory_limit": 45.0,
+                  "exceedance": 7.1
+                },
+                "PRODUCTION_RATE": {
+                  "predicted_value": 58.2,
+                  "confidence_interval": [
+                    57.1,
+                    59.3
+                  ],
+                  "confidence_level": 0.95
+                }
+              },
+              {
+                "timestamp": "2025-05-01T18:00:00Z",
+                "CATALYST_RATIO": {
+                  "predicted_value": 0.408,
+                  "confidence_interval": [
+                    0.399,
+                    0.417
+                  ],
+                  "confidence_level": 0.95
+                },
+                "VOC_EMISSION": {
+                  "predicted_value": 55.8,
+                  "confidence_interval": [
+                    53.6,
+                    58.0
+                  ],
+                  "confidence_level": 0.95,
+                  "regulatory_limit": 45.0,
+                  "exceedance": 10.8
+                },
+                "PRODUCTION_RATE": {
+                  "predicted_value": 59.5,
+                  "confidence_interval": [
+                    58.2,
+                    60.8
+                  ],
+                  "confidence_level": 0.95
+                }
+              },
+              {
+                "timestamp": "2025-05-01T19:00:00Z",
+                "CATALYST_RATIO": {
+                  "predicted_value": 0.419,
+                  "confidence_interval": [
+                    0.408,
+                    0.43
+                  ],
+                  "confidence_level": 0.95
+                },
+                "VOC_EMISSION": {
+                  "predicted_value": 59.3,
+                  "confidence_interval": [
+                    56.7,
+                    61.9
+                  ],
+                  "confidence_level": 0.95,
+                  "regulatory_limit": 45.0,
+                  "exceedance": 14.3
+                },
+                "PRODUCTION_RATE": {
+                  "predicted_value": 60.7,
+                  "confidence_interval": [
+                    59.2,
+                    62.2
+                  ],
+                  "confidence_level": 0.95
+                }
+              },
+              {
+                "timestamp": "2025-05-01T20:00:00Z",
+                "CATALYST_RATIO": {
+                  "predicted_value": 0.428,
+                  "confidence_interval": [
+                    0.415,
+                    0.441
+                  ],
+                  "confidence_level": 0.95
+                },
+                "VOC_EMISSION": {
+                  "predicted_value": 62.6,
+                  "confidence_interval": [
+                    59.5,
+                    65.7
+                  ],
+                  "confidence_level": 0.95,
+                  "regulatory_limit": 45.0,
+                  "exceedance": 17.6
+                },
+                "PRODUCTION_RATE": {
+                  "predicted_value": 61.8,
+                  "confidence_interval": [
+                    60.1,
+                    63.5
+                  ],
+                  "confidence_level": 0.95
+                }
+              }
+            ],
+            "risk_assessment": {
+              "regulatory_violation_probability": 0.96,
+              "expected_violation_time": "2025-05-01T17:30:00Z",
+              "severity": "critical",
+              "penalty_risk": {
+                "administrative_fine": "최대 2억원 (대기환경보전법 제89조)",
+                "facility_suspension": "최대 6개월 조업정지 (제33조)",
+                "criminal_liability": "3년 이하 징역 또는 3천만원 이하 벌금 가능"
+              },
+              "reputation_risk": "high",
+              "estimated_total_impact": "약 5억원 이상 (벌금 + 조업정지 + 평판 손실)"
+            },
+            "tradeoff_analysis": {
+              "current_benefit": {
+                "production_increase": "11.8 ton/h (26% 증가)",
+                "revenue_increase": "약 시간당 350만원"
+              },
+              "predicted_cost": {
+                "regulatory_penalty": "약 5억원 이상",
+                "facility_downtime": "최대 6개월",
+                "long_term_impact": "인허가 제한, 투자 유치 어려움"
+              },
+              "conclusion": "단기 생산성 향상보다 규제 준수가 경제적으로 유리"
+            },
+            "recommendation": "즉시 촉매 비율 감소 제어 필요 - VOC 배출을 규제 기준 이하로 낮추면서 생산성 최적화",
+            "summary_report": "## 화학 전체 공정 배출 예측 결과\n\n### 예측 모델 정보\n- **모델**: LSTM 규제 제약 조건 모델\n- **정확도**: 92%\n- **예측 구간**: 향후 4시간\n\n### VOC 배출 예측 추이 (제어 없이)\n| 시간 | 예측 배출량 | 규제 기준 | 초과량 | 상태 |\n|------|------------|----------|--------|------|\n| 현재 | 48.2 ppm | 45.0 ppm | +3.2 ppm | 🚨 기준 초과 |\n| +1시간 | 52.1 ppm | 45.0 ppm | +7.1 ppm | 🚨 심각 초과 |\n| +2시간 | 55.8 ppm | 45.0 ppm | +10.8 ppm | 🚨 중대 위반 |\n| +3시간 | 59.3 ppm | 45.0 ppm | +14.3 ppm | 🚨 중대 위반 |\n| +4시간 | 62.6 ppm | 45.0 ppm | +17.6 ppm | 🚨 중대 위반 |\n\n### 규제 위반 리스크 평가\n- **위반 발생 확률**: 96%\n- **예상 위반 시점**: 2025-05-01 17:30 UTC (약 1.5시간 후)\n- **심각도**: 치명적 (Critical)\n\n### 예상 처벌 (대기환경보전법)\n- **행정 벌금**: 최대 2억원 (제89조)\n- **시설 조업정지**: 최대 6개월 (제33조)\n- **형사 책임**: 3년 이하 징역 또는 3천만원 이하 벌금 가능\n- **평판 리스크**: 높음\n- **총 예상 피해**: **약 5억원 이상** (벌금 + 조업정지 + 평판 손실)\n\n### 비용-편익 트레이드오프\n\n**현재 이익**\n- 생산량 증가: 11.8 ton/h (26% 증가)\n- 매출 증가: 약 시간당 350만원\n\n**예상 손실**\n- 규제 처벌: 약 5억원 이상\n- 조업 중단: 최대 6개월\n- 장기 영향: 인허가 제한, 투자 유치 어려움\n\n**결론**: 단기 생산성 향상(시간당 350만원)보다 규제 위반 방지(5억원)가 경제적으로 훨씬 유리\n\n### 권고사항\n즉시 촉매 비율을 감소시켜 VOC 배출을 규제 기준(45 ppm) 이하로 낮추면서 생산성을 최적화하는 제어가 필요합니다."
+          },
+          "next_step": "control_optimization"
+        }
+      },
+      "response": {
+        "status": "success",
+        "workflow_id": "wf_chem_full_004",
+        "message": "Monitoring 완료. Predictive Agent로 전달.",
+        "next_step": "prediction_analysis"
+      }
+    },
+    "step_4_orchestration_to_prediction": {
+      "from": "Orchestration Agent",
+      "to": "Predictive Agent",
+      "timestamp": "2025-05-01T16:00:30Z",
+      "api_endpoint": "POST /api/v1/prediction/run-direct",
+      "request": {
+        "workflow_id": "wf_chem_full_004",
+        "prediction_task": "emission_forecast",
+        "input_data": {
+          "time_range": {
+            "start": "2025-05-01T00:00:00Z",
+            "end": "2025-05-01T16:00:00Z"
+          },
+          "parameters": [
+            "CATALYST_RATIO",
+            "VOC_EMISSION",
+            "PRODUCTION_RATE",
+            "REACTOR_TEMP",
+            "CONVERSION_RATE"
+          ],
+          "current_state": {
+            "CATALYST_RATIO": 0.38,
+            "VOC_EMISSION": 48.2,
+            "PRODUCTION_RATE": 56.8,
+            "REACTOR_TEMP": 261.5,
+            "CONVERSION_RATE": 94.2
+          },
+          "anomaly_context": {
+            "type": "catalyst_overuse_with_emission_increase",
+            "severity": "critical",
+            "regulatory_risk": "high",
+            "correlation": {
+              "catalyst_production": 0.87,
+              "catalyst_voc": 0.91
+            }
+          }
+        },
+        "forecast_horizon": "4_hours",
+        "model_type": "lstm_with_constraint",
+        "query": "모니터링 결과 촉매 투입 비율이 0.42%로 임계치(0.40%)를 5% 초과하여 지속 증가 중입니다. 생산성은 양호하나 VOC 배출량이 152 kg/h로 규제 한계(120 kg/h)를 26.7% 초과하여 K-REACH 위반 상태입니다. 현재 추세가 계속될 경우 향후 60분간 VOC 배출과 환경 영향이 어떻게 전개될지 예측해주세요. 특히 규제 위반 심화 정도와 예상 벌금 규모를 분석해주세요."
+      },
+      "response": {
+        "status": "success",
+        "workflow_id": "wf_chem_full_004",
+        "agent": "Predictive Agent",
+        "prediction_result": {
+          "forecast_completed": true,
+          "model_used": "LSTM with Regulatory Constraint Model",
+          "model_accuracy": 0.92,
+          "forecast_horizon": "4 hours",
+          "predictions": [
+            {
+              "timestamp": "2025-05-01T17:00:00Z",
+              "CATALYST_RATIO": {
+                "predicted_value": 0.395,
+                "confidence_interval": [
+                  0.388,
+                  0.402
+                ],
+                "confidence_level": 0.95
+              },
+              "VOC_EMISSION": {
+                "predicted_value": 52.1,
+                "confidence_interval": [
+                  50.3,
+                  53.9
+                ],
+                "confidence_level": 0.95,
+                "regulatory_limit": 45.0,
+                "exceedance": 7.1
+              },
+              "PRODUCTION_RATE": {
+                "predicted_value": 58.2,
+                "confidence_interval": [
+                  57.1,
+                  59.3
+                ],
+                "confidence_level": 0.95
+              }
+            },
+            {
+              "timestamp": "2025-05-01T18:00:00Z",
+              "CATALYST_RATIO": {
+                "predicted_value": 0.408,
+                "confidence_interval": [
+                  0.399,
+                  0.417
+                ],
+                "confidence_level": 0.95
+              },
+              "VOC_EMISSION": {
+                "predicted_value": 55.8,
+                "confidence_interval": [
+                  53.6,
+                  58.0
+                ],
+                "confidence_level": 0.95,
+                "regulatory_limit": 45.0,
+                "exceedance": 10.8
+              },
+              "PRODUCTION_RATE": {
+                "predicted_value": 59.5,
+                "confidence_interval": [
+                  58.2,
+                  60.8
+                ],
+                "confidence_level": 0.95
+              }
+            },
+            {
+              "timestamp": "2025-05-01T19:00:00Z",
+              "CATALYST_RATIO": {
+                "predicted_value": 0.419,
+                "confidence_interval": [
+                  0.408,
+                  0.43
+                ],
+                "confidence_level": 0.95
+              },
+              "VOC_EMISSION": {
+                "predicted_value": 59.3,
+                "confidence_interval": [
+                  56.7,
+                  61.9
+                ],
+                "confidence_level": 0.95,
+                "regulatory_limit": 45.0,
+                "exceedance": 14.3
+              },
+              "PRODUCTION_RATE": {
+                "predicted_value": 60.7,
+                "confidence_interval": [
+                  59.2,
+                  62.2
+                ],
+                "confidence_level": 0.95
+              }
+            },
+            {
+              "timestamp": "2025-05-01T20:00:00Z",
+              "CATALYST_RATIO": {
+                "predicted_value": 0.428,
+                "confidence_interval": [
+                  0.415,
+                  0.441
+                ],
+                "confidence_level": 0.95
+              },
+              "VOC_EMISSION": {
+                "predicted_value": 62.6,
+                "confidence_interval": [
+                  59.5,
+                  65.7
+                ],
+                "confidence_level": 0.95,
+                "regulatory_limit": 45.0,
+                "exceedance": 17.6
+              },
+              "PRODUCTION_RATE": {
+                "predicted_value": 61.8,
+                "confidence_interval": [
+                  60.1,
+                  63.5
+                ],
+                "confidence_level": 0.95
+              }
+            }
+          ],
+          "risk_assessment": {
+            "regulatory_violation_probability": 0.96,
+            "expected_violation_time": "2025-05-01T17:30:00Z",
+            "severity": "critical",
+            "penalty_risk": {
+              "administrative_fine": "최대 2억원 (대기환경보전법 제89조)",
+              "facility_suspension": "최대 6개월 조업정지 (제33조)",
+              "criminal_liability": "3년 이하 징역 또는 3천만원 이하 벌금 가능"
+            },
+            "reputation_risk": "high",
+            "estimated_total_impact": "약 5억원 이상 (벌금 + 조업정지 + 평판 손실)"
+          },
+          "tradeoff_analysis": {
+            "current_benefit": {
+              "production_increase": "11.8 ton/h (26% 증가)",
+              "revenue_increase": "약 시간당 350만원"
+            },
+            "predicted_cost": {
+              "regulatory_penalty": "약 5억원 이상",
+              "facility_downtime": "최대 6개월",
+              "long_term_impact": "인허가 제한, 투자 유치 어려움"
+            },
+            "conclusion": "단기 생산성 향상보다 규제 준수가 경제적으로 유리"
+          },
+          "recommendation": "즉시 촉매 비율 감소 제어 필요 - VOC 배출을 규제 기준 이하로 낮추면서 생산성 최적화",
+          "summary_report": "## 화학 전체 공정 배출 예측 결과\n\n### 예측 모델 정보\n- **모델**: LSTM 규제 제약 조건 모델\n- **정확도**: 92%\n- **예측 구간**: 향후 4시간\n\n### VOC 배출 예측 추이 (제어 없이)\n| 시간 | 예측 배출량 | 규제 기준 | 초과량 | 상태 |\n|------|------------|----------|--------|------|\n| 현재 | 48.2 ppm | 45.0 ppm | +3.2 ppm | 🚨 기준 초과 |\n| +1시간 | 52.1 ppm | 45.0 ppm | +7.1 ppm | 🚨 심각 초과 |\n| +2시간 | 55.8 ppm | 45.0 ppm | +10.8 ppm | 🚨 중대 위반 |\n| +3시간 | 59.3 ppm | 45.0 ppm | +14.3 ppm | 🚨 중대 위반 |\n| +4시간 | 62.6 ppm | 45.0 ppm | +17.6 ppm | 🚨 중대 위반 |\n\n### 규제 위반 리스크 평가\n- **위반 발생 확률**: 96%\n- **예상 위반 시점**: 2025-05-01 17:30 UTC (약 1.5시간 후)\n- **심각도**: 치명적 (Critical)\n\n### 예상 처벌 (대기환경보전법)\n- **행정 벌금**: 최대 2억원 (제89조)\n- **시설 조업정지**: 최대 6개월 (제33조)\n- **형사 책임**: 3년 이하 징역 또는 3천만원 이하 벌금 가능\n- **평판 리스크**: 높음\n- **총 예상 피해**: **약 5억원 이상** (벌금 + 조업정지 + 평판 손실)\n\n### 비용-편익 트레이드오프\n\n**현재 이익**\n- 생산량 증가: 11.8 ton/h (26% 증가)\n- 매출 증가: 약 시간당 350만원\n\n**예상 손실**\n- 규제 처벌: 약 5억원 이상\n- 조업 중단: 최대 6개월\n- 장기 영향: 인허가 제한, 투자 유치 어려움\n\n**결론**: 단기 생산성 향상(시간당 350만원)보다 규제 위반 방지(5억원)가 경제적으로 훨씬 유리\n\n### 권고사항\n즉시 촉매 비율을 감소시켜 VOC 배출을 규제 기준(45 ppm) 이하로 낮추면서 생산성을 최적화하는 제어가 필요합니다."
+        },
+        "next_step": "control_optimization"
+      }
+    },
+    "step_5_prediction_to_orchestration": {
+      "from": "Predictive Agent",
+      "to": "Orchestration Agent",
+      "timestamp": "2025-05-01T16:01:00Z",
+      "api_endpoint": "POST /api/v1/orchestrate/report",
+      "request": {
+        "workflow_id": "wf_chem_full_004",
+        "status": "completed",
+        "results": {
+          "status": "success",
+          "workflow_id": "wf_chem_full_004",
+          "agent": "AutoControl Agent",
+          "control_result": {
+            "optimization_completed": true,
+            "control_method": "Constrained Model Predictive Control",
+            "optimization_algorithm": "Nonlinear Programming with Regulatory Constraints",
+            "optimal_parameters": {
+              "CATALYST_RATIO": {
+                "current": 0.38,
+                "optimal": 0.29,
+                "change": -0.09,
+                "unit": "%",
+                "rationale": "촉매 감소로 부반응 억제 및 VOC 배출 저감"
+              },
+              "REACTOR_TEMP": {
+                "current": 261.5,
+                "optimal": 257.0,
+                "change": -4.5,
+                "unit": "°C",
+                "rationale": "온도 하향으로 부반응 속도 감소"
+              }
+            },
+            "predicted_improvement": {
+              "VOC_EMISSION_1h": {
+                "without_control": 52.1,
+                "with_control": 39.8,
+                "improvement": -12.3,
+                "compliance_status": "compliant"
+              },
+              "VOC_EMISSION_2h": {
+                "without_control": 55.8,
+                "with_control": 38.2,
+                "improvement": -17.6,
+                "compliance_status": "compliant"
+              },
+              "VOC_EMISSION_4h": {
+                "without_control": 62.6,
+                "with_control": 37.5,
+                "improvement": -25.1,
+                "compliance_status": "compliant"
+              },
+              "PRODUCTION_RATE_4h": {
+                "without_control": 61.8,
+                "with_control": 52.3,
+                "reduction": -9.5,
+                "percentage": "-15.4%"
+              }
+            },
+            "control_sequence": [
+              {
+                "step": 1,
+                "time": "2025-05-01T16:01:00Z",
+                "action": "CATALYST_RATIO 감소 시작",
+                "value": "0.38% → 0.35% (-0.03%)",
+                "duration": "15분"
+              },
+              {
+                "step": 2,
+                "time": "2025-05-01T16:16:00Z",
+                "action": "REACTOR_TEMP 감소 시작",
+                "value": "261.5°C → 259.0°C (-2.5°C)",
+                "duration": "25분"
+              },
+              {
+                "step": 3,
+                "time": "2025-05-01T16:41:00Z",
+                "action": "CATALYST_RATIO 추가 감소",
+                "value": "0.35% → 0.31% (-0.04%)",
+                "duration": "20분"
+              },
+              {
+                "step": 4,
+                "time": "2025-05-01T17:01:00Z",
+                "action": "REACTOR_TEMP 추가 감소",
+                "value": "259.0°C → 257.0°C (-2.0°C)",
+                "duration": "20분"
+              },
+              {
+                "step": 5,
+                "time": "2025-05-01T17:21:00Z",
+                "action": "CATALYST_RATIO 최종 조정",
+                "value": "0.31% → 0.29% (-0.02%)",
+                "duration": "15분"
+              },
+              {
+                "step": 6,
+                "time": "2025-05-01T17:36:00Z",
+                "action": "안정화 및 모니터링",
+                "value": "모든 파라미터 목표값 도달",
+                "duration": "지속"
+              }
+            ],
+            "execution_plan": {
+              "total_duration": "95분",
+              "expected_stabilization": "2025-05-01T17:36:00Z",
+              "monitoring_interval": "30초",
+              "rollback_conditions": [
+                "VOC_EMISSION > 50 ppm",
+                "PRODUCTION_RATE < 40 ton/h",
+                "CONVERSION_RATE < 85%"
+              ]
+            },
+            "cost_benefit_analysis": {
+              "control_implementation_cost": {
+                "production_loss": "약 9.5 ton/h 감소 (-15.4%)",
+                "revenue_loss": "약 시간당 280만원 감소",
+                "daily_impact": "약 6,720만원 매출 감소 (24시간 기준)"
+              },
+              "expected_benefit": {
+                "penalty_avoidance": "약 5억원 이상 (행정처분 회피)",
+                "operational_continuity": "조업정지 방지 (최대 6개월)",
+                "reputation_protection": "기업 평판 유지",
+                "long_term_benefit": "인허가 유지, 투자 유치 가능"
+              },
+              "payback_period": "약 1.8일 (5억원 / 일일 6,720만원)",
+              "roi": "약 190배 (연간 기준: 5억원 / 일일 67만원 * 365일 = 약 2.4억원)",
+              "recommendation": "즉시 실행 강력 권장 - 경제적·법적·전략적으로 필수"
+            },
+            "tradeoff_summary": {
+              "production_impact": "생산량 15.4% 감소 (61.8 → 52.3 ton/h)",
+              "emission_impact": "VOC 배출 40% 감소 (62.6 → 37.5 ppm at +4h)",
+              "economic_impact": "일일 매출 6,720만원 감소, 그러나 5억원 벌금 회피",
+              "strategic_impact": "규제 준수로 지속 가능한 운영 확보",
+              "conclusion": "단기 생산량 감소는 불가피하나, 장기적으로 기업 생존과 성장에 필수적"
+            },
+            "safety_validation": {
+              "all_constraints_satisfied": true,
+              "safety_margin": 0.15,
+              "risk_level": "low",
+              "approval_required": false
+            },
+            "summary_report": "## 화학 전체 공정 최적 제어 결과\n\n### 제어 최적화 완료\n- **제어 방법**: 제약 조건 모델 예측 제어 (Constrained MPC)\n- **최적화 알고리즘**: 비선형 프로그래밍 (규제 제약 포함)\n- **안전성 검증**: 통과 ✅\n\n### 최적 제어 파라미터\n| 파라미터 | 현재값 | 최적값 | 변화량 | 사유 |\n|---------|--------|--------|--------|------|\n| 촉매 비율 | 0.38% | 0.29% | -0.09% | 부반응 억제 및 VOC 저감 |\n| 반응기 온도 | 261.5°C | 257.0°C | -4.5°C | 부반응 속도 감소 |\n\n### VOC 배출 예상 개선 효과\n| 시점 | 제어 없이 | 제어 적용 시 | 개선폭 | 준수 여부 |\n|------|-----------|-------------|--------|----------|\n| +1시간 | 52.1 ppm | **39.8 ppm** | -12.3 ppm | ✅ 준수 |\n| +2시간 | 55.8 ppm | **38.2 ppm** | -17.6 ppm | ✅ 준수 |\n| +4시간 | 62.6 ppm | **37.5 ppm** | -25.1 ppm | ✅ 준수 |\n\n(규제 기준: 45.0 ppm, 목표: 42.0 ppm 이하)\n\n### 생산량 영향\n- **제어 전**: 61.8 ton/h\n- **제어 후**: 52.3 ton/h\n- **감소**: 9.5 ton/h (-15.4%)\n\n### 제어 실행 계획\n1. **1단계** (0-15분): 촉매 비율 0.38% → 0.35%\n2. **2단계** (15-40분): 반응기 온도 261.5°C → 259.0°C\n3. **3단계** (40-60분): 촉매 비율 0.35% → 0.31%\n4. **4단계** (60-80분): 반응기 온도 259.0°C → 257.0°C\n5. **5단계** (80-95분): 촉매 비율 0.31% → 0.29%\n6. **6단계** (95분~): 안정화 및 모니터링\n\n**총 소요 시간**: 95분  \n**예상 안정화 시점**: 2025-05-01 17:36 UTC\n\n### 비용-편익 분석\n\n**제어 비용**\n- 생산량 감소: 9.5 ton/h (-15.4%)\n- 매출 손실: 약 시간당 280만원\n- 일일 영향: 약 6,720만원 (24시간 기준)\n\n**예상 편익**\n- 벌금 회피: **약 5억원 이상**\n- 조업 연속성: 조업정지 방지 (최대 6개월)\n- 평판 보호: 기업 이미지 유지\n- 장기 이익: 인허가 유지, 투자 유치 가능\n\n**회수 기간**: 약 1.8일 (5억원 / 일일 6,720만원)  \n**투자수익률 (ROI)**: 약 190배 (연간 기준)\n\n### 트레이드오프 요약\n- ❌ **생산량**: 15.4% 감소 (단기 손실)\n- ✅ **배출량**: 40% 감소 (규제 준수)\n- ✅ **경제성**: 5억원 벌금 회피 vs 일일 6,720만원 매출 감소\n- ✅ **전략적**: 지속 가능한 운영 확보\n\n**결론**: 단기 생산량 감소는 불가피하나, 규제 준수를 통한 장기적 기업 생존과 성장이 훨씬 중요\n\n### 안전성 검증\n- ✅ 모든 운전 제약조건 만족\n- ✅ 안전 여유도: 15%\n- ✅ 리스크 수준: 낮음\n- ✅ 승인 불필요 (자동 실행 가능)\n\n### 권고사항\n최적 제어 파라미터를 즉시 적용하여 VOC 배출을 규제 기준 이하로 낮추고 법적·경제적 리스크를 제거할 것을 강력히 권장합니다.",
+            "auto_execution_enabled": true,
+            "execution_status": "ready_to_execute"
+          },
+          "next_step": "compliance_verification"
+        }
+      },
+      "response": {
+        "status": "success",
+        "workflow_id": "wf_chem_full_004",
+        "message": "Prediction 완료. AutoControl Agent로 전달.",
+        "next_step": "control_optimization"
+      }
+    },
+    "step_6_orchestration_to_autocontrol": {
+      "from": "Orchestration Agent",
+      "to": "AutoControl Agent",
+      "timestamp": "2025-05-01T16:01:00Z",
+      "api_endpoint": "POST /api/v1/autocontrol/run-direct",
+      "request": {
+        "workflow_id": "wf_chem_full_004",
+        "control_task": "optimize_emission_compliance",
+        "current_state": {
+          "CATALYST_RATIO": 0.38,
+          "VOC_EMISSION": 48.2,
+          "PRODUCTION_RATE": 56.8,
+          "REACTOR_TEMP": 261.5,
+          "CONVERSION_RATE": 94.2
+        },
+        "target_state": {
+          "VOC_EMISSION": "<=42",
+          "CATALYST_RATIO": "optimize",
+          "PRODUCTION_RATE": "maximize_within_constraint"
+        },
+        "constraints": {
+          "VOC_EMISSION": {
+            "max": 42.0,
+            "regulatory_limit": 45.0,
+            "safety_margin": 3.0
+          },
+          "CATALYST_RATIO": {
+            "min": 0.2,
+            "max": 0.4,
+            "rate_limit": 0.02
+          },
+          "REACTOR_TEMP": {
+            "min": 240,
+            "max": 270,
+            "rate_limit": 3.0
+          },
+          "PRODUCTION_RATE": {
+            "min": 40,
+            "objective": "maximize"
+          },
+          "optimization_time": "minimize",
+          "stability_margin": 0.12
+        },
+        "prediction_context": {
+          "forecast_severity": "critical",
+          "violation_probability": 0.96,
+          "time_to_violation": "1.5_hours",
+          "penalty_risk": "5억원 이상"
+        },
+        "control_method": "mpc_with_constraint",
+        "query": "예측 결과 35분 후 VOC 배출량이 규제 한계를 40.5% 초과하고 K-REACH 위반 벌금이 약 8,500만원으로 예상됩니다. 촉매 투입 비율을 최적값 0.32%로 감소시키고 VOC 배출을 규제 한계 이내로 낮추기 위한 최적 제어 파라미터(CATALYST_RATIO, REACTOR_TEMP, FEED_RATE)를 계산하고 안전하게 적용해주세요."
+      },
+      "response": {
+        "status": "success",
+        "workflow_id": "wf_chem_full_004",
+        "agent": "AutoControl Agent",
+        "control_result": {
+          "optimization_completed": true,
+          "control_method": "Constrained Model Predictive Control",
+          "optimization_algorithm": "Nonlinear Programming with Regulatory Constraints",
+          "optimal_parameters": {
+            "CATALYST_RATIO": {
+              "current": 0.38,
+              "optimal": 0.29,
+              "change": -0.09,
+              "unit": "%",
+              "rationale": "촉매 감소로 부반응 억제 및 VOC 배출 저감"
+            },
+            "REACTOR_TEMP": {
+              "current": 261.5,
+              "optimal": 257.0,
+              "change": -4.5,
+              "unit": "°C",
+              "rationale": "온도 하향으로 부반응 속도 감소"
+            }
+          },
+          "predicted_improvement": {
+            "VOC_EMISSION_1h": {
+              "without_control": 52.1,
+              "with_control": 39.8,
+              "improvement": -12.3,
+              "compliance_status": "compliant"
+            },
+            "VOC_EMISSION_2h": {
+              "without_control": 55.8,
+              "with_control": 38.2,
+              "improvement": -17.6,
+              "compliance_status": "compliant"
+            },
+            "VOC_EMISSION_4h": {
+              "without_control": 62.6,
+              "with_control": 37.5,
+              "improvement": -25.1,
+              "compliance_status": "compliant"
+            },
+            "PRODUCTION_RATE_4h": {
+              "without_control": 61.8,
+              "with_control": 52.3,
+              "reduction": -9.5,
+              "percentage": "-15.4%"
+            }
+          },
+          "control_sequence": [
+            {
+              "step": 1,
+              "time": "2025-05-01T16:01:00Z",
+              "action": "CATALYST_RATIO 감소 시작",
+              "value": "0.38% → 0.35% (-0.03%)",
+              "duration": "15분"
+            },
+            {
+              "step": 2,
+              "time": "2025-05-01T16:16:00Z",
+              "action": "REACTOR_TEMP 감소 시작",
+              "value": "261.5°C → 259.0°C (-2.5°C)",
+              "duration": "25분"
+            },
+            {
+              "step": 3,
+              "time": "2025-05-01T16:41:00Z",
+              "action": "CATALYST_RATIO 추가 감소",
+              "value": "0.35% → 0.31% (-0.04%)",
+              "duration": "20분"
+            },
+            {
+              "step": 4,
+              "time": "2025-05-01T17:01:00Z",
+              "action": "REACTOR_TEMP 추가 감소",
+              "value": "259.0°C → 257.0°C (-2.0°C)",
+              "duration": "20분"
+            },
+            {
+              "step": 5,
+              "time": "2025-05-01T17:21:00Z",
+              "action": "CATALYST_RATIO 최종 조정",
+              "value": "0.31% → 0.29% (-0.02%)",
+              "duration": "15분"
+            },
+            {
+              "step": 6,
+              "time": "2025-05-01T17:36:00Z",
+              "action": "안정화 및 모니터링",
+              "value": "모든 파라미터 목표값 도달",
+              "duration": "지속"
+            }
+          ],
+          "execution_plan": {
+            "total_duration": "95분",
+            "expected_stabilization": "2025-05-01T17:36:00Z",
+            "monitoring_interval": "30초",
+            "rollback_conditions": [
+              "VOC_EMISSION > 50 ppm",
+              "PRODUCTION_RATE < 40 ton/h",
+              "CONVERSION_RATE < 85%"
+            ]
+          },
+          "cost_benefit_analysis": {
+            "control_implementation_cost": {
+              "production_loss": "약 9.5 ton/h 감소 (-15.4%)",
+              "revenue_loss": "약 시간당 280만원 감소",
+              "daily_impact": "약 6,720만원 매출 감소 (24시간 기준)"
+            },
+            "expected_benefit": {
+              "penalty_avoidance": "약 5억원 이상 (행정처분 회피)",
+              "operational_continuity": "조업정지 방지 (최대 6개월)",
+              "reputation_protection": "기업 평판 유지",
+              "long_term_benefit": "인허가 유지, 투자 유치 가능"
+            },
+            "payback_period": "약 1.8일 (5억원 / 일일 6,720만원)",
+            "roi": "약 190배 (연간 기준: 5억원 / 일일 67만원 * 365일 = 약 2.4억원)",
+            "recommendation": "즉시 실행 강력 권장 - 경제적·법적·전략적으로 필수"
+          },
+          "tradeoff_summary": {
+            "production_impact": "생산량 15.4% 감소 (61.8 → 52.3 ton/h)",
+            "emission_impact": "VOC 배출 40% 감소 (62.6 → 37.5 ppm at +4h)",
+            "economic_impact": "일일 매출 6,720만원 감소, 그러나 5억원 벌금 회피",
+            "strategic_impact": "규제 준수로 지속 가능한 운영 확보",
+            "conclusion": "단기 생산량 감소는 불가피하나, 장기적으로 기업 생존과 성장에 필수적"
+          },
+          "safety_validation": {
+            "all_constraints_satisfied": true,
+            "safety_margin": 0.15,
+            "risk_level": "low",
+            "approval_required": false
+          },
+          "summary_report": "## 화학 전체 공정 최적 제어 결과\n\n### 제어 최적화 완료\n- **제어 방법**: 제약 조건 모델 예측 제어 (Constrained MPC)\n- **최적화 알고리즘**: 비선형 프로그래밍 (규제 제약 포함)\n- **안전성 검증**: 통과 ✅\n\n### 최적 제어 파라미터\n| 파라미터 | 현재값 | 최적값 | 변화량 | 사유 |\n|---------|--------|--------|--------|------|\n| 촉매 비율 | 0.38% | 0.29% | -0.09% | 부반응 억제 및 VOC 저감 |\n| 반응기 온도 | 261.5°C | 257.0°C | -4.5°C | 부반응 속도 감소 |\n\n### VOC 배출 예상 개선 효과\n| 시점 | 제어 없이 | 제어 적용 시 | 개선폭 | 준수 여부 |\n|------|-----------|-------------|--------|----------|\n| +1시간 | 52.1 ppm | **39.8 ppm** | -12.3 ppm | ✅ 준수 |\n| +2시간 | 55.8 ppm | **38.2 ppm** | -17.6 ppm | ✅ 준수 |\n| +4시간 | 62.6 ppm | **37.5 ppm** | -25.1 ppm | ✅ 준수 |\n\n(규제 기준: 45.0 ppm, 목표: 42.0 ppm 이하)\n\n### 생산량 영향\n- **제어 전**: 61.8 ton/h\n- **제어 후**: 52.3 ton/h\n- **감소**: 9.5 ton/h (-15.4%)\n\n### 제어 실행 계획\n1. **1단계** (0-15분): 촉매 비율 0.38% → 0.35%\n2. **2단계** (15-40분): 반응기 온도 261.5°C → 259.0°C\n3. **3단계** (40-60분): 촉매 비율 0.35% → 0.31%\n4. **4단계** (60-80분): 반응기 온도 259.0°C → 257.0°C\n5. **5단계** (80-95분): 촉매 비율 0.31% → 0.29%\n6. **6단계** (95분~): 안정화 및 모니터링\n\n**총 소요 시간**: 95분  \n**예상 안정화 시점**: 2025-05-01 17:36 UTC\n\n### 비용-편익 분석\n\n**제어 비용**\n- 생산량 감소: 9.5 ton/h (-15.4%)\n- 매출 손실: 약 시간당 280만원\n- 일일 영향: 약 6,720만원 (24시간 기준)\n\n**예상 편익**\n- 벌금 회피: **약 5억원 이상**\n- 조업 연속성: 조업정지 방지 (최대 6개월)\n- 평판 보호: 기업 이미지 유지\n- 장기 이익: 인허가 유지, 투자 유치 가능\n\n**회수 기간**: 약 1.8일 (5억원 / 일일 6,720만원)  \n**투자수익률 (ROI)**: 약 190배 (연간 기준)\n\n### 트레이드오프 요약\n- ❌ **생산량**: 15.4% 감소 (단기 손실)\n- ✅ **배출량**: 40% 감소 (규제 준수)\n- ✅ **경제성**: 5억원 벌금 회피 vs 일일 6,720만원 매출 감소\n- ✅ **전략적**: 지속 가능한 운영 확보\n\n**결론**: 단기 생산량 감소는 불가피하나, 규제 준수를 통한 장기적 기업 생존과 성장이 훨씬 중요\n\n### 안전성 검증\n- ✅ 모든 운전 제약조건 만족\n- ✅ 안전 여유도: 15%\n- ✅ 리스크 수준: 낮음\n- ✅ 승인 불필요 (자동 실행 가능)\n\n### 권고사항\n최적 제어 파라미터를 즉시 적용하여 VOC 배출을 규제 기준 이하로 낮추고 법적·경제적 리스크를 제거할 것을 강력히 권장합니다.",
+          "auto_execution_enabled": true,
+          "execution_status": "ready_to_execute"
+        },
+        "next_step": "compliance_verification"
+      }
+    },
+    "step_7_autocontrol_to_orchestration": {
+      "from": "AutoControl Agent",
+      "to": "Orchestration Agent",
+      "timestamp": "2025-05-01T16:01:45Z",
+      "api_endpoint": "POST /api/v1/orchestrate/report",
+      "request": {
+        "workflow_id": "wf_chem_full_004",
+        "status": "completed",
+        "results": {
+          "status": "success",
+          "workflow_id": "wf_chem_full_004",
+          "agent": "ComplianceCheck Agent",
+          "compliance_result": {
+            "verification_completed": true,
+            "overall_compliance": "compliant_after_control",
+            "regulations_checked": [
+              {
+                "regulation_name": "대기환경보전법 (Clean Air Conservation Act)",
+                "regulation_code": "법률 제18469호",
+                "relevant_articles": [
+                  "제16조 (배출허용기준)",
+                  "제33조 (개선명령 등)",
+                  "제89조 (과태료)"
+                ],
+                "requirements": {
+                  "VOC_EMISSION_LIMIT": 45.0,
+                  "unit": "ppm",
+                  "measurement_method": "연속 측정 또는 주기적 샘플링",
+                  "reporting_frequency": "분기별"
+                },
+                "current_compliance": {
+                  "current_value": 48.2,
+                  "limit": 45.0,
+                  "exceedance": 3.2,
+                  "status": "non_compliant",
+                  "violation_severity": "moderate",
+                  "immediate_action_required": true
+                },
+                "after_control_compliance": {
+                  "predicted_value": 37.5,
+                  "limit": 45.0,
+                  "margin": 7.5,
+                  "status": "compliant",
+                  "confidence": 0.94
+                },
+                "penalties_if_violated": {
+                  "administrative_fine": "최대 2억원",
+                  "operational_suspension": "최대 6개월 조업정지",
+                  "criminal_liability": "3년 이하 징역 또는 3천만원 이하 벌금"
+                },
+                "recommendation": "즉시 제어 실행하여 배출 기준 준수 필수"
+              },
+              {
+                "regulation_name": "K-REACH (화학물질의 등록 및 평가 등에 관한 법률)",
+                "regulation_code": "법률 제18623호",
+                "relevant_articles": [
+                  "제10조 (유해화학물질 관리)",
+                  "제38조 (배출 보고)"
+                ],
+                "requirements": {
+                  "VOC_as_hazardous_substance": "일부 VOC는 유해화학물질로 분류",
+                  "annual_report_required": true,
+                  "threshold_quantity": "연간 1톤 이상 배출 시 보고"
+                },
+                "current_compliance": {
+                  "estimated_annual_emission": "약 8.2톤 (현재 배출율 기준)",
+                  "threshold": "1톤",
+                  "status": "reporting_required",
+                  "last_report_date": "2025-03-15",
+                  "next_report_due": "2026-03-15"
+                },
+                "after_control_compliance": {
+                  "estimated_annual_emission": "약 6.4톤 (제어 후 배출율 기준)",
+                  "threshold": "1톤",
+                  "status": "reporting_required",
+                  "emission_reduction": "1.8톤/년 (-22%)"
+                },
+                "recommendation": "제어 후에도 연간 보고 의무 유지, 배출량 감소로 평가 유리"
+              },
+              {
+                "regulation_name": "화학물질관리법 (Chemicals Control Act)",
+                "regulation_code": "법률 제18469호",
+                "relevant_articles": [
+                  "제23조 (취급기준)",
+                  "제39조 (사고 예방)"
+                ],
+                "requirements": {
+                  "handling_standards": "화학물질 취급시설 안전 기준 준수",
+                  "accident_prevention": "사고 예방 및 대응 계획 수립",
+                  "inspection_frequency": "연 2회 정기 점검"
+                },
+                "current_compliance": {
+                  "last_inspection_date": "2025-04-10",
+                  "next_inspection_due": "2025-10-10",
+                  "inspection_result": "적합",
+                  "status": "compliant"
+                },
+                "after_control_compliance": {
+                  "control_actions_alignment": "제어 조치는 안전 기준 범위 내",
+                  "status": "compliant",
+                  "additional_actions_required": false
+                },
+                "recommendation": "현재 준수 상태 양호, 정기 점검 일정 유지"
+              },
+              {
+                "regulation_name": "환경오염시설 통합관리법 (Integrated Environmental Control)",
+                "regulation_code": "법률 제17893호",
+                "relevant_articles": [
+                  "제10조 (통합허가)",
+                  "제17조 (배출 관리)"
+                ],
+                "requirements": {
+                  "integrated_permit_required": true,
+                  "permit_renewal_period": "10년",
+                  "continuous_monitoring": "주요 오염물질 연속 측정",
+                  "best_available_techniques": "최적 가용 기법(BAT) 적용"
+                },
+                "current_compliance": {
+                  "permit_status": "유효",
+                  "permit_issue_date": "2021-08-20",
+                  "permit_expiry_date": "2031-08-20",
+                  "bat_compliance": "부분 준수 (VOC 배출 개선 필요)",
+                  "status": "compliant_with_concern"
+                },
+                "after_control_compliance": {
+                  "bat_compliance": "완전 준수 (VOC 배출 최적화)",
+                  "status": "fully_compliant",
+                  "permit_renewal_advantage": "제어 개선으로 갱신 시 유리"
+                },
+                "recommendation": "제어 실행으로 BAT 완전 준수, 장기 허가 유지에 긍정적"
+              }
+            ],
+            "compliance_summary": {
+              "total_regulations_checked": 4,
+              "currently_compliant": 2,
+              "currently_non_compliant": 1,
+              "currently_concern": 1,
+              "after_control_compliant": 4,
+              "after_control_non_compliant": 0,
+              "overall_status": "compliant_after_control"
+            },
+            "risk_mitigation": {
+              "current_risks": [
+                "대기환경보전법 위반 (VOC 배출 초과)",
+                "행정 처분 가능성 (벌금, 조업정지)",
+                "환경오염시설 통합허가 갱신 시 불리"
+              ],
+              "risks_after_control": [
+                "모든 주요 리스크 해소",
+                "규제 준수 상태 확보",
+                "장기 운영 안정성 확보"
+              ],
+              "residual_risks": [
+                "K-REACH 연간 보고 의무 지속 (낮은 리스크)",
+                "화학물질관리법 정기 점검 준수 필요 (낮은 리스크)"
+              ]
+            },
+            "certification_opportunities": {
+              "available_certifications": [
+                "ISO 14001 (환경경영시스템) - 배출 개선으로 인증 유지/취득 유리",
+                "녹색기업 인증 (환경부) - 자발적 배출 저감으로 신청 가능",
+                "탄소중립 인증 - VOC 감소는 온실가스 저감에도 기여"
+              ],
+              "business_benefits": [
+                "ESG 평가 개선",
+                "정부 지원사업 우선 선정",
+                "투자 유치 시 긍정적 평가",
+                "대기업 공급망 진입 유리"
+              ]
+            },
+            "summary_report": "## 화학 전체 공정 규제 준수성 검증 결과\n\n### 검증 개요\n- **검증 완료**: ✅\n- **검증 규제 수**: 4개\n- **전체 준수 여부**: 제어 후 완전 준수\n\n---\n\n### 1. 대기환경보전법 (Clean Air Conservation Act)\n\n**법률 정보**\n- 법률 번호: 제18469호\n- 관련 조항: 제16조, 제33조, 제89조\n\n**요구사항**\n- VOC 배출 허용 기준: **45.0 ppm**\n- 측정 방법: 연속 측정 또는 주기적 샘플링\n- 보고 주기: 분기별\n\n**현재 준수 상태**\n| 항목 | 값 | 상태 |\n|------|-----|------|\n| 현재 배출량 | 48.2 ppm | 🚨 기준 초과 (+3.2 ppm) |\n| 허용 기준 | 45.0 ppm | - |\n| 준수 여부 | **부적합** | ⚠️ 즉시 조치 필요 |\n\n**제어 후 예상 상태**\n| 항목 | 값 | 상태 |\n|------|-----|------|\n| 예상 배출량 | 37.5 ppm | ✅ 기준 준수 (-7.5 ppm 여유) |\n| 허용 기준 | 45.0 ppm | - |\n| 준수 여부 | **적합** | ✅ 안전 여유 17% |\n\n**위반 시 처벌**\n- 행정 벌금: 최대 2억원\n- 조업정지: 최대 6개월\n- 형사 책임: 3년 이하 징역 또는 3천만원 이하 벌금\n\n**권고사항**: 즉시 제어 실행하여 배출 기준 준수 필수\n\n---\n\n### 2. K-REACH (화학물질 등록 및 평가)\n\n**법률 정보**\n- 법률 번호: 제18623호\n- 관련 조항: 제10조, 제38조\n\n**요구사항**\n- VOC 일부는 유해화학물질로 분류\n- 연간 1톤 이상 배출 시 보고 의무\n- 다음 보고 마감: 2026-03-15\n\n**현재 준수 상태**\n- 연간 예상 배출량: **약 8.2톤** (현재 배출율 기준)\n- 보고 필요 여부: **예** (1톤 초과)\n- 준수 여부: ✅ 보고 필요 (위반 아님)\n\n**제어 후 예상 상태**\n- 연간 예상 배출량: **약 6.4톤** (제어 후 배출율 기준)\n- 배출 감소: **1.8톤/년 (-22%)**\n- 보고 필요 여부: **예** (여전히 1톤 초과)\n- 준수 여부: ✅ 보고 필요 (위반 아님)\n\n**권고사항**: 제어 후에도 연간 보고 의무 유지, 배출량 감소로 당국 평가 시 유리\n\n---\n\n### 3. 화학물질관리법 (Chemicals Control Act)\n\n**법률 정보**\n- 법률 번호: 제18469호\n- 관련 조항: 제23조, 제39조\n\n**요구사항**\n- 화학물질 취급시설 안전 기준 준수\n- 사고 예방 및 대응 계획 수립\n- 정기 점검: 연 2회\n\n**현재 준수 상태**\n- 최근 점검: 2025-04-10\n- 다음 점검: 2025-10-10\n- 점검 결과: 적합\n- 준수 여부: ✅ **적합**\n\n**제어 후 예상 상태**\n- 제어 조치는 안전 기준 범위 내\n- 추가 조치 불필요\n- 준수 여부: ✅ **적합**\n\n**권고사항**: 현재 준수 상태 양호, 정기 점검 일정 유지\n\n---\n\n### 4. 환경오염시설 통합관리법 (Integrated Environmental Control)\n\n**법률 정보**\n- 법률 번호: 제17893호\n- 관련 조항: 제10조, 제17조\n\n**요구사항**\n- 통합 허가 필수\n- 허가 갱신 주기: 10년\n- 최적 가용 기법(BAT) 적용 필수\n\n**현재 준수 상태**\n- 허가 상태: 유효 (2021-08-20 발급, 2031-08-20 만료)\n- BAT 준수: **부분 준수** (VOC 배출 개선 필요)\n- 준수 여부: ⚠️ **우려 있음**\n\n**제어 후 예상 상태**\n- BAT 준수: **완전 준수** (VOC 배출 최적화)\n- 허가 갱신 전망: 제어 개선으로 갱신 시 유리\n- 준수 여부: ✅ **완전 적합**\n\n**권고사항**: 제어 실행으로 BAT 완전 준수, 장기 허가 유지에 긍정적\n\n---\n\n### 종합 준수성 요약\n\n| 규제 | 현재 상태 | 제어 후 상태 |\n|------|----------|-------------|\n| 대기환경보전법 | 🚨 **부적합** | ✅ 적합 |\n| K-REACH | ✅ 보고 필요 | ✅ 보고 필요 (개선) |\n| 화학물질관리법 | ✅ 적합 | ✅ 적합 |\n| 통합관리법 | ⚠️ 우려 | ✅ 완전 적합 |\n\n**총 검증 규제**: 4개  \n**현재 준수**: 2개 적합, 1개 부적합, 1개 우려  \n**제어 후 준수**: **4개 모두 적합** ✅\n\n---\n\n### 리스크 완화\n\n**현재 리스크**\n- 🚨 대기환경보전법 위반 (VOC 배출 초과)\n- ⚠️ 행정 처분 가능성 (벌금 최대 2억원, 조업정지 최대 6개월)\n- ⚠️ 환경오염시설 통합허가 갱신 시 불리\n\n**제어 후 리스크**\n- ✅ 모든 주요 리스크 해소\n- ✅ 규제 준수 상태 확보\n- ✅ 장기 운영 안정성 확보\n\n**잔여 리스크** (낮음)\n- K-REACH 연간 보고 의무 지속\n- 화학물질관리법 정기 점검 준수 필요\n\n---\n\n### 인증 기회\n\n**취득 가능 인증**\n1. **ISO 14001** (환경경영시스템)\n   - 배출 개선으로 인증 유지/취득 유리\n\n2. **녹색기업 인증** (환경부)\n   - 자발적 배출 저감으로 신청 가능\n\n3. **탄소중립 인증**\n   - VOC 감소는 온실가스 저감에도 기여\n\n**비즈니스 이점**\n- ✅ ESG 평가 개선\n- ✅ 정부 지원사업 우선 선정\n- ✅ 투자 유치 시 긍정적 평가\n- ✅ 대기업 공급망 진입 유리\n\n---\n\n### 최종 권고사항\n\n1. ✅ **즉시 제어 실행 필수**\n   - 현재 대기환경보전법 위반 상태\n   - 제어 적용 시 모든 규제 준수\n\n2. 📊 **제어 후 지속 모니터링**\n   - VOC 배출 연속 측정 유지\n   - 분기별 보고 의무 준수\n\n3. 🏆 **인증 취득 검토**\n   - ISO 14001, 녹색기업 인증 신청\n   - ESG 평가 개선으로 비즈니스 기회 확대\n\n4. 📝 **K-REACH 연간 보고 준비**\n   - 2026-03-15 보고 마감 준수\n   - 배출 감소 실적 강조\n\n---\n\n**결론**: 제어 실행을 통해 모든 주요 환경 규제를 완전히 준수할 수 있으며, 법적 리스크 제거와 함께 장기적인 비즈니스 기회를 확보할 수 있습니다."
+          },
+          "next_step": "return_to_orchestration"
+        }
+      },
+      "response": {
+        "status": "success",
+        "workflow_id": "wf_chem_full_004",
+        "message": "AutoControl 완료. ComplianceCheck Agent로 전달.",
+        "next_step": "compliance_verification"
+      }
+    },
+    "step_8_orchestration_to_compliance": {
+      "from": "Orchestration Agent",
+      "to": "ComplianceCheck Agent",
+      "timestamp": "2025-05-01T16:01:45Z",
+      "api_endpoint": "POST /api/v1/compliance/check",
+      "request": {
+        "workflow_id": "wf_chem_full_004",
+        "compliance_task": "verify_environmental_regulation",
+        "industry": "chemical",
+        "process": "Full Process",
+        "current_state": {
+          "VOC_EMISSION": 48.2,
+          "CATALYST_RATIO": 0.38,
+          "PRODUCTION_RATE": 56.8
+        },
+        "predicted_state_after_control": {
+          "VOC_EMISSION": 37.5,
+          "CATALYST_RATIO": 0.29,
+          "PRODUCTION_RATE": 52.3
+        },
+        "control_actions": {
+          "CATALYST_RATIO": {
+            "from": 0.38,
+            "to": 0.29,
+            "change": -0.09
+          },
+          "REACTOR_TEMP": {
+            "from": 261.5,
+            "to": 257.0,
+            "change": -4.5
+          }
+        },
+        "regulations_to_check": [
+          "대기환경보전법 (Clean Air Conservation Act)",
+          "K-REACH (화학물질 등록 및 평가)",
+          "화학물질관리법 (Chemicals Control Act)",
+          "환경오염시설 통합관리법 (Integrated Environmental Control)"
+        ],
+        "query": "촉매 투입 비율 제어 조치가 완료되었습니다. 촉매 비율을 0.42%에서 0.32%로 23.8% 감소시키고 반응기 온도 및 원료 투입량을 조정했습니다. 이 제어 조치가 K-REACH 화학물질 관리, 대기환경보전법 VOC 배출 기준, 화학물질안전원 안전 기준 등 관련 규제를 모두 준수하는지 검증해주세요. 제어 후 VOC 배출량 105 kg/h, 생산율 78 ton/h로 예상됩니다."
+      },
+      "response": {
+        "status": "success",
+        "workflow_id": "wf_chem_full_004",
+        "agent": "ComplianceCheck Agent",
+        "compliance_result": {
+          "verification_completed": true,
+          "overall_compliance": "compliant_after_control",
+          "regulations_checked": [
+            {
+              "regulation_name": "대기환경보전법 (Clean Air Conservation Act)",
+              "regulation_code": "법률 제18469호",
+              "relevant_articles": [
+                "제16조 (배출허용기준)",
+                "제33조 (개선명령 등)",
+                "제89조 (과태료)"
+              ],
+              "requirements": {
+                "VOC_EMISSION_LIMIT": 45.0,
+                "unit": "ppm",
+                "measurement_method": "연속 측정 또는 주기적 샘플링",
+                "reporting_frequency": "분기별"
+              },
+              "current_compliance": {
+                "current_value": 48.2,
+                "limit": 45.0,
+                "exceedance": 3.2,
+                "status": "non_compliant",
+                "violation_severity": "moderate",
+                "immediate_action_required": true
+              },
+              "after_control_compliance": {
+                "predicted_value": 37.5,
+                "limit": 45.0,
+                "margin": 7.5,
+                "status": "compliant",
+                "confidence": 0.94
+              },
+              "penalties_if_violated": {
+                "administrative_fine": "최대 2억원",
+                "operational_suspension": "최대 6개월 조업정지",
+                "criminal_liability": "3년 이하 징역 또는 3천만원 이하 벌금"
+              },
+              "recommendation": "즉시 제어 실행하여 배출 기준 준수 필수"
+            },
+            {
+              "regulation_name": "K-REACH (화학물질의 등록 및 평가 등에 관한 법률)",
+              "regulation_code": "법률 제18623호",
+              "relevant_articles": [
+                "제10조 (유해화학물질 관리)",
+                "제38조 (배출 보고)"
+              ],
+              "requirements": {
+                "VOC_as_hazardous_substance": "일부 VOC는 유해화학물질로 분류",
+                "annual_report_required": true,
+                "threshold_quantity": "연간 1톤 이상 배출 시 보고"
+              },
+              "current_compliance": {
+                "estimated_annual_emission": "약 8.2톤 (현재 배출율 기준)",
+                "threshold": "1톤",
+                "status": "reporting_required",
+                "last_report_date": "2025-03-15",
+                "next_report_due": "2026-03-15"
+              },
+              "after_control_compliance": {
+                "estimated_annual_emission": "약 6.4톤 (제어 후 배출율 기준)",
+                "threshold": "1톤",
+                "status": "reporting_required",
+                "emission_reduction": "1.8톤/년 (-22%)"
+              },
+              "recommendation": "제어 후에도 연간 보고 의무 유지, 배출량 감소로 평가 유리"
+            },
+            {
+              "regulation_name": "화학물질관리법 (Chemicals Control Act)",
+              "regulation_code": "법률 제18469호",
+              "relevant_articles": [
+                "제23조 (취급기준)",
+                "제39조 (사고 예방)"
+              ],
+              "requirements": {
+                "handling_standards": "화학물질 취급시설 안전 기준 준수",
+                "accident_prevention": "사고 예방 및 대응 계획 수립",
+                "inspection_frequency": "연 2회 정기 점검"
+              },
+              "current_compliance": {
+                "last_inspection_date": "2025-04-10",
+                "next_inspection_due": "2025-10-10",
+                "inspection_result": "적합",
+                "status": "compliant"
+              },
+              "after_control_compliance": {
+                "control_actions_alignment": "제어 조치는 안전 기준 범위 내",
+                "status": "compliant",
+                "additional_actions_required": false
+              },
+              "recommendation": "현재 준수 상태 양호, 정기 점검 일정 유지"
+            },
+            {
+              "regulation_name": "환경오염시설 통합관리법 (Integrated Environmental Control)",
+              "regulation_code": "법률 제17893호",
+              "relevant_articles": [
+                "제10조 (통합허가)",
+                "제17조 (배출 관리)"
+              ],
+              "requirements": {
+                "integrated_permit_required": true,
+                "permit_renewal_period": "10년",
+                "continuous_monitoring": "주요 오염물질 연속 측정",
+                "best_available_techniques": "최적 가용 기법(BAT) 적용"
+              },
+              "current_compliance": {
+                "permit_status": "유효",
+                "permit_issue_date": "2021-08-20",
+                "permit_expiry_date": "2031-08-20",
+                "bat_compliance": "부분 준수 (VOC 배출 개선 필요)",
+                "status": "compliant_with_concern"
+              },
+              "after_control_compliance": {
+                "bat_compliance": "완전 준수 (VOC 배출 최적화)",
+                "status": "fully_compliant",
+                "permit_renewal_advantage": "제어 개선으로 갱신 시 유리"
+              },
+              "recommendation": "제어 실행으로 BAT 완전 준수, 장기 허가 유지에 긍정적"
+            }
+          ],
+          "compliance_summary": {
+            "total_regulations_checked": 4,
+            "currently_compliant": 2,
+            "currently_non_compliant": 1,
+            "currently_concern": 1,
+            "after_control_compliant": 4,
+            "after_control_non_compliant": 0,
+            "overall_status": "compliant_after_control"
+          },
+          "risk_mitigation": {
+            "current_risks": [
+              "대기환경보전법 위반 (VOC 배출 초과)",
+              "행정 처분 가능성 (벌금, 조업정지)",
+              "환경오염시설 통합허가 갱신 시 불리"
+            ],
+            "risks_after_control": [
+              "모든 주요 리스크 해소",
+              "규제 준수 상태 확보",
+              "장기 운영 안정성 확보"
+            ],
+            "residual_risks": [
+              "K-REACH 연간 보고 의무 지속 (낮은 리스크)",
+              "화학물질관리법 정기 점검 준수 필요 (낮은 리스크)"
+            ]
+          },
+          "certification_opportunities": {
+            "available_certifications": [
+              "ISO 14001 (환경경영시스템) - 배출 개선으로 인증 유지/취득 유리",
+              "녹색기업 인증 (환경부) - 자발적 배출 저감으로 신청 가능",
+              "탄소중립 인증 - VOC 감소는 온실가스 저감에도 기여"
+            ],
+            "business_benefits": [
+              "ESG 평가 개선",
+              "정부 지원사업 우선 선정",
+              "투자 유치 시 긍정적 평가",
+              "대기업 공급망 진입 유리"
+            ]
+          },
+          "summary_report": "## 화학 전체 공정 규제 준수성 검증 결과\n\n### 검증 개요\n- **검증 완료**: ✅\n- **검증 규제 수**: 4개\n- **전체 준수 여부**: 제어 후 완전 준수\n\n---\n\n### 1. 대기환경보전법 (Clean Air Conservation Act)\n\n**법률 정보**\n- 법률 번호: 제18469호\n- 관련 조항: 제16조, 제33조, 제89조\n\n**요구사항**\n- VOC 배출 허용 기준: **45.0 ppm**\n- 측정 방법: 연속 측정 또는 주기적 샘플링\n- 보고 주기: 분기별\n\n**현재 준수 상태**\n| 항목 | 값 | 상태 |\n|------|-----|------|\n| 현재 배출량 | 48.2 ppm | 🚨 기준 초과 (+3.2 ppm) |\n| 허용 기준 | 45.0 ppm | - |\n| 준수 여부 | **부적합** | ⚠️ 즉시 조치 필요 |\n\n**제어 후 예상 상태**\n| 항목 | 값 | 상태 |\n|------|-----|------|\n| 예상 배출량 | 37.5 ppm | ✅ 기준 준수 (-7.5 ppm 여유) |\n| 허용 기준 | 45.0 ppm | - |\n| 준수 여부 | **적합** | ✅ 안전 여유 17% |\n\n**위반 시 처벌**\n- 행정 벌금: 최대 2억원\n- 조업정지: 최대 6개월\n- 형사 책임: 3년 이하 징역 또는 3천만원 이하 벌금\n\n**권고사항**: 즉시 제어 실행하여 배출 기준 준수 필수\n\n---\n\n### 2. K-REACH (화학물질 등록 및 평가)\n\n**법률 정보**\n- 법률 번호: 제18623호\n- 관련 조항: 제10조, 제38조\n\n**요구사항**\n- VOC 일부는 유해화학물질로 분류\n- 연간 1톤 이상 배출 시 보고 의무\n- 다음 보고 마감: 2026-03-15\n\n**현재 준수 상태**\n- 연간 예상 배출량: **약 8.2톤** (현재 배출율 기준)\n- 보고 필요 여부: **예** (1톤 초과)\n- 준수 여부: ✅ 보고 필요 (위반 아님)\n\n**제어 후 예상 상태**\n- 연간 예상 배출량: **약 6.4톤** (제어 후 배출율 기준)\n- 배출 감소: **1.8톤/년 (-22%)**\n- 보고 필요 여부: **예** (여전히 1톤 초과)\n- 준수 여부: ✅ 보고 필요 (위반 아님)\n\n**권고사항**: 제어 후에도 연간 보고 의무 유지, 배출량 감소로 당국 평가 시 유리\n\n---\n\n### 3. 화학물질관리법 (Chemicals Control Act)\n\n**법률 정보**\n- 법률 번호: 제18469호\n- 관련 조항: 제23조, 제39조\n\n**요구사항**\n- 화학물질 취급시설 안전 기준 준수\n- 사고 예방 및 대응 계획 수립\n- 정기 점검: 연 2회\n\n**현재 준수 상태**\n- 최근 점검: 2025-04-10\n- 다음 점검: 2025-10-10\n- 점검 결과: 적합\n- 준수 여부: ✅ **적합**\n\n**제어 후 예상 상태**\n- 제어 조치는 안전 기준 범위 내\n- 추가 조치 불필요\n- 준수 여부: ✅ **적합**\n\n**권고사항**: 현재 준수 상태 양호, 정기 점검 일정 유지\n\n---\n\n### 4. 환경오염시설 통합관리법 (Integrated Environmental Control)\n\n**법률 정보**\n- 법률 번호: 제17893호\n- 관련 조항: 제10조, 제17조\n\n**요구사항**\n- 통합 허가 필수\n- 허가 갱신 주기: 10년\n- 최적 가용 기법(BAT) 적용 필수\n\n**현재 준수 상태**\n- 허가 상태: 유효 (2021-08-20 발급, 2031-08-20 만료)\n- BAT 준수: **부분 준수** (VOC 배출 개선 필요)\n- 준수 여부: ⚠️ **우려 있음**\n\n**제어 후 예상 상태**\n- BAT 준수: **완전 준수** (VOC 배출 최적화)\n- 허가 갱신 전망: 제어 개선으로 갱신 시 유리\n- 준수 여부: ✅ **완전 적합**\n\n**권고사항**: 제어 실행으로 BAT 완전 준수, 장기 허가 유지에 긍정적\n\n---\n\n### 종합 준수성 요약\n\n| 규제 | 현재 상태 | 제어 후 상태 |\n|------|----------|-------------|\n| 대기환경보전법 | 🚨 **부적합** | ✅ 적합 |\n| K-REACH | ✅ 보고 필요 | ✅ 보고 필요 (개선) |\n| 화학물질관리법 | ✅ 적합 | ✅ 적합 |\n| 통합관리법 | ⚠️ 우려 | ✅ 완전 적합 |\n\n**총 검증 규제**: 4개  \n**현재 준수**: 2개 적합, 1개 부적합, 1개 우려  \n**제어 후 준수**: **4개 모두 적합** ✅\n\n---\n\n### 리스크 완화\n\n**현재 리스크**\n- 🚨 대기환경보전법 위반 (VOC 배출 초과)\n- ⚠️ 행정 처분 가능성 (벌금 최대 2억원, 조업정지 최대 6개월)\n- ⚠️ 환경오염시설 통합허가 갱신 시 불리\n\n**제어 후 리스크**\n- ✅ 모든 주요 리스크 해소\n- ✅ 규제 준수 상태 확보\n- ✅ 장기 운영 안정성 확보\n\n**잔여 리스크** (낮음)\n- K-REACH 연간 보고 의무 지속\n- 화학물질관리법 정기 점검 준수 필요\n\n---\n\n### 인증 기회\n\n**취득 가능 인증**\n1. **ISO 14001** (환경경영시스템)\n   - 배출 개선으로 인증 유지/취득 유리\n\n2. **녹색기업 인증** (환경부)\n   - 자발적 배출 저감으로 신청 가능\n\n3. **탄소중립 인증**\n   - VOC 감소는 온실가스 저감에도 기여\n\n**비즈니스 이점**\n- ✅ ESG 평가 개선\n- ✅ 정부 지원사업 우선 선정\n- ✅ 투자 유치 시 긍정적 평가\n- ✅ 대기업 공급망 진입 유리\n\n---\n\n### 최종 권고사항\n\n1. ✅ **즉시 제어 실행 필수**\n   - 현재 대기환경보전법 위반 상태\n   - 제어 적용 시 모든 규제 준수\n\n2. 📊 **제어 후 지속 모니터링**\n   - VOC 배출 연속 측정 유지\n   - 분기별 보고 의무 준수\n\n3. 🏆 **인증 취득 검토**\n   - ISO 14001, 녹색기업 인증 신청\n   - ESG 평가 개선으로 비즈니스 기회 확대\n\n4. 📝 **K-REACH 연간 보고 준비**\n   - 2026-03-15 보고 마감 준수\n   - 배출 감소 실적 강조\n\n---\n\n**결론**: 제어 실행을 통해 모든 주요 환경 규제를 완전히 준수할 수 있으며, 법적 리스크 제거와 함께 장기적인 비즈니스 기회를 확보할 수 있습니다."
+        },
+        "next_step": "return_to_orchestration"
+      }
+    },
+    "step_9_compliance_to_orchestration": {
+      "from": "ComplianceCheck Agent",
+      "to": "Orchestration Agent",
+      "timestamp": "2025-05-01T16:02:30Z",
+      "api_endpoint": "POST /api/v1/orchestrate/report",
+      "request": {
+        "workflow_id": "wf_chem_full_004",
+        "status": "completed",
+        "results": {
+          "monitoring_result": "catalyst_overuse_emission_increase_detected",
+          "prediction_result": "regulatory_violation_forecasted",
+          "control_result": "optimal_parameters_calculated",
+          "compliance_result": "compliant_after_control",
+          "execution_ready": true
+        }
+      },
+      "response": {
+        "status": "success",
+        "workflow_id": "wf_chem_full_004",
+        "message": "워크플로우 완료. 사용자에게 결과 전달.",
+        "next_step": "return_to_user"
+      }
+    },
+    "step_10_orchestration_to_user": {
+      "from": "Orchestration Agent",
+      "to": "User",
+      "timestamp": "2025-05-01T16:02:35Z",
+      "api_endpoint": "N/A",
+      "request": {},
+      "response": {
+        "status": "success",
+        "workflow_id": "wf_chem_full_004",
+        "workflow_type": "full_compliance",
+        "summary": "화학 전체 공정에서 촉매 과다 사용으로 VOC 배출이 48.2ppm으로 증가하여 대기환경보전법 기준(45ppm)을 초과하고 있습니다. 현재 추세가 지속될 경우 1.5시간 후 62.6ppm까지 증가하여 최대 5억원 이상의 처벌과 6개월 조업정지 위험이 있습니다. 최적 제어 분석 결과, 촉매 비율을 0.29%로, 반응기 온도를 257°C로 조정하면 VOC 배출을 37.5ppm으로 낮춰 모든 환경 규제를 준수할 수 있습니다. 생산량은 15.4% 감소하나(일일 6,720만원 매출 감소), 5억원 벌금과 조업정지를 방지할 수 있어 즉시 실행을 강력히 권장합니다. 규제 준수 검증 결과, 제어 후 대기환경보전법, K-REACH, 화학물질관리법, 통합관리법 모두 완전히 준수하며, ISO 14001 및 녹색기업 인증 취득 기회도 있습니다.",
+        "detailed_results": {
+          "monitoring": {
+            "anomaly_type": "catalyst_overuse_with_emission_increase",
+            "severity": "critical",
+            "current_voc_emission": 48.2,
+            "regulatory_limit": 45.0,
+            "exceedance": 3.2,
+            "violation_risk": "imminent"
+          },
+          "prediction": {
+            "violation_probability": 0.96,
+            "time_to_critical": "1.5 hours",
+            "predicted_voc_4h": 62.6,
+            "expected_penalty": "5억원 이상",
+            "forecast_accuracy": 0.92
+          },
+          "control": {
+            "optimal_catalyst_ratio": 0.29,
+            "optimal_reactor_temp": 257.0,
+            "execution_time": "95분",
+            "expected_voc_4h": 37.5,
+            "production_reduction": "15.4%",
+            "roi": "190배"
+          },
+          "compliance": {
+            "regulations_checked": 4,
+            "currently_compliant": 2,
+            "after_control_compliant": 4,
+            "overall_status": "compliant_after_control",
+            "certification_opportunities": [
+              "ISO 14001",
+              "녹색기업 인증",
+              "탄소중립 인증"
+            ]
+          }
+        },
+        "recommendations": [
+          "즉시 최적 제어 파라미터 적용 (촉매 0.29%, 온도 257°C)",
+          "제어 실행 후 VOC 배출 연속 모니터링",
+          "분기별 대기환경보전법 보고 의무 준수",
+          "ISO 14001 및 녹색기업 인증 취득 검토",
+          "K-REACH 연간 보고 준비 (2026-03-15 마감)"
+        ],
+        "full_report": "## 🏭 화학 전체 공정 준수성 검증 및 최적 제어 분석 결과\n\n---\n\n### 📊 1. 현황 모니터링 결과\n\n**이상 감지 정보**\n- **이상 유형**: 촉매 과다 사용 및 VOC 배출 증가\n- **심각도**: 치명적 (Critical)\n- **감지 시간**: 2025-05-01 16:00:00 UTC\n\n**주요 지표 현황**\n| 파라미터 | 현재값 | 정상범위 | 편차 | 상태 |\n|---------|--------|----------|------|------|\n| 촉매 비율 | 0.38% | 0.25-0.35% | +0.13%p | ⚠️ 과다 |\n| VOC 배출 | **48.2 ppm** | 10-30 ppm | +18.2 ppm | 🚨 **기준 초과** |\n| 생산량 | 56.8 ton/h | 45-55 ton/h | +1.8 ton/h | ⚠️ 과다 |\n| 반응기 온도 | 261.5°C | 245-265°C | 0 | ✅ 정상 |\n| 전환율 | 94.2% | 88-95% | 0 | ✅ 정상 |\n\n**규제 기준**: 대기환경보전법 VOC 배출 허용 기준 **45.0 ppm**  \n**현재 상태**: **48.2 ppm (기준 초과 +3.2 ppm)** 🚨\n\n**추세 분석**\n- 촉매 비율 증가율: +0.012%/10분 (지난 7시간)\n- VOC 배출 증가율: +2.4 ppm/10분 (지난 7시간)\n- 생산량 증가율: +1.1 ton/h/10분 (지난 7시간)\n\n**상관관계 분석**\n- 촉매 비율 ↔ 생산량: **강한 양의 상관관계 (0.87)**\n- 촉매 비율 ↔ VOC 배출: **강한 양의 상관관계 (0.91)**\n\n**해석**: 촉매 증가로 생산성은 향상되나 부반응으로 VOC 배출 급증\n\n**원인 가설**\n1. 과도한 촉매 투입으로 부반응 증가 및 VOC 생성\n2. 높은 전환율 추구로 인한 촉매 과다 사용\n3. 촉매 활성 저하로 투입량 보상적 증가\n\n---\n\n### 🔮 2. 예측 분석 결과\n\n**예측 모델**: LSTM 규제 제약 조건 모델 (정확도 92%)\n\n**VOC 배출 예측 추이 (제어 없이)**\n| 시간 | 예측 배출량 | 규제 기준 | 초과량 | 상태 |\n|------|------------|----------|--------|------|\n| 현재 | 48.2 ppm | 45.0 ppm | +3.2 ppm | 🚨 기준 초과 |\n| +1시간 | 52.1 ppm | 45.0 ppm | +7.1 ppm | 🚨 심각 초과 |\n| +2시간 | 55.8 ppm | 45.0 ppm | +10.8 ppm | 🚨 중대 위반 |\n| +3시간 | 59.3 ppm | 45.0 ppm | +14.3 ppm | 🚨 중대 위반 |\n| +4시간 | **62.6 ppm** | 45.0 ppm | +17.6 ppm | 🚨 중대 위반 |\n\n**규제 위반 리스크 평가**\n- **위반 발생 확률**: **96%**\n- **예상 위반 시점**: 2025-05-01 17:30 UTC (약 1.5시간 후)\n- **심각도**: 치명적 (Critical)\n\n**예상 처벌 (대기환경보전법)**\n- 행정 벌금: **최대 2억원** (제89조)\n- 시설 조업정지: **최대 6개월** (제33조)\n- 형사 책임: 3년 이하 징역 또는 3천만원 이하 벌금 가능\n- 평판 리스크: 높음\n- **총 예상 피해**: **약 5억원 이상** (벌금 + 조업정지 + 평판 손실)\n\n**비용-편익 트레이드오프**\n\n| 구분 | 현재 이익 | 예상 손실 |\n|------|----------|----------|\n| 생산량 | +11.8 ton/h (+26%) | - |\n| 매출 | +시간당 350만원 | - |\n| 벌금 | - | **-5억원 이상** |\n| 조업정지 | - | **최대 6개월** |\n| 장기 영향 | - | 인허가 제한, 투자 유치 어려움 |\n\n**결론**: 단기 생산성 향상(시간당 350만원)보다 규제 위반 방지(5억원)가 경제적으로 훨씬 유리\n\n---\n\n### ⚙️ 3. 최적 제어 결과\n\n**제어 방법**: 제약 조건 모델 예측 제어 (Constrained MPC)\n\n**최적 제어 파라미터**\n| 파라미터 | 현재값 | 최적값 | 변화량 | 사유 |\n|---------|--------|--------|--------|------|\n| 촉매 비율 | 0.38% | **0.29%** | -0.09% | 부반응 억제 및 VOC 저감 |\n| 반응기 온도 | 261.5°C | **257.0°C** | -4.5°C | 부반응 속도 감소 |\n\n**VOC 배출 예상 개선 효과**\n| 시점 | 제어 없이 | 제어 적용 시 | 개선폭 | 준수 여부 |\n|------|-----------|-------------|--------|----------|\n| +1시간 | 52.1 ppm | **39.8 ppm** | -12.3 ppm | ✅ 준수 |\n| +2시간 | 55.8 ppm | **38.2 ppm** | -17.6 ppm | ✅ 준수 |\n| +4시간 | 62.6 ppm | **37.5 ppm** | -25.1 ppm | ✅ 준수 |\n\n(규제 기준: 45.0 ppm, 목표: 42.0 ppm 이하)\n\n**생산량 영향**\n- 제어 전: 61.8 ton/h\n- 제어 후: 52.3 ton/h\n- 감소: **9.5 ton/h (-15.4%)**\n\n**제어 실행 계획**\n1. **1단계** (0-15분): 촉매 비율 0.38% → 0.35%\n2. **2단계** (15-40분): 반응기 온도 261.5°C → 259.0°C\n3. **3단계** (40-60분): 촉매 비율 0.35% → 0.31%\n4. **4단계** (60-80분): 반응기 온도 259.0°C → 257.0°C\n5. **5단계** (80-95분): 촉매 비율 0.31% → 0.29%\n6. **6단계** (95분~): 안정화 및 모니터링\n\n**총 소요 시간**: 95분  \n**예상 안정화 시점**: 2025-05-01 17:36 UTC\n\n**비용-편익 분석**\n\n| 구분 | 제어 비용 | 예상 편익 |\n|------|----------|----------|\n| 생산량 | -9.5 ton/h (-15.4%) | - |\n| 매출 | -시간당 280만원 | - |\n| 일일 영향 | -6,720만원 | - |\n| 벌금 회피 | - | **+5억원 이상** |\n| 조업 연속성 | - | **조업정지 방지** (최대 6개월) |\n| 평판 | - | 기업 이미지 유지 |\n| 장기 이익 | - | 인허가 유지, 투자 유치 가능 |\n\n**회수 기간**: 약 **1.8일** (5억원 / 일일 6,720만원)  \n**투자수익률 (ROI)**: 약 **190배** (연간 기준)\n\n**트레이드오프 요약**\n- ❌ 생산량: 15.4% 감소 (단기 손실)\n- ✅ 배출량: 40% 감소 (규제 준수)\n- ✅ 경제성: 5억원 벌금 회피 vs 일일 6,720만원 매출 감소\n- ✅ 전략적: 지속 가능한 운영 확보\n\n**결론**: 단기 생산량 감소는 불가피하나, 규제 준수를 통한 장기적 기업 생존과 성장이 훨씬 중요\n\n---\n\n### ✅ 4. 규제 준수성 검증 결과\n\n**검증 규제 수**: 4개  \n**검증 결과**: 제어 후 **모두 준수** ✅\n\n#### 4.1 대기환경보전법 (Clean Air Conservation Act)\n\n| 항목 | 현재 상태 | 제어 후 상태 |\n|------|----------|-------------|\n| VOC 배출 | 48.2 ppm | **37.5 ppm** |\n| 규제 기준 | 45.0 ppm | 45.0 ppm |\n| 준수 여부 | 🚨 **부적합** (+3.2 ppm) | ✅ **적합** (-7.5 ppm 여유) |\n| 안전 여유 | - | **17%** |\n\n**위반 시 처벌**:\n- 행정 벌금: 최대 2억원\n- 조업정지: 최대 6개월\n- 형사 책임: 3년 이하 징역 또는 3천만원 이하 벌금\n\n**권고**: 즉시 제어 실행하여 배출 기준 준수 필수\n\n#### 4.2 K-REACH (화학물질 등록 및 평가)\n\n| 항목 | 현재 상태 | 제어 후 상태 |\n|------|----------|-------------|\n| 연간 배출량 | 약 8.2톤 | **약 6.4톤** |\n| 보고 기준 | 1톤 이상 | 1톤 이상 |\n| 보고 필요 | ✅ 예 | ✅ 예 |\n| 배출 감소 | - | **-1.8톤/년 (-22%)** |\n\n**권고**: 제어 후에도 연간 보고 의무 유지, 배출량 감소로 당국 평가 시 유리\n\n#### 4.3 화학물질관리법 (Chemicals Control Act)\n\n| 항목 | 현재 상태 | 제어 후 상태 |\n|------|----------|-------------|\n| 안전 기준 준수 | ✅ 적합 | ✅ 적합 |\n| 최근 점검 | 2025-04-10 | - |\n| 다음 점검 | 2025-10-10 | 2025-10-10 |\n| 추가 조치 | 불필요 | 불필요 |\n\n**권고**: 현재 준수 상태 양호, 정기 점검 일정 유지\n\n#### 4.4 환경오염시설 통합관리법 (Integrated Environmental Control)\n\n| 항목 | 현재 상태 | 제어 후 상태 |\n|------|----------|-------------|\n| 통합 허가 | 유효 (2031-08-20 만료) | 유효 |\n| BAT 준수 | ⚠️ **부분 준수** | ✅ **완전 준수** |\n| 허가 갱신 전망 | 우려 | 유리 |\n\n**권고**: 제어 실행으로 BAT 완전 준수, 장기 허가 유지에 긍정적\n\n**종합 준수성 요약**\n\n| 규제 | 현재 | 제어 후 |\n|------|------|--------|\n| 대기환경보전법 | 🚨 부적합 | ✅ 적합 |\n| K-REACH | ✅ 보고 필요 | ✅ 보고 필요 (개선) |\n| 화학물질관리법 | ✅ 적합 | ✅ 적합 |\n| 통합관리법 | ⚠️ 우려 | ✅ 완전 적합 |\n\n**현재**: 2개 적합, 1개 부적합, 1개 우려  \n**제어 후**: **4개 모두 적합** ✅\n\n---\n\n### 🏆 5. 인증 기회 및 비즈니스 이점\n\n**취득 가능 인증**\n1. **ISO 14001** (환경경영시스템)\n   - 배출 개선으로 인증 유지/취득 유리\n\n2. **녹색기업 인증** (환경부)\n   - 자발적 배출 저감으로 신청 가능\n   - 정부 지원사업 우선 선정\n\n3. **탄소중립 인증**\n   - VOC 감소는 온실가스 저감에도 기여\n   - ESG 투자 유치 유리\n\n**비즈니스 이점**\n- ✅ **ESG 평가 개선**: 환경(E) 점수 향상\n- ✅ **정부 지원**: 녹색금융, 보조금 우선 선정\n- ✅ **투자 유치**: ESG 투자자 유치 유리\n- ✅ **공급망 진입**: 대기업 협력업체 선정 유리\n- ✅ **브랜드 가치**: 친환경 기업 이미지 구축\n\n---\n\n### 🎯 6. 최종 권고사항\n\n1. ✅ **즉시 최적 제어 파라미터 적용** (촉매 0.29%, 온도 257°C)\n   - 현재 대기환경보전법 위반 상태\n   - 1.5시간 후 중대 위반 발생 예상 (96% 확률)\n   - 제어 적용 시 모든 규제 준수 가능\n   - ROI 190배로 경제적 타당성 매우 높음\n\n2. 📊 **제어 실행 후 지속 모니터링**\n   - VOC 배출 연속 측정 (30초 간격)\n   - 95분 후 안정화 확인\n   - 분기별 대기환경보전법 보고 의무 준수\n\n3. 🏆 **인증 취득 및 ESG 개선**\n   - ISO 14001, 녹색기업 인증 신청\n   - ESG 평가 개선으로 투자 유치\n   - 대기업 공급망 진입 기회 확보\n\n4. 📝 **K-REACH 연간 보고 준비**\n   - 2026-03-15 보고 마감 준수\n   - 배출 감소 실적(1.8톤/년, -22%) 강조\n   - 당국 평가 시 긍정적 평가 기대\n\n5. 🔬 **근본 원인 분석 및 장기 대책**\n   - 촉매 활성 저하 원인 분석\n   - 촉매 교체 주기 재검토\n   - 부반응 억제 기술 도입 검토\n\n---\n\n### 📌 핵심 요약\n\n| 구분 | 현재 | 제어 후 | 차이 |\n|------|------|--------|------|\n| **VOC 배출** | 48.2 ppm | 37.5 ppm | -10.7 ppm (-22%) |\n| **규제 준수** | 🚨 위반 | ✅ 준수 | +4개 규제 준수 |\n| **생산량** | 56.8 ton/h | 52.3 ton/h | -9.5 ton/h (-15.4%) |\n| **일일 매출** | - | -6,720만원 | - |\n| **예상 처벌 회피** | - | **+5억원 이상** | - |\n| **ROI** | - | **190배** | - |\n| **회수 기간** | - | **1.8일** | - |\n\n**최종 결론**:  \n단기 생산량 15.4% 감소(일일 6,720만원 매출 감소)는 불가피하나, 5억원 이상의 벌금과 6개월 조업정지를 방지하고 모든 환경 규제를 준수할 수 있어 **즉시 실행을 강력히 권장**합니다. 제어 후 ISO 14001 및 녹색기업 인증 취득으로 ESG 평가 개선 및 장기적 비즈니스 기회 확보가 가능합니다."
+      }
+    }
+  },
+  "expected_answer": {
+    "workflow_type": "full_compliance",
+    "agents_involved": [
+      "Orchestration",
+      "Monitoring",
+      "Predictive",
+      "AutoControl",
+      "ComplianceCheck"
+    ],
+    "key_findings": {
+      "anomaly_detected": true,
+      "anomaly_type": "catalyst_overuse_with_emission_increase",
+      "current_voc_emission": 48.2,
+      "regulatory_limit": 45.0,
+      "defect_forecasted": true,
+      "violation_probability": 0.96,
+      "time_to_violation_hours": 1.5,
+      "optimal_control_found": true,
+      "optimal_catalyst_ratio": 0.29,
+      "optimal_reactor_temp": 257.0,
+      "compliance_verified": true,
+      "regulations_compliant_after_control": 4
+    },
+    "recommendations": [
+      "즉시 최적 제어 파라미터 적용",
+      "제어 후 VOC 배출 연속 모니터링",
+      "분기별 규제 보고 의무 준수",
+      "ISO 14001 및 녹색기업 인증 취득",
+      "K-REACH 연간 보고 준비"
+    ],
+    "economic_impact": {
+      "control_cost_daily": 67200000,
+      "prevented_penalty": 500000000,
+      "payback_days": 1.8,
+      "roi": 190
+    },
+    "compliance_impact": {
+      "current_compliant": 2,
+      "current_non_compliant": 1,
+      "after_control_compliant": 4,
+      "certification_opportunities": 3
+    }
+  },
+  "test_validation": {
+    "validate_workflow": {
+      "expected_steps": 7,
+      "required_agents": [
+        "Orchestration",
+        "Monitoring",
+        "Predictive",
+        "AutoControl",
+        "ComplianceCheck"
+      ],
+      "workflow_sequence": [
+        "User → Orchestration",
+        "Orchestration → Monitoring",
+        "Monitoring → Predictive",
+        "Predictive → AutoControl",
+        "AutoControl → ComplianceCheck",
+        "ComplianceCheck → Orchestration",
+        "Orchestration → User"
+      ]
+    },
+    "validate_monitoring": {
+      "must_detect_anomaly": true,
+      "must_identify_emission_increase": true,
+      "must_analyze_correlation": true,
+      "must_assess_regulatory_risk": true,
+      "must_recommend_prediction": true
+    },
+    "validate_prediction": {
+      "must_forecast_emission": true,
+      "must_calculate_violation_probability": true,
+      "must_estimate_penalty": true,
+      "must_analyze_tradeoff": true,
+      "forecast_horizon_min_hours": 4,
+      "must_recommend_control": true
+    },
+    "validate_control": {
+      "must_optimize_parameters": true,
+      "must_provide_sequence": true,
+      "must_verify_safety": true,
+      "must_calculate_benefit": true,
+      "must_analyze_cost": true,
+      "must_enable_execution": true
+    },
+    "validate_compliance": {
+      "must_check_regulations": true,
+      "min_regulations_checked": 3,
+      "must_verify_current_status": true,
+      "must_verify_after_control_status": true,
+      "must_identify_opportunities": true,
+      "must_assess_risks": true
+    },
+    "validate_api_compliance": {
+      "all_requests_valid": true,
+      "all_responses_valid": true,
+      "endpoints_match_spec": true
+    },
+    "performance_criteria": {
+      "total_workflow_time_max_seconds": 180,
+      "prediction_accuracy_min": 0.9,
+      "safety_margin_min": 0.1,
+      "roi_min": 50,
+      "regulations_compliant_after_control_min": 3
+    }
+  }
+}

@@ -1,0 +1,331 @@
+{
+  "scenario_id": "SCENARIO_06",
+  "version": "1.0",
+  "created_date": "2025-10-14",
+  "metadata": {
+    "title": "화학 증류탑 압력 예측 분석",
+    "title_en": "Chemical Distillation Pressure Predictive Analysis",
+    "industry": "chemical",
+    "process": "Distillation",
+    "workflow_type": "monitoring_prediction",
+    "workflow_level": 2,
+    "complexity": "medium",
+    "description": "증류탑에서 압력 상승 추이를 모니터링하고 안전 압력 한계 도달 시점을 예측하는 시나리오"
+  },
+  "query": {
+    "text": "증류탑 TOWER_01의 PRESSURE가 계속 증가하고 있습니다. 안전 압력 한계에 도달할 시점을 예측해주세요.",
+    "time_range": {
+      "start": "2025-05-01T00:00:00Z",
+      "end": "2025-05-01T14:15:00Z"
+    },
+    "user_id": "distillation_engineer_02",
+    "priority": "critical"
+  },
+  "timeseries_data": {
+    "file": "chemical_distillation_002.csv",
+    "file_path": "test_data/chemical/chemical_distillation_002.csv",
+    "columns": [
+      "TIMESTAMP",
+      "TOWER_ID",
+      "PRESSURE",
+      "TEMPERATURE",
+      "REFLUX_RATIO",
+      "REBOILER_HEAT",
+      "FEED_FLOW_RATE",
+      "TOP_TEMP",
+      "BOTTOM_TEMP",
+      "DISTILLATE_PURITY",
+      "CONDENSATE_FLOW"
+    ],
+    "key_variables": [
+      "PRESSURE",
+      "TEMPERATURE",
+      "DISTILLATE_PURITY"
+    ],
+    "time_range": {
+      "start": "2025-05-01T00:00:00Z",
+      "end": "2025-05-01T14:15:00Z",
+      "total_points": 5130,
+      "interval_seconds": 10
+    }
+  },
+  "agent_workflow": {
+    "step_1_user_to_orchestration": {
+      "from": "User",
+      "to": "Orchestration",
+      "timestamp": "2025-05-01T14:15:00Z",
+      "api_endpoint": "GET /api/v1/orchestrate",
+      "request": {
+        "query": "증류탑 TOWER_01의 PRESSURE가 계속 증가하고 있습니다. 안전 압력 한계에 도달할 시점을 예측해주세요.",
+        "session_id": "distillation_session_20250501_002",
+        "user_id": "distillation_engineer_02",
+        "user_preferences": {},
+        "max_tokens": 2048,
+        "temperature": 0.7,
+        "use_tools": true,
+        "max_tool_calls": 5
+      },
+      "processing": {
+        "query_analysis": {
+          "intent": "trend_monitoring_and_prediction",
+          "target_process": "distillation",
+          "target_variable": "PRESSURE",
+          "action_required": "safety_threshold_prediction",
+          "urgency": "critical"
+        },
+        "workflow_determination": {
+          "selected_workflow": "monitoring_prediction",
+          "reason": "User requests prediction of safety limit arrival time based on pressure trend",
+          "required_agents": [
+            "Monitoring",
+            "Predictive"
+          ]
+        },
+        "task_decomposition": {
+          "task_id": "DIST_TASK_20250501_002",
+          "subtasks": [
+            {
+              "subtask_id": "DIST_TASK_20250501_002_1",
+              "name": "증류탑 압력 상승 모니터링",
+              "assigned_agent": "Monitoring",
+              "priority": "critical"
+            },
+            {
+              "subtask_id": "DIST_TASK_20250501_002_2",
+              "name": "안전 압력 한계 도달 시점 예측",
+              "assigned_agent": "Predictive",
+              "priority": "critical",
+              "depends_on": "DIST_TASK_20250501_002_1"
+            }
+          ]
+        }
+      }
+    },
+    "step_2_orchestration_to_monitoring": {
+      "from": "Orchestration",
+      "to": "Monitoring",
+      "timestamp": "2025-05-01T14:15:01Z",
+      "api_endpoint": "POST /api/v1/workflow/start",
+      "request": {
+        "taskId": "DIST_TASK_20250501_002_1",
+        "query": "증류탑 TOWER_01~TOWER_04의 PRESSURE 상승 추이 감지 및 현재 상태 분석. 시간 범위: 2025-05-01T00:00:00Z ~ 2025-05-01T14:15:00Z. 주요 변수: PRESSURE, TEMPERATURE, SEPARATION_EFFICIENCY"
+      }
+    },
+    "step_3_monitoring_to_orchestration": {
+      "from": "Monitoring",
+      "to": "Orchestration",
+      "timestamp": "2025-05-01T14:15:06Z",
+      "api_endpoint": "POST /api/v1/workflow/start (response)",
+      "response": {
+        "summary": "증류탑 TOWER_01의 압력이 7.8 bar로 정상 범위(4.5-6.5 bar) 대비 20% 초과하여 임계치(9.0 bar)의 86.7%에 도달했으며, 평균 +0.022 bar/분 속도로 지속 상승 중입니다. 리보일러 가열량 과다(8.5 MW, +21.4% 초과)가 주요 원인이며, 온도가 138.5°C로 상승하여 제품 순도가 92.3%로 목표치(≥95%) 미달입니다. 현재 추세 지속 시 약 55분 후 임계치 도달 및 안전 밸브 작동이 예상되므로 즉시 예측 분석이 필요합니다.",
+        "result": "### 증류탑 압력 상승 모니터링 결과\n\n---\n\n#### 📊 1. 현재 상태 개요\n- **분석 대상**: 증류탑 TOWER_01~TOWER_04\n- **분석 시간**: 2025-05-01 00:00:00 ~ 14:15:00 (14시간 15분)\n- **총 데이터 포인트**: 5,130건\n- **압력 상승 감지**: TOWER_01\n- **이상 감지 시작 시간**: 2025-05-01T12:45:00Z\n- **상승 지속 시간**: 1시간 30분\n\n#### ⚠️ 2. 주요 이상 사항\n\n##### 2.1 PRESSURE 지속 상승 (TOWER_01)\n- **현상**: 선형 증가(linear increase) 패턴\n- **정상 범위**: 4.5-6.5 bar\n- **현재값**: 7.8 bar (목표 상한 대비 +20.0%)\n- **초기값 (12:45)**: 5.8 bar\n- **상승량**: +2.0 bar (+34.5%)\n- **평균 상승률**: +0.022 bar/분\n- **추세**: 지속 상승(continuously increasing)\n- **위험 수준**: 🔴 **높음**\n\n**임계치 정보**:\n- **안전 압력 한계(PSV 설정)**: 9.5 bar\n- **설계 압력**: 10.0 bar\n- **현재 도달률**: 82.1%\n- **안전 한계까지 여유**: 1.7 bar (17.9%)\n\n##### 2.2 REBOILER_HEAT 과다\n- **정상 범위**: 2.5-3.5 MW\n- **현재값**: 4.2 MW (+20.0%)\n- **초기값 (12:45)**: 3.1 MW\n- **증가율**: +35.5%\n- **PRESSURE와 상관계수**: 0.89 (강한 양의 상관관계)\n- **해석**: 리보일러 과열로 증기 발생 과다, 압력 상승 원인\n\n##### 2.3 REFLUX_RATIO 저하\n- **정상 범위**: 3.0-4.0\n- **현재값**: 2.1 (-30.0%)\n- **해석**: 환류 부족으로 탑 상부 부하 증가, 압력 상승에 기여\n\n##### 2.4 SEPARATION_EFFICIENCY 저하\n- **정상 범위**: ≥ 95%\n- **현재 평균**: 87.5% (-7.9%)\n- **12:45 이전 평균**: 96.8%\n- **저하율**: -9.6%\n- **해석**: 압력 이상으로 증류 효율 저하\n\n#### 🔍 3. 근본 원인 분석\n\n**주요 원인 (확실)**:\n1. **리보일러 온도 제어 오류** (가능성: 매우 높음)\n   - REBOILER_HEAT 35% 증가\n   - 증기 발생 과다\n   - 온도 제어기 오작동 의심\n   \n2. **환류 펌프 성능 저하 또는 밸브 불량** (가능성: 높음)\n   - REFLUX_RATIO 30% 저하\n   - 환류액 부족\n   - 펌프 또는 제어 밸브 점검 필요\n   \n3. **응축기(Condenser) 냉각 부족** (가능성: 중간)\n   - 냉각수 유량 또는 온도 이상 가능\n   - 응축 능력 저하\n\n#### 📈 4. 통계 분석 상세\n\n| 변수 | 12:45 이전 평균 | 현재값 | 변화량 | 목표 범위 | 상태 |\n|------|----------------|--------|--------|-----------|------|\n| PRESSURE | 5.8 bar | 7.8 bar | +2.0 bar | 4.5-6.5 bar | 🔴 심각 초과 |\n| REBOILER_HEAT | 3.1 MW | 4.2 MW | +1.1 MW | 2.5-3.5 MW | 🔴 심각 초과 |\n| REFLUX_RATIO | 3.5 | 2.1 | -1.4 | 3.0-4.0 | 🔴 미달 |\n| TEMPERATURE (탑정) | 95.3°C | 102.7°C | +7.4°C | 90-100°C | 🔴 초과 |\n| SEPARATION_EFFICIENCY | 96.8% | 87.5% | -9.3%p | ≥95% | 🔴 미달 |\n| FEED_FLOW_RATE | 45.2 m³/h | 45.5 m³/h | +0.3 m³/h | 40-50 m³/h | ✅ 정상 |\n\n#### 💥 5. 임계 위험 및 안전 분석\n\n**과압 위험**:\n- **현재 압력**: 7.8 bar\n- **PSV 작동 압력**: 9.5 bar (Safety Valve)\n- **설계 압력**: 10.0 bar\n- **도달률**: 82.1%\n\n**PSV 작동 시 영향**:\n- 압력 릴리프 (증기 방출)\n- 제품 손실\n- 환경 배출 (VOC 배출)\n- 생산 중단\n\n**설계 압력 초과 시**:\n- 탑 구조 손상 위험\n- 배관 파열 가능성\n- 인명 안전 위협\n\n**현재 상승률 지속 시**:\n- **PSV 작동 예상**: 약 77분 후\n- **영향**: 제품 3.5배치 손실, 약 42,000,000원\n\n#### 💡 6. 긴급 권장 조치\n\n**즉시 조치 (우선순위: 최고 긴급)**\n1. 리보일러 열량 감소\n   - 증기 공급 밸브 20% 감소\n   - 온도 제어기 설정값 하향\n   - 수동 제어 전환 검토\n   \n2. 환류 비율 증가\n   - 환류 펌프 속도 증가\n   - 환류 밸브 개도 증가\n   - 목표: REFLUX_RATIO 3.5 이상\n\n3. **예측 필요**: 현재 상승률 지속 시 PSV 작동 시점 정밀 예측\n\n⚠️ **Predictive Agent를 통한 안전 한계 도달 시점 예측 권장**\n\n---\n**분석 완료 시각**: 2025-05-01T14:15:06Z  \n**분석 소요 시간**: 5.3초  \n**신뢰도**: 92%"
+      }
+    },
+    "step_4_orchestration_to_prediction": {
+      "from": "Orchestration",
+      "to": "Predictive",
+      "timestamp": "2025-05-01T14:15:07Z",
+      "api_endpoint": "POST /api/v1/prediction/run-direct",
+      "request": {
+        "taskId": "DIST_TASK_20250501_002_2",
+        "query": "모니터링 결과 증류탑 압력이 7.8 bar로 안전 한계(PSV 9.5 bar)의 82.1%에 도달하여 지속 상승 중입니다(+0.022 bar/분). 리보일러 열량 35% 과다와 환류 비율 30% 부족이 주요 원인입니다. 현재 상승률이 계속될 경우 향후 90분간 압력과 분리 효율이 어떻게 전개될지 예측해주세요. 특히 PSV 작동 압력(9.5 bar) 도달 시점과 설계 압력(10.0 bar) 도달 가능성을 분석해주세요.",
+        "timeRange": {
+          "start": "2025-05-01T12:45:00Z",
+          "end": "2025-05-01T14:15:00Z"
+        },
+        "sensor_name": "TOWER_01",
+        "target_cols": [
+          "PRESSURE",
+          "SEPARATION_EFFICIENCY"
+        ],
+        "feature_cols": [
+          "PRESSURE",
+          "TEMPERATURE",
+          "REFLUX_RATIO",
+          "REBOILER_HEAT",
+          "FEED_FLOW_RATE"
+        ],
+        "prediction_horizon_minutes": 90,
+        "prediction_interval_minutes": 5,
+        "model_type": "lstm",
+        "confidence_level": 0.95
+      }
+    },
+    "step_5_prediction_to_orchestration": {
+      "from": "Predictive",
+      "to": "Orchestration",
+      "timestamp": "2025-05-01T14:15:13Z",
+      "api_endpoint": "POST /api/v1/prediction/run-direct (response)",
+      "response": {
+        "summary": "현재 상승률이 지속될 경우 약 55분 후(15:10)에 압력이 임계치 9.0 bar에 도달하고, 90분 후에는 9.4 bar까지 상승할 것으로 예측됩니다. 제품 순도는 89.2%로 하락하여 불량률 35%에 달하며, 약 52톤의 제품 손실로 약 7,800만원의 경제적 손실이 예상됩니다. 즉시 리보일러 가열량을 7.0 MW로 감소시켜 압력 상승을 억제하고 순도 회복을 달성하는 것이 필요합니다.",
+        "result": "### 안전 압력 한계 도달 시점 예측 결과\n\n---\n\n#### 🔮 1. 예측 개요\n- **예측 시작 시각**: 2025-05-01T14:15:00Z\n- **예측 종료 시각**: 2025-05-01T15:45:00Z\n- **예측 기간**: 90분\n- **예측 간격**: 5분\n- **사용 모델**: LSTM\n- **신뢰 구간**: 95%\n\n#### 📈 2. PRESSURE 예측 결과 (조치 없을 경우)\n\n| 시각 | 예측값 (bar) | 95% 신뢰구간 | PSV 대비 | 상태 |\n|------|-------------|-------------|---------|------|\n| 14:15 (현재) | 7.80 | - | 82.1% | 🔴 위험 |\n| 14:25 | 8.02 | [7.95, 8.09] | 84.4% | 🔴 위험 |\n| 14:35 | 8.24 | [8.15, 8.33] | 86.7% | 🔴 위험 |\n| 14:45 | 8.46 | [8.35, 8.57] | 89.1% | 🔴 매우 위험 |\n| 14:55 | 8.68 | [8.55, 8.81] | 91.4% | 🔴 매우 위험 |\n| 15:05 | 8.90 | [8.75, 9.05] | 93.7% | 🔴 매우 위험 |\n| 15:15 | 9.12 | [8.95, 9.29] | 96.0% | 🔴 임계 근접 |\n| 15:25 | 9.34 | [9.15, 9.53] | 98.3% | 🔴 임계 근접 |\n| 15:35 | 9.56 | [9.35, 9.77] | 100.6% | 💥 **PSV 작동** |\n| 15:45 | 9.78 | [9.55, 10.01] | 103.0% | 💥 **PSV 작동** |\n\n**💥 PSV 작동 압력(9.5 bar) 도달 예상 시각**: **2025-05-01T15:32:00Z** (약 77분 후)\n\n**⚠️ 설계 압력(10.0 bar) 도달 예상 시각**: **2025-05-01T15:48:00Z** (약 93분 후)\n\n#### 📉 3. SEPARATION_EFFICIENCY 예측 결과\n\n| 시각 | 예측값 (%) | 품질 영향 | 상태 |\n|------|-----------|----------|------|\n| 14:15 (현재) | 87.5 | 정상 대비 -9.3%p | 🔴 미달 |\n| 14:35 | 84.2 | -12.6%p | 🔴 악화 |\n| 14:55 | 80.8 | -16.0%p | 🔴 심각 |\n| 15:15 | 77.3 | -19.5%p | 🔴 심각 |\n| 15:35 | 73.7 | -23.1%p | 💥 매우 심각 |\n\n#### 💰 4. 경제적 영향 분석\n\n**조치 없이 90분 경과 시**:\n- **PSV 작동 (15:32)**: 증기 방출, 제품 손실\n- **영향 제품**: 약 3.5배치\n- **제품 손실**: 약 42,000,000원\n- **환경 배출 벌금**: 약 8,000,000원 (VOC 배출)\n- **생산 중단 시간**: 최소 6시간\n- **복구 비용**: 약 15,000,000원\n- **총 예상 손실**: 약 **65,000,000원**\n\n#### ⚡ 5. 조치 시나리오 분석\n\n**시나리오 A: 즉시 조치 (권장)**\n- **조치 시각**: 지금 즉시 (14:15)\n- **조치 내용**: \n  - REBOILER_HEAT 20% 감소\n  - REFLUX_RATIO 3.5로 증가\n- **예상 효과**:\n  - 30분 내 압력 6.8 bar로 하강\n  - 분리 효율 92% 회복\n  - PSV 작동 방지\n- **예상 손실**: 약 5,000,000원 (효율 저하 기간 제품 품질 하락)\n- **절감 효과**: 약 **60,000,000원**\n\n**시나리오 B: 30분 후 조치 (비권장)**\n- **조치 시각**: 14:45\n- **시점**: 압력 8.46 bar (89% 도달)\n- **예상 효과**: PSV 작동 가능성 35%\n- **예상 손실**: 약 28,000,000원\n\n**시나리오 C: 조치 없음 (매우 위험)**\n- **77분 후**: PSV 작동 확실\n- **예상 손실**: 약 **65,000,000원**\n- **추가 리스크**: 설계 압력 초과 시 구조 손상\n\n#### 📊 6. 예측 모델 성능\n\n- **모델 정확도**: RMSE = 0.065 bar (PRESSURE), 2.1% (EFFICIENCY)\n- **검증 데이터 R²**: 0.95 (PRESSURE), 0.89 (EFFICIENCY)\n- **Feature Importance**:\n  1. REBOILER_HEAT (48.5%)\n  2. REFLUX_RATIO (28.3%)\n  3. PRESSURE (기존값) (15.8%)\n  4. TEMPERATURE (4.9%)\n  5. FEED_FLOW_RATE (2.5%)\n\n---\n**예측 완료 시각**: 2025-05-01T14:15:13Z  \n**예측 소요 시간**: 6.2초  \n**모델 신뢰도**: 94%"
+      }
+    },
+    "step_6_orchestration_to_user": {
+      "from": "Orchestration",
+      "to": "User",
+      "timestamp": "2025-05-01T14:15:14Z",
+      "api_endpoint": "GET /api/v1/orchestrate (response)",
+      "response": {
+        "session_id": "distillation_session_20250501_002",
+        "final_answer": "증류탑 TOWER_01의 압력이 현재 7.8 bar로 안전 한계(PSV 9.5 bar)의 82.1%에 도달하여 지속 상승 중입니다. 리보일러 열량 35% 과다와 환류 비율 30% 부족이 주요 원인입니다. 예측 결과, 현재 상승률이 지속될 경우 약 77분 후인 15:32에 PSV가 작동하며, 93분 후 설계 압력(10.0 bar)에 도달합니다. 이 경우 제품 3.5배치 손실, 환경 배출 벌금 등 총 6,500만원의 손실이 예상됩니다. 즉시 리보일러 열량 20% 감소 및 환류 비율 증가 조치를 취하면 약 6,000만원의 손실을 방지할 수 있습니다.",
+        "final_markdown": "### 증류탑 압력 상승 예측 결과\n\n(상세 내용은 monitoring 및 prediction response 참조)",
+        "task_history": [
+          {
+            "id": "DIST_TASK_20250501_002_1",
+            "name": "증류탑 압력 상승 모니터링",
+            "assigned_agent_id": "Monitoring",
+            "status": "completed",
+            "priority": "critical",
+            "completion_time": "2025-05-01T14:15:06Z"
+          },
+          {
+            "id": "DIST_TASK_20250501_002_2",
+            "name": "안전 압력 한계 도달 시점 예측",
+            "assigned_agent_id": "Predictive",
+            "status": "completed",
+            "priority": "critical",
+            "completion_time": "2025-05-01T14:15:13Z"
+          }
+        ],
+        "tools_used": [
+          "Monitoring",
+          "Predictive"
+        ],
+        "tool_results": [
+          {
+            "tool": "Monitoring",
+            "status": "success",
+            "current_pressure": 7.8,
+            "psv_pressure": 9.5,
+            "utilization_percent": 82.1,
+            "reboiler_heat_excess": 35.5,
+            "reflux_ratio_deficit": 30.0,
+            "root_cause": "reboiler_temperature_control_error"
+          },
+          {
+            "tool": "Predictive",
+            "status": "success",
+            "prediction_horizon_minutes": 90,
+            "psv_activation_time": "2025-05-01T15:32:00Z",
+            "time_until_psv_minutes": 77,
+            "design_pressure_time": "2025-05-01T15:48:00Z",
+            "expected_loss_krw": 65000000,
+            "confidence": 0.94
+          }
+        ],
+        "compliance_checked": false
+      }
+    }
+  },
+  "expected_answer": {
+    "summary": "증류탑 압력이 12:45부터 지속 상승하여 현재 7.8 bar로 PSV 작동 압력의 82.1%에 도달했습니다. 리보일러 열량 35% 과다와 환류 비율 30% 부족이 주요 원인이며, 77분 후 PSV 작동, 93분 후 설계 압력 도달이 예상됩니다. 약 6,500만원 손실 예상으로 즉시 열량 감소 및 환류 증가 조치가 필요합니다.",
+    "detected_issues": [
+      {
+        "issue": "PRESSURE 선형 상승",
+        "severity": "critical",
+        "description": "7.8 bar로 PSV 압력(9.5 bar)의 82.1% 도달, 평균 상승률 +0.022 bar/분",
+        "affected_timeframe": "2025-05-01T12:45:00Z ~ 2025-05-01T14:15:00Z",
+        "current_value": 7.8,
+        "psv_pressure": 9.5,
+        "design_pressure": 10.0,
+        "time_to_psv_minutes": 77
+      },
+      {
+        "issue": "리보일러 열량 과다",
+        "severity": "critical",
+        "description": "4.2 MW로 35% 과다, 증기 발생 과다",
+        "root_cause": true
+      },
+      {
+        "issue": "환류 비율 부족",
+        "severity": "high",
+        "description": "2.1로 30% 부족, 탑 상부 부하 증가",
+        "contributing_factor": true
+      }
+    ],
+    "predictions": [
+      {
+        "target": "PRESSURE",
+        "prediction_horizon_minutes": 90,
+        "critical_event": {
+          "description": "PSV 작동 압력(9.5 bar) 도달",
+          "expected_time": "2025-05-01T15:32:00Z",
+          "time_until_event_minutes": 77
+        },
+        "design_pressure_event": {
+          "description": "설계 압력(10.0 bar) 도달",
+          "expected_time": "2025-05-01T15:48:00Z",
+          "time_until_event_minutes": 93
+        },
+        "final_predicted_value": 9.78,
+        "confidence_interval_95": [
+          9.55,
+          10.01
+        ],
+        "expected_loss_krw": 65000000,
+        "confidence": 0.94
+      },
+      {
+        "target": "SEPARATION_EFFICIENCY",
+        "prediction_horizon_minutes": 90,
+        "trend": "declining",
+        "current_value": 87.5,
+        "predicted_value_90min": 73.7,
+        "degradation_percent": 15.8
+      }
+    ],
+    "recommendations": [
+      {
+        "priority": "critical",
+        "action": "리보일러 열량 즉시 20% 감소",
+        "details": "증기 공급 밸브 조정, 온도 제어기 설정값 하향",
+        "expected_effect": "압력 하강, PSV 작동 방지",
+        "implementation_time": "즉시"
+      },
+      {
+        "priority": "critical",
+        "action": "환류 비율 3.5 이상으로 증가",
+        "details": "환류 펌프 속도 증가, 환류 밸브 개도 증가",
+        "expected_effect": "탑 상부 부하 감소, 압력 안정화",
+        "implementation_time": "즉시"
+      },
+      {
+        "priority": "high",
+        "action": "응축기 냉각 성능 점검",
+        "details": "냉각수 유량 확인, 응축 능력 점검",
+        "implementation_time": "15분 내"
+      }
+    ],
+    "metrics": {
+      "monitoring_time_ms": 5300,
+      "prediction_time_ms": 6200,
+      "total_analysis_time_ms": 11500,
+      "data_points_analyzed": 5130,
+      "prediction_horizon_minutes": 90,
+      "model_accuracy_rmse": 0.065,
+      "confidence_score": 0.94,
+      "time_to_psv_minutes": 77,
+      "expected_loss_krw": 65000000,
+      "expected_loss_prevention_krw": 60000000
+    }
+  },
+  "test_validation": {
+    "expected_workflow": [
+      "Orchestration",
+      "Monitoring",
+      "Orchestration",
+      "Predictive",
+      "Orchestration"
+    ],
+    "expected_agents_count": 3,
+    "should_predict": true,
+    "should_control": false,
+    "should_check_compliance": false,
+    "api_calls": [
+      "GET /api/v1/orchestrate",
+      "POST /api/v1/workflow/start",
+      "POST /api/v1/prediction/run-direct"
+    ]
+  }
+}
