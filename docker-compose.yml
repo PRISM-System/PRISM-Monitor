@@ -1,0 +1,31 @@
+services:
+  prism-monitor:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: prism-monitor
+    ports:
+      - "8003:8001"  # vLLM API server
+      - "8002:8002"  # main.py FastAPI server
+    volumes:
+      - ./start.sh:/app/start.sh
+      - ./main.py:/app/main.py
+      - ./prism_monitor:/app/prism_monitor
+      - ./models:/app/models
+      - ./monitor_db.json:/app/monitor_db.json
+    environment:
+      - CUDA_VISIBLE_DEVICES=0
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    restart: unless-stopped
+    networks:
+      - prism-shared-network
+
+networks:
+  prism-shared-network:
+    driver: bridge
