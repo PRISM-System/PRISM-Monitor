@@ -37,3 +37,6 @@ htmlcov/
 legacy/__pycache__/
 
 /monitor_db.json
+
+# Dashboard output
+dashboard_output/

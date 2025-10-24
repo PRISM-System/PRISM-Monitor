@@ -1175,7 +1175,7 @@ def _detect_with_process_specific_model(prism_core_db, start: str, end: str,
     공정별 모델을 사용한 이상 탐지 (API 또는 CSV 기반 데이터 로딩)
 
     Args:
-        target_process: 공정 식별자 (예: 'semi_cmp_sensors', 'semiconductor_cmp_001')
+        target_process: 공정 식별자 (예: 'semiconductor_cmp_001')
         use_csv: True이면 로컬 CSV 파일에서 데이터 로드
     """
     from prism_monitor.utils.process_model_manager import ProcessModelManager
@@ -1561,7 +1561,7 @@ def _fetch_data_from_database_standalone(prism_core_db, start: str, end: str, ta
         prism_core_db: 데이터베이스 연결
         start: 시작 시간
         end: 종료 시간
-        target_process: 🆕 특정 공정만 로드 (예: 'semi_cmp_sensors')
+        target_process: 🆕 특정 공정만 로드 (예: 'semiconductor_cmp_001')
                        None이면 모든 공정 로드
     """
     import pandas as pd
@@ -1582,9 +1582,9 @@ def _fetch_data_from_database_standalone(prism_core_db, start: str, end: str, ta
 
     # 🆕 파일명과 공정 매핑
     file_to_process_map = {
-        'semiconductor_cmp_001.csv': 'semi_cmp_sensors',
-        'semiconductor_etch_002.csv': 'semi_etch_sensors',
-        'semiconductor_deposition_003.csv': 'semi_cvd_sensors',
+        'semiconductor_cmp_001.csv': 'semiconductor_cmp_001',
+        'semiconductor_etch_002.csv': 'semiconductor_etch_002',
+        'semiconductor_deposition_003.csv': 'semiconductor_deposition_003',
         # semiconductor_full_004.csv는 여러 공정 혼합이므로 제외 또는 별도 처리
     }
 
