@@ -1,422 +1,613 @@
+# explanation.py
+# 모든 20개 공정에 대해 동일 수준의 상세 프롬프트(컬럼/단위/정상범위)를 자동 생성
+# - 레거시 키(semi_*_sensors) 제거
+# - process_type은 반드시 20개 중 하나여야 함
+# - 설명(event_explain) / 과업(event_cause_candidates) 둘 다 동일한 상세도 유지
+
 from typing import Dict, List, Tuple, Any
 from prism_monitor.llm.api import llm_generate
 
-# =========================
-# 공정별 프롬프트 정의
-# =========================
+# ---------------------------------------------------------------------
+# 1) 공정 스펙 사전 (사용자 제공 템플릿을 코드로 내장)
+#    - columns / units / normal_ranges / anomaly_scenario
+# ---------------------------------------------------------------------
 
-# CMP 공정 전용 프롬프트
-EXPLANATION_PROMPT_CMP = r"""
-당신은 반도체 CMP(Chemical Mechanical Planarization) 공정의 이상치 값에 대한 설명을 만들어내는 에이전트입니다.
-아래는 CMP 공정 센서 데이터의 컬럼 설명과 정상범위입니다.
-정상범위와 사용자 입력 데이터를 비교하여 정상범위에서 벗어나는 컬럼에 한해서만 설명을 생성하세요.
-정상범위 내의 컬럼은 설명을 생성하지 않습니다.
-이상치 값의 인과관계가 있다면 함께 설명하세요.
+PROCESS_SPECS: Dict[str, Dict[str, Any]] = {
+    # ========================= Semiconductor =========================
+    "semiconductor_cmp_001": {
+        "domain": "semiconductor",
+        "title": "CMP Sensors",
+        "dataset_file": "semiconductor_cmp_001.csv",
+        "scenario_id": "SCENARIO_01",
+        "columns": [
+            "TIMESTAMP","SENSOR_ID","MOTOR_CURRENT","SLURRY_FLOW_RATE","HEAD_ROTATION",
+            "PRESSURE","TEMPERATURE","POLISH_TIME","PAD_THICKNESS","SLURRY_TEMP","VIBRATION"
+        ],
+        "units": {
+            "MOTOR_CURRENT": "A",
+            "SLURRY_FLOW_RATE": "mL/min",
+            "HEAD_ROTATION": "RPM",
+            "PRESSURE": "bar",
+            "TEMPERATURE": "°C",
+            "POLISH_TIME": "seconds",
+            "PAD_THICKNESS": "mm",
+            "SLURRY_TEMP": "°C",
+            "VIBRATION": "mm/s"
+        },
+        "normal_ranges": {
+            "MOTOR_CURRENT": [15.0, 18.0],
+            "SLURRY_FLOW_RATE": [200, 300],
+            "HEAD_ROTATION": [100, 140],
+            "PRESSURE": [2.8, 3.5],
+            "TEMPERATURE": [23.0, 27.0]
+        },
+        "anomaly_scenario": "Slurry flow rate instability around timestamp 13:50:00",
+    },
+    "semiconductor_etch_002": {
+        "domain": "semiconductor",
+        "title": "Etch Sensors",
+        "dataset_file": "semiconductor_etch_002.csv",
+        "scenario_id": "SCENARIO_02",
+        "columns": [
+            "TIMESTAMP","CHAMBER_ID","PRESSURE","VACUUM_PUMP","GAS_FLOW_RATE","RF_POWER",
+            "TEMPERATURE","ETCH_RATE","BIAS_VOLTAGE","CHAMBER_HUMIDITY","GAS_COMPOSITION"
+        ],
+        "units": {
+            "PRESSURE": "mTorr",
+            "VACUUM_PUMP": "%",
+            "GAS_FLOW_RATE": "sccm",
+            "RF_POWER": "W",
+            "TEMPERATURE": "°C",
+            "ETCH_RATE": "nm/min",
+            "BIAS_VOLTAGE": "V",
+            "CHAMBER_HUMIDITY": "%",
+            "GAS_COMPOSITION": "ratio"
+        },
+        "normal_ranges": {
+            "PRESSURE": [50, 100],
+            "VACUUM_PUMP": [85, 95],
+            "GAS_FLOW_RATE": [100, 150],
+            "RF_POWER": [800, 1200],
+            "TEMPERATURE": [20, 30]
+        },
+        "anomaly_scenario": "Pressure continuously increasing toward critical threshold",
+    },
+    "semiconductor_deposition_003": {
+        "domain": "semiconductor",
+        "title": "Deposition Sensors",
+        "dataset_file": "semiconductor_deposition_003.csv",
+        "scenario_id": "SCENARIO_03",
+        "columns": [
+            "TIMESTAMP","CHAMBER_ID","TEMPERATURE","PRESSURE","GAS_FLOW_RATE","RF_POWER",
+            "DEPOSITION_RATE","FILM_THICKNESS","SUBSTRATE_TEMP","PRECURSOR_FLOW","UNIFORMITY"
+        ],
+        "units": {
+            "TEMPERATURE": "°C",
+            "PRESSURE": "mTorr",
+            "GAS_FLOW_RATE": "sccm",
+            "RF_POWER": "W",
+            "DEPOSITION_RATE": "nm/min",
+            "FILM_THICKNESS": "nm",
+            "SUBSTRATE_TEMP": "°C",
+            "PRECURSOR_FLOW": "sccm",
+            "UNIFORMITY": "%"
+        },
+        "normal_ranges": {
+            "TEMPERATURE": [350, 450],
+            "PRESSURE": [200, 300],
+            "GAS_FLOW_RATE": [150, 250],
+            "RF_POWER": [500, 700],
+            "DEPOSITION_RATE": [80, 120]
+        },
+        "anomaly_scenario": "Temperature instability requiring auto control",
+    },
+    "semiconductor_full_004": {
+        "domain": "semiconductor",
+        "title": "Full Process Sensors",
+        "dataset_file": "semiconductor_full_004.csv",
+        "scenario_id": "SCENARIO_04",
+        "columns": [
+            "TIMESTAMP","EQUIPMENT_ID","RF_POWER","PRESSURE","TEMPERATURE","GAS_FLOW_RATE",
+            "VACUUM_PUMP","PLASMA_DENSITY","ELECTRON_TEMP","PROCESS_YIELD","DEFECT_COUNT","COMPLIANCE_STATUS"
+        ],
+        "units": {
+            "RF_POWER": "W",
+            "PRESSURE": "mTorr",
+            "TEMPERATURE": "°C",
+            "GAS_FLOW_RATE": "sccm",
+            "VACUUM_PUMP": "%",
+            "PLASMA_DENSITY": "cm^-3",
+            "ELECTRON_TEMP": "eV",
+            "PROCESS_YIELD": "%",
+            "DEFECT_COUNT": "count",
+            "COMPLIANCE_STATUS": "binary"
+        },
+        "normal_ranges": {
+            "RF_POWER": [900, 1100],
+            "PRESSURE": [70, 90],
+            "TEMPERATURE": [25, 35],
+            "PROCESS_YIELD": [95, 100]
+        },
+        "anomaly_scenario": "RF_POWER increasing trend requiring prediction, control, and compliance check",
+    },
 
-[CMP 센서 데이터 컬럼 및 정상범위]
-- MOTOR_CURRENT (A): 모터 전류, 정상범위: 15–18
-- SLURRY_FLOW_RATE (ml/min): 슬러리 유량, 정상범위: 200–300
-- PRESSURE (psi): 가압력, 정상범위: 3–7
-- HEAD_ROTATION (rpm): 헤드 회전수, 정상범위: 50–120
-- PLATEN_ROTATION (rpm): 플래튼 회전수, 정상범위: 30–100
-- PAD_TEMP (°C): 패드 온도, 정상범위: 35–50
-- SLURRY_TEMP (°C): 슬러리 온도, 정상범위: 20–25
-- REMOVAL_RATE (Å/min): 제거율, 정상범위: 1000–3000
-- HEAD_PRESSURE (psi): 헤드 압력, 정상범위: 2–8
-- RETAINER_PRESSURE (psi): 리테이너 압력, 정상범위: 2–6
-- CONDITIONER_PRESSURE (lbs): 컨디셔너 압력, 정상범위: 5–9
-- ENDPOINT_SIGNAL (a.u.): 종점 신호, 모니터링용
+    # =========================== Chemical ============================
+    "chemical_reactor_001": {
+        "domain": "chemical",
+        "title": "Reactor Sensors",
+        "dataset_file": "chemical_reactor_001.csv",
+        "scenario_id": "SCENARIO_05",
+        "columns": [
+            "TIMESTAMP","REACTOR_ID","TEMPERATURE","PRESSURE","pH","CONCENTRATION",
+            "FEED_RATE","CATALYST_RATIO","AGITATOR_SPEED","COOLING_WATER_FLOW","REACTION_RATE"
+        ],
+        "units": {
+            "TEMPERATURE": "°C",
+            "PRESSURE": "bar",
+            "pH": "pH",
+            "CONCENTRATION": "%",
+            "FEED_RATE": "L/min",
+            "CATALYST_RATIO": "ratio",
+            "AGITATOR_SPEED": "RPM",
+            "COOLING_WATER_FLOW": "L/min",
+            "REACTION_RATE": "mol/min"
+        },
+        "normal_ranges": {
+            "TEMPERATURE": [180, 190],
+            "PRESSURE": [2.0, 2.5],
+            "pH": [7.0, 7.5],
+            "CONCENTRATION": [75, 85],
+            "FEED_RATE": [40, 50]
+        },
+        "anomaly_scenario": "Rapid temperature increase in reactor REACT_A3",
+    },
+    "chemical_distillation_002": {
+        "domain": "chemical",
+        "title": "Distillation Sensors",
+        "dataset_file": "chemical_distillation_002.csv",
+        "scenario_id": "SCENARIO_06",
+        "columns": [
+            "TIMESTAMP","TOWER_ID","PRESSURE","TEMPERATURE","REFLUX_RATIO","REBOILER_HEAT",
+            "FEED_FLOW_RATE","TOP_TEMP","BOTTOM_TEMP","DISTILLATE_PURITY","CONDENSATE_FLOW"
+        ],
+        "units": {
+            "PRESSURE": "bar",
+            "TEMPERATURE": "°C",
+            "REFLUX_RATIO": "ratio",
+            "REBOILER_HEAT": "kW",
+            "FEED_FLOW_RATE": "L/min",
+            "TOP_TEMP": "°C",
+            "BOTTOM_TEMP": "°C",
+            "DISTILLATE_PURITY": "%",
+            "CONDENSATE_FLOW": "L/min"
+        },
+        "normal_ranges": {
+            "PRESSURE": [1.8, 2.2],
+            "TEMPERATURE": [95, 105],
+            "REFLUX_RATIO": [2.0, 3.0],
+            "REBOILER_HEAT": [180, 220],
+            "FEED_FLOW_RATE": [55, 65]
+        },
+        "anomaly_scenario": "Pressure continuously increasing toward safety limit",
+    },
+    "chemical_refining_003": {
+        "domain": "chemical",
+        "title": "Refining Sensors",
+        "dataset_file": "chemical_refining_003.csv",
+        "scenario_id": "SCENARIO_07",
+        "columns": [
+            "TIMESTAMP","REFINE_ID","PURITY","TEMPERATURE","FILTER_PRESSURE","FLOW_RATE",
+            "FILTRATION_RATE","CONTAMINANT_LEVEL","MEMBRANE_CONDUCTIVITY","PERMEATE_QUALITY","BACKWASH_CYCLE"
+        ],
+        "units": {
+            "PURITY": "%", "TEMPERATURE": "°C", "FILTER_PRESSURE": "bar", "FLOW_RATE": "L/min",
+            "FILTRATION_RATE": "L/m²/h", "CONTAMINANT_LEVEL": "ppm", "MEMBRANE_CONDUCTIVITY": "μS/cm",
+            "PERMEATE_QUALITY": "%", "BACKWASH_CYCLE": "count"
+        },
+        "normal_ranges": {
+            "PURITY": [92, 98],
+            "TEMPERATURE": [35, 45],
+            "FILTER_PRESSURE": [2.5, 3.5],
+            "FLOW_RATE": [45, 55]
+        },
+        "anomaly_scenario": "Purity degradation below target requiring auto control",
+    },
+    "chemical_full_004": {
+        "domain": "chemical",
+        "title": "Full Process Sensors",
+        "dataset_file": "chemical_full_004.csv",
+        "scenario_id": "SCENARIO_08",
+        "columns": [
+            "TIMESTAMP","PROCESS_ID","CATALYST_RATIO","TEMPERATURE","PRESSURE","pH",
+            "CONCENTRATION","YIELD","SELECTIVITY","EMISSION_LEVEL","WASTE_TREATMENT","COMPLIANCE_STATUS"
+        ],
+        "units": {
+            "CATALYST_RATIO": "ratio", "TEMPERATURE": "°C", "PRESSURE": "bar", "pH": "pH",
+            "CONCENTRATION": "%", "YIELD": "%", "SELECTIVITY": "%", "EMISSION_LEVEL": "ppm",
+            "WASTE_TREATMENT": "pH", "COMPLIANCE_STATUS": "binary"
+        },
+        "normal_ranges": {
+            "CATALYST_RATIO": [0.05, 0.12],
+            "TEMPERATURE": [175, 195],
+            "PRESSURE": [2.1, 2.4],
+            "pH": [6.8, 7.4],
+            "YIELD": [85, 95]
+        },
+        "anomaly_scenario": "Catalyst ratio increasing requiring environmental compliance verification",
+    },
 
-답변은 반드시 한국어로 작성하세요.
-"""
+    # =========================== Automotive ==========================
+    "automotive_welding_001": {
+        "domain": "automotive",
+        "title": "Welding Sensors",
+        "dataset_file": "automotive_welding_001.csv",
+        "scenario_id": "SCENARIO_09",
+        "columns": [
+            "TIMESTAMP","LINE_ID","WELD_CURRENT","WELD_VOLTAGE","WIRE_SPEED","TRAVEL_SPEED",
+            "SHIELDING_GAS","ARC_LENGTH","HEAT_INPUT","PENETRATION_DEPTH","WELD_QUALITY_INDEX"
+        ],
+        "units": {
+            "WELD_CURRENT": "A","WELD_VOLTAGE": "V","WIRE_SPEED": "m/min","TRAVEL_SPEED": "cm/min",
+            "SHIELDING_GAS": "L/min","ARC_LENGTH": "mm","HEAT_INPUT": "kJ/mm",
+            "PENETRATION_DEPTH": "mm","WELD_QUALITY_INDEX": "score"
+        },
+        "normal_ranges": {
+            "WELD_CURRENT": [180, 220],
+            "WELD_VOLTAGE": [24, 28],
+            "WIRE_SPEED": [8, 12],
+            "TRAVEL_SPEED": [40, 60],
+            "SHIELDING_GAS": [15, 20]
+        },
+        "anomaly_scenario": "Welding current fluctuation affecting quality",
+    },
+    "automotive_painting_002": {
+        "domain": "automotive",
+        "title": "Painting Sensors",
+        "dataset_file": "automotive_painting_002.csv",
+        "scenario_id": "SCENARIO_10",
+        "columns": [
+            "TIMESTAMP","BOOTH_ID","TEMPERATURE","HUMIDITY","SPRAY_PRESSURE","PAINT_FLOW_RATE",
+            "BOOTH_AIRFLOW","ATOMIZATION_QUALITY","FILM_THICKNESS","OVERSPRAY_RATE","CURING_TEMP"
+        ],
+        "units": {
+            "TEMPERATURE": "°C","HUMIDITY": "%","SPRAY_PRESSURE": "bar","PAINT_FLOW_RATE": "mL/min",
+            "BOOTH_AIRFLOW": "m³/min","ATOMIZATION_QUALITY": "μm","FILM_THICKNESS": "μm",
+            "OVERSPRAY_RATE": "%","CURING_TEMP": "°C"
+        },
+        "normal_ranges": {
+            "TEMPERATURE": [22, 26],
+            "HUMIDITY": [50, 65],
+            "SPRAY_PRESSURE": [2.5, 3.5],
+            "PAINT_FLOW_RATE": [180, 220],
+            "BOOTH_AIRFLOW": [1800, 2200]
+        },
+        "anomaly_scenario": "Humidity continuously rising affecting coating quality",
+    },
+    "automotive_press_003": {
+        "domain": "automotive",
+        "title": "Press Sensors",
+        "dataset_file": "automotive_press_003.csv",
+        "scenario_id": "SCENARIO_11",
+        "columns": [
+            "TIMESTAMP","PRESS_ID","PRESS_FORCE","DIE_TEMPERATURE","STROKE_SPEED","BLANK_THICKNESS",
+            "LUBRICATION","FORMING_DEPTH","SPRING_BACK","SURFACE_ROUGHNESS","DEFECT_RATE"
+        ],
+        "units": {
+            "PRESS_FORCE": "kN","DIE_TEMPERATURE": "°C","STROKE_SPEED": "mm/s","BLANK_THICKNESS": "mm",
+            "LUBRICATION": "ml/cycle","FORMING_DEPTH": "mm","SPRING_BACK": "mm",
+            "SURFACE_ROUGHNESS": "μm","DEFECT_RATE": "%"
+        },
+        "normal_ranges": {
+            "PRESS_FORCE": [800, 1200],
+            "DIE_TEMPERATURE": [180, 220],
+            "STROKE_SPEED": [80, 120],
+            "BLANK_THICKNESS": [0.8, 1.2],
+            "DEFECT_RATE": [0, 2]
+        },
+        "anomaly_scenario": "Press force imbalance requiring auto adjustment",
+    },
+    "automotive_assembly_004": {
+        "domain": "automotive",
+        "title": "Assembly Sensors",
+        "dataset_file": "automotive_assembly_004.csv",
+        "scenario_id": "SCENARIO_12",
+        "columns": [
+            "TIMESTAMP","STATION_ID","TORQUE","PRESSURE","TEMPERATURE","CYCLE_TIME","DEFECT_RATE",
+            "TIGHTENING_ANGLE","BOLT_COUNT","POSITION_ACCURACY","QUALITY_SCORE","SAFETY_STATUS"
+        ],
+        "units": {
+            "TORQUE": "Nm","PRESSURE": "bar","TEMPERATURE": "°C","CYCLE_TIME": "seconds",
+            "DEFECT_RATE": "%","TIGHTENING_ANGLE": "degrees","BOLT_COUNT": "count",
+            "POSITION_ACCURACY": "mm","QUALITY_SCORE": "score","SAFETY_STATUS": "binary"
+        },
+        "normal_ranges": {
+            "TORQUE": [80, 120],
+            "PRESSURE": [5.5, 6.5],
+            "TEMPERATURE": [20, 28],
+            "CYCLE_TIME": [45, 55],
+            "DEFECT_RATE": [0, 1.5]
+        },
+        "anomaly_scenario": "Torque increasing requiring safety compliance verification",
+    },
 
-# Etch 공정 전용 프롬프트
-EXPLANATION_PROMPT_ETCH = r"""
-당신은 반도체 Etch(식각) 공정의 이상치 값에 대한 설명을 만들어내는 에이전트입니다.
-아래는 Etch 공정 센서 데이터의 컬럼 설명과 정상범위입니다.
-정상범위와 사용자 입력 데이터를 비교하여 정상범위에서 벗어나는 컬럼에 한해서만 설명을 생성하세요.
+    # ============================= Battery ===========================
+    "battery_formation_001": {
+        "domain": "battery",
+        "title": "Formation Sensors",
+        "dataset_file": "battery_formation_001.csv",
+        "scenario_id": "SCENARIO_13",
+        "columns": [
+            "TIMESTAMP","CELL_ID","VOLTAGE","CURRENT","CAPACITY","TEMPERATURE",
+            "SOC","CYCLE","INTERNAL_RESISTANCE","CHARGE_RATE","DISCHARGE_RATE"
+        ],
+        "units": {
+            "VOLTAGE": "V","CURRENT": "A","CAPACITY": "Ah","TEMPERATURE": "°C",
+            "SOC": "%","CYCLE": "count","INTERNAL_RESISTANCE": "mΩ","CHARGE_RATE": "C","DISCHARGE_RATE": "C"
+        },
+        "normal_ranges": {
+            "VOLTAGE": [4.05, 4.2],
+            "CURRENT": [1.0, 1.5],
+            "CAPACITY": [3.3, 3.7],
+            "TEMPERATURE": [40, 50],
+            "SOC": [80, 90]
+        },
+        "anomaly_scenario": "Cell voltage abnormal fluctuation",
+    },
+    "battery_coating_002": {
+        "domain": "battery",
+        "title": "Coating Sensors",
+        "dataset_file": "battery_coating_002.csv",
+        "scenario_id": "SCENARIO_14",
+        "columns": [
+            "TIMESTAMP","LINE_ID","COATING_THICKNESS","COATING_SPEED","SLURRY_VISCOSITY",
+            "TEMPERATURE","HUMIDITY","DRYING_TEMP","ADHESION_STRENGTH","UNIFORMITY","DEFECT_DENSITY"
+        ],
+        "units": {
+            "COATING_THICKNESS": "μm","COATING_SPEED": "m/min","SLURRY_VISCOSITY": "cP",
+            "TEMPERATURE": "°C","HUMIDITY": "%","DRYING_TEMP": "°C","ADHESION_STRENGTH": "N/m",
+            "UNIFORMITY": "%","DEFECT_DENSITY": "count/m²"
+        },
+        "normal_ranges": {
+            "COATING_THICKNESS": [95, 105],
+            "COATING_SPEED": [8, 12],
+            "SLURRY_VISCOSITY": [1800, 2200],
+            "TEMPERATURE": [23, 27],
+            "HUMIDITY": [35, 45]
+        },
+        "anomaly_scenario": "Coating thickness deviating from target",
+    },
+    "battery_aging_003": {
+        "domain": "battery",
+        "title": "Aging Sensors",
+        "dataset_file": "battery_aging_003.csv",
+        "scenario_id": "SCENARIO_15",
+        "columns": [
+            "TIMESTAMP","CELL_ID","SOH","SOC","CAPACITY","TEMPERATURE","HUMIDITY",
+            "AGING_DAYS","CAPACITY_RETENTION","IMPEDANCE_GROWTH","SELF_DISCHARGE_RATE"
+        ],
+        "units": {
+            "SOH": "%","SOC": "%","CAPACITY": "Ah","TEMPERATURE": "°C","HUMIDITY": "%",
+            "AGING_DAYS": "days","CAPACITY_RETENTION": "%","IMPEDANCE_GROWTH": "%","SELF_DISCHARGE_RATE": "%/month"
+        },
+        "normal_ranges": {
+            "SOH": [95, 100],
+            "SOC": [45, 55],
+            "CAPACITY": [3.4, 3.6],
+            "TEMPERATURE": [23, 27],
+            "HUMIDITY": [45, 55]
+        },
+        "anomaly_scenario": "SOH degrading faster than expected",
+    },
+    "battery_production_004": {
+        "domain": "battery",
+        "title": "Production Sensors",
+        "dataset_file": "battery_production_004.csv",
+        "scenario_id": "SCENARIO_16",
+        "columns": [
+            "TIMESTAMP","PRODUCTION_LINE","TEMPERATURE","VOLTAGE","CURRENT","CAPACITY","SOC",
+            "CELL_WEIGHT","ELECTROLYTE_FILL","SEAL_QUALITY","YIELD_RATE","SAFETY_STATUS"
+        ],
+        "units": {
+            "TEMPERATURE": "°C","VOLTAGE": "V","CURRENT": "A","CAPACITY": "Ah","SOC": "%",
+            "CELL_WEIGHT": "g","ELECTROLYTE_FILL": "mL","SEAL_QUALITY": "score","YIELD_RATE": "%","SAFETY_STATUS": "binary"
+        },
+        "normal_ranges": {
+            "TEMPERATURE": [24, 28],
+            "VOLTAGE": [4.1, 4.18],
+            "CURRENT": [1.1, 1.4],
+            "CAPACITY": [3.4, 3.6],
+            "YIELD_RATE": [96, 100]
+        },
+        "anomaly_scenario": "Temperature increasing requiring safety compliance",
+    },
 
-[Etch 센서 데이터 컬럼 및 정상범위]
-- RF_POWER_SOURCE (W): RF 소스 파워, 정상범위: 500–2000
-- RF_POWER_BIAS (W): RF 바이어스 파워, 정상범위: 50–500
-- CHAMBER_PRESSURE (mTorr): 챔버 압력, 정상범위: 5–200
-- GAS_FLOW_CF4 (sccm): CF4 가스 유량, 정상범위: 0–200
-- GAS_FLOW_O2 (sccm): O2 가스 유량, 정상범위: 0–100
-- GAS_FLOW_AR (sccm): Ar 가스 유량, 정상범위: 0–500
-- GAS_FLOW_CL2 (sccm): Cl2 가스 유량, 정상범위: 0–200
-- ELECTRODE_TEMP (°C): 전극 온도, 정상범위: 40–80
-- CHAMBER_WALL_TEMP (°C): 챔버 벽 온도, 정상범위: 60–80
-- HELIUM_PRESSURE (Torr): 헬륨 압력, 정상범위: 5–20
-- PLASMA_DENSITY (ions/cm³): 플라즈마 밀도, 정상범위: 1e10–1e12
-- ENDPOINT_SIGNAL (a.u.): 종점 신호, 모니터링용
-
-답변은 반드시 한국어로 작성하세요.
-"""
-
-# CVD 공정 전용 프롬프트
-EXPLANATION_PROMPT_CVD = r"""
-당신은 반도체 CVD(Chemical Vapor Deposition) 공정의 이상치 값에 대한 설명을 만들어내는 에이전트입니다.
-아래는 CVD 공정 센서 데이터의 컬럼 설명과 정상범위입니다.
-정상범위와 사용자 입력 데이터를 비교하여 정상범위에서 벗어나는 컬럼에 한해서만 설명을 생성하세요.
-
-[CVD 센서 데이터 컬럼 및 정상범위]
-- SUSCEPTOR_TEMP (°C): 서셉터 온도, 정상범위: 300–700
-- CHAMBER_PRESSURE (Torr): 챔버 압력, 정상범위: 0.1–760
-- PRECURSOR_FLOW_TEOS (sccm): TEOS 전구체 유량, 정상범위: 0–500
-- PRECURSOR_FLOW_SILANE (sccm): Silane 전구체 유량, 정상범위: 0–1000
-- PRECURSOR_FLOW_WF6 (sccm): WF6 전구체 유량, 정상범위: 0–100
-- CARRIER_GAS_N2 (slm): N2 캐리어 가스, 정상범위: 0–20
-- CARRIER_GAS_H2 (slm): H2 캐리어 가스, 정상범위: 0–10
-- SHOWERHEAD_TEMP (°C): 샤워헤드 온도, 정상범위: 150–250
-- LINER_TEMP (°C): 라이너 온도, 정상범위: 100–200
-- DEPOSITION_RATE (Å/min): 증착률, 모니터링용
-- FILM_STRESS (MPa): 필름 응력, 모니터링용
-
-답변은 반드시 한국어로 작성하세요.
-"""
-
-# Chemical 공정 프롬프트
-EXPLANATION_PROMPT_CHEMICAL = r"""
-당신은 화학 공정의 이상치 값에 대한 설명을 만들어내는 에이전트입니다.
-아래는 화학 공정 센서 데이터의 컬럼 설명과 정상범위입니다.
-정상범위와 사용자 입력 데이터를 비교하여 정상범위에서 벗어나는 컬럼에 한해서만 설명을 생성하세요.
-
-[화학 공정 센서 데이터 컬럼 및 정상범위]
-- TEMPERATURE (°C): 반응 온도, 정상범위: 공정별 상이
-- PRESSURE (bar): 반응 압력, 정상범위: 공정별 상이
-- pH: pH 값, 정상범위: 6.5–8.5
-- CONCENTRATION (%): 농도, 정상범위: 공정별 상이
-- FEED_RATE (L/min): 원료 투입 속도, 모니터링용
-- CATALYST_RATIO: 촉매 비율, 정상범위: 공정별 상이
-- AGITATOR_SPEED (rpm): 교반기 속도, 정상범위: 공정별 상이
-- COOLING_WATER_FLOW (L/min): 냉각수 유량, 모니터링용
-- REACTION_RATE: 반응 속도, 모니터링용
-
-답변은 반드시 한국어로 작성하세요.
-"""
-
-# Battery 공정 프롬프트
-EXPLANATION_PROMPT_BATTERY = r"""
-당신은 배터리 제조 공정의 이상치 값에 대한 설명을 만들어내는 에이전트입니다.
-아래는 배터리 공정 센서 데이터의 컬럼 설명과 정상범위입니다.
-정상범위와 사용자 입력 데이터를 비교하여 정상범위에서 벗어나는 컬럼에 한해서만 설명을 생성하세요.
-
-[배터리 공정 센서 데이터 컬럼 및 정상범위]
-- VOLTAGE (V): 전압, 정상범위: 2.5–4.2
-- CURRENT (A): 전류, 정상범위: 공정별 상이
-- CAPACITY (Ah): 용량, 모니터링용
-- TEMPERATURE (°C): 온도, 정상범위: 20–50
-- SOC (%): 충전 상태, 정상범위: 0–100
-- CYCLE: 사이클 수, 모니터링용
-- INTERNAL_RESISTANCE (mΩ): 내부 저항, 정상범위: <50
-- CHARGE_RATE (C): 충전 속도, 정상범위: 0.1–1.0
-- DISCHARGE_RATE (C): 방전 속도, 정상범위: 0.1–2.0
-
-답변은 반드시 한국어로 작성하세요.
-"""
-
-# Automotive 공정 프롬프트
-EXPLANATION_PROMPT_AUTOMOTIVE = r"""
-당신은 자동차 제조 공정의 이상치 값에 대한 설명을 만들어내는 에이전트입니다.
-아래는 자동차 제조 공정 센서 데이터의 컬럼 설명과 정상범위입니다.
-정상범위와 사용자 입력 데이터를 비교하여 정상범위에서 벗어나는 컬럼에 한해서만 설명을 생성하세요.
-
-[자동차 제조 공정 센서 데이터 컬럼 및 정상범위]
-- WELDING_CURRENT (A): 용접 전류, 정상범위: 공정별 상이
-- WELDING_VOLTAGE (V): 용접 전압, 정상범위: 공정별 상이
-- PRESSURE (bar): 압력, 정상범위: 공정별 상이
-- TEMPERATURE (°C): 온도, 정상범위: 공정별 상이
-- FORCE (kN): 가압력, 정상범위: 공정별 상이
-- SPEED (mm/s): 속도, 모니터링용
-- THICKNESS (mm): 두께, 정상범위: ±0.1mm
-- COATING_THICKNESS (μm): 도장 두께, 정상범위: 공정별 상이
-
-답변은 반드시 한국어로 작성하세요.
-"""
-
-# Steel 공정 프롬프트
-EXPLANATION_PROMPT_STEEL = r"""
-당신은 철강 제조 공정의 이상치 값에 대한 설명을 만들어내는 에이전트입니다.
-아래는 철강 공정 센서 데이터의 컬럼 설명과 정상범위입니다.
-정상범위와 사용자 입력 데이터를 비교하여 정상범위에서 벗어나는 컬럼에 한해서만 설명을 생성하세요.
-
-[철강 공정 센서 데이터 컬럼 및 정상범위]
-- TEMPERATURE (°C): 온도, 정상범위: 공정별 상이 (1000–1600)
-- PRESSURE (bar): 압력, 정상범위: 공정별 상이
-- ROLLING_FORCE (kN): 압연력, 정상범위: 공정별 상이
-- THICKNESS (mm): 두께, 정상범위: ±0.5mm
-- SPEED (m/min): 속도, 모니터링용
-- TENSION (kN): 장력, 정상범위: 공정별 상이
-- CARBON_CONTENT (%): 탄소 함량, 정상범위: 0.05–2.0
-- COOLING_RATE (°C/s): 냉각 속도, 모니터링용
-
-답변은 반드시 한국어로 작성하세요.
-"""
-
-# 공정별 프롬프트 매핑 (20개 공정 지원)
-PROCESS_EXPLANATION_PROMPTS: Dict[str, str] = {
-    # Semiconductor (4개)
-    'semiconductor_cmp_001': EXPLANATION_PROMPT_CMP,
-    'semiconductor_etch_002': EXPLANATION_PROMPT_ETCH,
-    'semiconductor_deposition_003': EXPLANATION_PROMPT_CVD,
-    'semiconductor_full_004': EXPLANATION_PROMPT_CVD,
-    # Chemical (4개)
-    'chemical_reactor_001': EXPLANATION_PROMPT_CHEMICAL,
-    'chemical_distillation_002': EXPLANATION_PROMPT_CHEMICAL,
-    'chemical_refining_003': EXPLANATION_PROMPT_CHEMICAL,
-    'chemical_full_004': EXPLANATION_PROMPT_CHEMICAL,
-    # Battery (4개)
-    'battery_formation_001': EXPLANATION_PROMPT_BATTERY,
-    'battery_coating_002': EXPLANATION_PROMPT_BATTERY,
-    'battery_aging_003': EXPLANATION_PROMPT_BATTERY,
-    'battery_production_004': EXPLANATION_PROMPT_BATTERY,
-    # Automotive (4개)
-    'automotive_welding_001': EXPLANATION_PROMPT_AUTOMOTIVE,
-    'automotive_painting_002': EXPLANATION_PROMPT_AUTOMOTIVE,
-    'automotive_press_003': EXPLANATION_PROMPT_AUTOMOTIVE,
-    'automotive_assembly_004': EXPLANATION_PROMPT_AUTOMOTIVE,
-    # Steel (4개)
-    'steel_rolling_001': EXPLANATION_PROMPT_STEEL,
-    'steel_converter_002': EXPLANATION_PROMPT_STEEL,
-    'steel_casting_003': EXPLANATION_PROMPT_STEEL,
-    'steel_production_004': EXPLANATION_PROMPT_STEEL,
+    # ============================== Steel ============================
+    "steel_rolling_001": {
+        "domain": "steel",
+        "title": "Rolling Sensors",
+        "dataset_file": "steel_rolling_001.csv",
+        "scenario_id": "SCENARIO_17",
+        "columns": [
+            "TIMESTAMP","LINE_ID","THICKNESS","ROLL_GAP","ROLLING_SPEED","TENSION",
+            "TEMPERATURE","ROLL_FORCE","WIDTH","FLATNESS","SURFACE_QUALITY"
+        ],
+        "units": {
+            "THICKNESS": "mm","ROLL_GAP": "mm","ROLLING_SPEED": "m/min","TENSION": "MPa",
+            "TEMPERATURE": "°C","ROLL_FORCE": "kN","WIDTH": "mm","FLATNESS": "I-unit","SURFACE_QUALITY": "score"
+        },
+        "normal_ranges": {
+            "THICKNESS": [3.6, 4.0],
+            "ROLL_GAP": [3.8, 4.2],
+            "ROLLING_SPEED": [160, 200],
+            "TENSION": [270, 300],
+            "TEMPERATURE": [820, 880]
+        },
+        "anomaly_scenario": "Thickness exceeding target deviation",
+    },
+    "steel_converter_002": {
+        "domain": "steel",
+        "title": "Converter Sensors",
+        "dataset_file": "steel_converter_002.csv",
+        "scenario_id": "SCENARIO_18",
+        "columns": [
+            "TIMESTAMP","CONVERTER_ID","TEMPERATURE","OXYGEN_FLOW","LANCE_POSITION","PRESSURE",
+            "SLAG_COMPOSITION","CARBON_CONTENT","PHOSPHORUS_LEVEL","SULFUR_LEVEL","BATH_LEVEL"
+        ],
+        "units": {
+            "TEMPERATURE": "°C","OXYGEN_FLOW": "Nm³/min","LANCE_POSITION": "mm","PRESSURE": "bar",
+            "SLAG_COMPOSITION": "CaO/SiO2","CARBON_CONTENT": "%","PHOSPHORUS_LEVEL": "ppm",
+            "SULFUR_LEVEL": "ppm","BATH_LEVEL": "mm"
+        },
+        "normal_ranges": {
+            "TEMPERATURE": [1600, 1700],
+            "OXYGEN_FLOW": [450, 550],
+            "LANCE_POSITION": [1400, 1600],
+            "PRESSURE": [0.9, 1.1],
+            "SLAG_COMPOSITION": [2.8, 3.5]
+        },
+        "anomaly_scenario": "Temperature and oxygen flow fluctuation affecting slag status",
+    },
+    "steel_casting_003": {
+        "domain": "steel",
+        "title": "Casting Sensors",
+        "dataset_file": "steel_casting_003.csv",
+        "scenario_id": "SCENARIO_19",
+        "columns": [
+            "TIMESTAMP","CASTER_ID","SLAB_THICKNESS","CASTING_SPEED","MOLD_WIDTH","TEMPERATURE",
+            "COOLING_WATER_FLOW","MOLD_LEVEL","STRAND_TEMPERATURE","WITHDRAWAL_FORCE","SURFACE_DEFECTS"
+        ],
+        "units": {
+            "SLAB_THICKNESS": "mm","CASTING_SPEED": "m/min","MOLD_WIDTH": "mm","TEMPERATURE": "°C",
+            "COOLING_WATER_FLOW": "m³/h","MOLD_LEVEL": "mm","STRAND_TEMPERATURE": "°C",
+            "WITHDRAWAL_FORCE": "kN","SURFACE_DEFECTS": "count"
+        },
+        "normal_ranges": {
+            "SLAB_THICKNESS": [220, 240],
+            "CASTING_SPEED": [0.8, 1.2],
+            "MOLD_WIDTH": [1500, 1600],
+            "TEMPERATURE": [1540, 1580],
+            "SURFACE_DEFECTS": [0, 2]
+        },
+        "anomaly_scenario": "Slab thickness imbalance requiring casting speed adjustment",
+    },
+    "steel_production_004": {
+        "domain": "steel",
+        "title": "Production Sensors",
+        "dataset_file": "steel_production_004.csv",
+        "scenario_id": "SCENARIO_20",
+        "columns": [
+            "TIMESTAMP","PRODUCTION_LINE","TEMPERATURE","PRESSURE","OXYGEN_FLOW","SLAG_COMPOSITION",
+            "THICKNESS","PRODUCTION_RATE","QUALITY_INDEX","EMISSION_LEVEL","ENERGY_CONSUMPTION","COMPLIANCE_STATUS"
+        ],
+        "units": {
+            "TEMPERATURE": "°C","PRESSURE": "bar","OXYGEN_FLOW": "Nm³/min","SLAG_COMPOSITION": "CaO/SiO2",
+            "THICKNESS": "mm","PRODUCTION_RATE": "tons/hour","QUALITY_INDEX": "score",
+            "EMISSION_LEVEL": "mg/Nm³","ENERGY_CONSUMPTION": "kWh/ton","COMPLIANCE_STATUS": "binary"
+        },
+        "normal_ranges": {
+            "TEMPERATURE": [1620, 1680],
+            "PRESSURE": [0.95, 1.05],
+            "OXYGEN_FLOW": [480, 520],
+            "THICKNESS": [3.7, 3.9],
+            "PRODUCTION_RATE": [180, 220]
+        },
+        "anomaly_scenario": "Temperature increasing requiring environmental compliance verification",
+    },
 }
 
-PROCESS_TASK_PROMPTS: Dict[str, str] = {
-    # Semiconductor (4개)
-    'semiconductor_cmp_001': EXPLANATION_PROMPT_CMP.replace("설명을 만들어내는", "분석 과업을 생성하는"),
-    'semiconductor_etch_002': EXPLANATION_PROMPT_ETCH.replace("설명을 만들어내는", "분석 과업을 생성하는"),
-    'semiconductor_deposition_003': EXPLANATION_PROMPT_CVD.replace("설명을 만들어내는", "분석 과업을 생성하는"),
-    'semiconductor_full_004': EXPLANATION_PROMPT_CVD.replace("설명을 만들어내는", "분석 과업을 생성하는"),
-    # Chemical (4개)
-    'chemical_reactor_001': EXPLANATION_PROMPT_CHEMICAL.replace("설명을 만들어내는", "분석 과업을 생성하는"),
-    'chemical_distillation_002': EXPLANATION_PROMPT_CHEMICAL.replace("설명을 만들어내는", "분석 과업을 생성하는"),
-    'chemical_refining_003': EXPLANATION_PROMPT_CHEMICAL.replace("설명을 만들어내는", "분석 과업을 생성하는"),
-    'chemical_full_004': EXPLANATION_PROMPT_CHEMICAL.replace("설명을 만들어내는", "분석 과업을 생성하는"),
-    # Battery (4개)
-    'battery_formation_001': EXPLANATION_PROMPT_BATTERY.replace("설명을 만들어내는", "분석 과업을 생성하는"),
-    'battery_coating_002': EXPLANATION_PROMPT_BATTERY.replace("설명을 만들어내는", "분석 과업을 생성하는"),
-    'battery_aging_003': EXPLANATION_PROMPT_BATTERY.replace("설명을 만들어내는", "분석 과업을 생성하는"),
-    'battery_production_004': EXPLANATION_PROMPT_BATTERY.replace("설명을 만들어내는", "분석 과업을 생성하는"),
-    # Automotive (4개)
-    'automotive_welding_001': EXPLANATION_PROMPT_AUTOMOTIVE.replace("설명을 만들어내는", "분석 과업을 생성하는"),
-    'automotive_painting_002': EXPLANATION_PROMPT_AUTOMOTIVE.replace("설명을 만들어내는", "분석 과업을 생성하는"),
-    'automotive_press_003': EXPLANATION_PROMPT_AUTOMOTIVE.replace("설명을 만들어내는", "분석 과업을 생성하는"),
-    'automotive_assembly_004': EXPLANATION_PROMPT_AUTOMOTIVE.replace("설명을 만들어내는", "분석 과업을 생성하는"),
-    # Steel (4개)
-    'steel_rolling_001': EXPLANATION_PROMPT_STEEL.replace("설명을 만들어내는", "분석 과업을 생성하는"),
-    'steel_converter_002': EXPLANATION_PROMPT_STEEL.replace("설명을 만들어내는", "분석 과업을 생성하는"),
-    'steel_casting_003': EXPLANATION_PROMPT_STEEL.replace("설명을 만들어내는", "분석 과업을 생성하는"),
-    'steel_production_004': EXPLANATION_PROMPT_STEEL.replace("설명을 만들어내는", "분석 과업을 생성하는"),
-}
+SUPPORTED_PROCESSES = set(PROCESS_SPECS.keys())
 
-SUPPORTED_PROCESSES = set(PROCESS_EXPLANATION_PROMPTS.keys())
+# ---------------------------------------------------------------------
+# 2) 공통 프롬프트 빌더
+#    - 모든 도메인에서 동일 형식으로 컬럼/단위/정상범위 표기
+#    - 정상범위가 정의되지 않은 컬럼은 "모니터링용"으로 명시
+# ---------------------------------------------------------------------
 
+def _build_prompt(spec: Dict[str, Any], mode: str) -> str:
+    """
+    mode: 'explain' -> 이상치 설명 생성
+          'task'    -> 분석 과업 생성
+    """
+    assert mode in ("explain", "task")
+    head = (
+        "당신은 제조 공정의 이상치 값에 대한 설명을 만들어내는 에이전트입니다."
+        if mode == "explain"
+        else "당신은 제조 공정에서 탐지된 이상치를 분석하기 위한 구체적인 과업을 생성하는 에이전트입니다."
+    )
 
-# =========================
-# Few-shot 예시
-# =========================
+    guide = (
+        "아래는 본 공정 센서 데이터의 컬럼과 단위, 정상범위입니다.\n"
+        "정상범위와 사용자 입력 데이터를 비교하여 **정상범위를 벗어난 컬럼만** 다루세요.\n"
+        "정상범위 내의 컬럼은 설명/과업을 생성하지 마세요.\n"
+        "여러 항목이 동시에 이탈하면 인과관계를 함께 설명(또는 과업의 선후·의존 관계로 제시)하세요.\n"
+        "최종 답변은 반드시 한국어로 작성하세요."
+    )
 
-FEWSHOT_USER_CASE_1 = r"""
-data:
-{
-  "pno": "LM003",
-  "lot_no": "LOT24002A",
-  "product_name": "LOGIC_AP_5NM",
-  "recipe_id": "RCP_LOGIC_V4.2",
-  "start_qty": 0,
-  "current_step": "CVD_003",
-  "priority": "NORMAL",
-  "credate": "2024-01-16",
-  "holder": "NULL",
-  "final_yield": 87.2,
-  "good_die": -0.6765571639390562,
-  "total_die": 0,
-  "is_anomaly": "False",
-  "anomaly_score": 1.8752173241964718,
-  "predicted_anomaly": "True",
-  "confidence": 0.18953331879760532,
-  "alignment_error_x": 1.7815834390378973,
-  "alignment_error_y": 1.8068078795947535,
-  "analyzer_pressure": -0.43597707548113906,
-  "barometric_pressure": 1.4420067797217386,
-  "beam_current": -0.42880492814421195,
-  "beam_energy": -0.367998949238794,
-  "beam_uniformity": -0.49999105326920523,
-  "carrier_gas_h2": 3.1995600923867222,
-  "carrier_gas_n2": 2.1218784814085305,
-  "chamber_pressure": 0.18076389061653064,
-  "chamber_wall_temp": 1.6873652626808404,
-  "conditioner_pressure": -0.49503753506734227,
-  "deposition_rate": 1.0130438177226755,
-  "dose_rate": -0.42472921736082786,
-  "electrode_temp": 1.3184969427441044,
-  "end_station_pressure": -0.3956727369757142,
-  "endpoint_signal": 0.504642079457869,
-  "exposure_dose": 1.6233671332894895,
-  "faraday_cup_current": -0.4286657330065187,
-  "film_stress": -1.9404378797185633,
-  "focus_position": -1.9972457279329923,
-  "gas_flow_ar": 2.233291090364354,
-  "gas_flow_cf4": 2.0841894204905045,
-  "gas_flow_cl2": -0.3287402288967945,
-  "gas_flow_o2": 2.2583510640388935,
-  "head_pressure": -0.47847613695539476,
-  "head_rotation": -0.4938117219582884,
-  "helium_pressure": 2.036111066721793,
-  "humidity": 1.4264630825263822,
-  "illumination_uniformity": 1.4341015184303116,
-  "implant_angle": -0.3892494720807615,
-  "lens_aberration": 1.8357565360747123,
-  "liner_temp": 2.0033538607897676,
-  "motor_current": -0.49106100492548654,
-  "pad_temp": -0.49587348653461977,
-  "plasma_density": 2.2033492916449804,
-  "platen_rotation": -0.4936076172427683,
-  "precursor_flow_silane": 1.0187934234139417,
-  "precursor_flow_teos": -0.28017408751929807,
-  "precursor_flow_wf6": 0,
-  "removal_rate": -0.47915544482813255,
-  "retainer_pressure": -0.47847075532575595,
-  "reticle_temp": 1.4419249925344992,
-  "rf_power_bias": 2.12681367067234,
-  "rf_power_source": 2.1360142945171616,
-  "showerhead_temp": 1.9842732940396977,
-  "slurry_flow_rate": -0.49313259164035833,
-  "slurry_temp": -0.4995945525763811,
-  "source_pressure": -0.46251622138613974,
-  "stage_temp": 1.439615028558493,
-  "susceptor_temp": 1.6559810098169359,
-  "total_dose": -0.3592243801316995,
-  "wafer_rotation": -0.48133693912255127
-}
-answer:
+    lines: List[str] = []
+    lines.append(f"[데이터셋] {spec['title']}  |  파일: {spec['dataset_file']}  |  시나리오ID: {spec['scenario_id']}")
+    lines.append("[센서 데이터 컬럼 · 단위 · 정상범위]")
+    units = spec.get("units", {})
+    ranges = spec.get("normal_ranges", {})
+    for col in spec["columns"]:
+        if col.upper() in ("TIMESTAMP","SENSOR_ID","EQUIPMENT_ID","CHAMBER_ID","REACTOR_ID","TOWER_ID",
+                           "REFINE_ID","PROCESS_ID","LINE_ID","PRESS_ID","STATION_ID","CASTER_ID",
+                           "PRODUCTION_LINE","CELL_ID","PRODUCTION_LINE"):
+            # 식별자/시간 컬럼
+            lines.append(f"- {col}: 식별/시간용 컬럼")
+            continue
+        u = units.get(col, None)
+        if col in ranges:
+            lo, hi = ranges[col]
+            if u:
+                lines.append(f"- {col} ({u}): 정상범위 {lo}–{hi}")
+            else:
+                lines.append(f"- {col}: 정상범위 {lo}–{hi}")
+        else:
+            # 정상범위 미지정 -> 모니터링/참고
+            if u:
+                lines.append(f"- {col} ({u}): 모니터링용")
+            else:
+                lines.append(f"- {col}: 모니터링용")
+
+    anomaly_note = spec.get("anomaly_scenario")
+    if anomaly_note:
+        lines.append(f"\n[시나리오 포인트] {anomaly_note}")
+
+    if mode == "explain":
+        tail = (
+            "\n[지시]\n"
+            "1) 정상범위를 벗어난 컬럼만 나열하고, 각 항목에 대해 실제 값과 정상범위를 함께 명시하세요.\n"
+            "2) 이탈 원인 가설(장비/환경/레시피/소모품)을 1~3개 제시하세요.\n"
+            "3) 다중 항목 이탈 시, 파라미터 간 인과관계를 1~2문장으로 설명하세요.\n"
+            "4) 필요한 경우 관련 규제/안전/품질 준수(Compliance) 리스크를 한 줄로 요약하세요."
+        )
+    else:
+        tail = (
+            "\n[지시]\n"
+            "1) 우선순위가 높은 과업 3~6개를 번호 목록으로 제시하세요.\n"
+            "2) 각 과업은 '목표/데이터/방법/판정기준'을 1줄로 요약하세요.\n"
+            "3) 제어행동(세트포인트 조정/인터록/점검 등)이 필요한 경우 과업에 포함하세요.\n"
+            "4) 필요한 경우 준수(Compliance) 확인 과업을 포함하세요."
+        )
+
+    prompt = f"""{head}
+
+{guide}
+
+{chr(10).join(lines)}
+{tail}
 """
-FEWSHOT_EXPLANATION_1 = (
-    "LOT24002A의 최종 수율이 0.0%로 정상 기준(>90%)에서 크게 벗어났습니다.\n"
-    "이는 개별 CVD_003 장비 공정 단계에서 발생한 이상치가 누적된 결과로 해석됩니다.\n"
-    "구체적으로, CVD_003 장비의 Alignment Error 값은 정상 범위(-0.5 ~ 0.5)를 벗어나 -1.9 이하로 관측되었고,\n"
-    "Stage Position 관련 값 또한 정상 범위(±0.3)를 초과하여 -0.49 ~ -0.50 수준으로 치우쳤습니다.\n"
-    "Lens 관련 파라미터 역시 정상 범위(약 1.0 ~ 2.0)에서 벗어나 비정상적 진동 패턴을 보였습니다.\n"
-    "이러한 다수의 센서 이상치는 공정 조건 불량으로 이어져, 결과적으로 수율 저하를 초래한 것으로 추정됩니다."
-)
+    return prompt
 
-FEWSHOT_TASK_1 = (
-    "- CVD_003 장비의 주요 센서(Alignment Error, Stage Position, Lens Aberration)의 변동이 최종 수율에 미치는 영향을 분석할 필요가 있습니다.\n"
-    "- Stage 온도, 압력, 습도 등 보조 환경 데이터와 결합하여, 극단적 음수 센서값 발생이 공정 불량을 유발하는지 예측 모델을 구축할 필요가 있습니다.\n"
-    "- LOT24002A와 동일 레시피(RCP_LOGIC_V4.2)를 사용하는 다른 로트와 비교하여 이상치 발생 조건의 재현성을 분석하는 작업이 필요합니다."
-)
-
-FEWSHOT_USER_CASE_2 = r"""
-data:
-{
-  "pno": "LM029",
-  "lot_no": "LOT24015A",
-  "product_name": "NAND_2TB_TLC",
-  "recipe_id": "RCP_NAND_V2.6",
-  "start_qty": 0,
-  "current_step": "ION_IMPLANT_003",
-  "priority": "NORMAL",
-  "credate": "2024-01-29",
-  "holder": "NULL",
-  "final_yield": 93.4,
-  "good_die": 1.2950782844379818,
-  "total_die": 0,
-  "is_anomaly": "False",
-  "anomaly_score": 2.2552952852550203,
-  "predicted_anomaly": "True",
-  "confidence": 0.4306335862631553,
-  "alignment_error_x": -0.6676402297005561,
-  "alignment_error_y": -0.6713890721237328,
-  "analyzer_pressure": 3.9660452327350053,
-  "barometric_pressure": -0.6938885801475108,
-  "beam_current": 3.6999247313219477,
-  "beam_energy": 4.566065174633304,
-  "beam_uniformity": 1.9756528666410966,
-  "carrier_gas_h2": -0.39226512210945047,
-  "carrier_gas_n2": -0.520825706016853,
-  "chamber_pressure": -0.5863577785945447,
-  "chamber_wall_temp": -0.6152746833234518,
-  "conditioner_pressure": -0.49503753506734227,
-  "deposition_rate": -0.43400081836651716,
-  "dose_rate": 3.967907555344312,
-  "electrode_temp": -0.6137491306745388,
-  "end_station_pressure": 4.515068407131405,
-  "endpoint_signal": -0.8800293726614797,
-  "exposure_dose": -0.6905368679997218,
-  "faraday_cup_current": 3.701871359697373,
-  "film_stress": -0.286337079538255,
-  "focus_position": 0.2755715342606508,
-  "gas_flow_ar": -0.579002434971891,
-  "gas_flow_cf4": -0.5940785926557355,
-  "gas_flow_cl2": -0.3287402288967945,
-  "gas_flow_o2": -0.5779895528354979,
-  "head_pressure": -0.47847613695539476,
-  "head_rotation": -0.4938117219582884,
-  "helium_pressure": -0.6023746876433743,
-  "humidity": -0.6938665776162654,
-  "illumination_uniformity": -0.6938792921614627,
-  "implant_angle": 4.281744192888376,
-  "lens_aberration": -0.6745914564191262,
-  "liner_temp": -0.5340551279339955,
-  "motor_current": -0.49106100492548654,
-  "pad_temp": -0.49587348653461977,
-  "plasma_density": -0.5922789271156291,
-  "platen_rotation": -0.4936076172427683,
-  "precursor_flow_silane": -0.4033376434322697,
-  "precursor_flow_teos": -0.28017408751929807,
-  "precursor_flow_wf6": 0,
-  "removal_rate": -0.47915544482813255,
-  "retainer_pressure": -0.47847075532575595,
-  "reticle_temp": -0.6938879939682062,
-  "rf_power_bias": -0.5985362122569439,
-  "rf_power_source": -0.5963735468714711,
-  "showerhead_temp": -0.5364011820062409,
-  "slurry_flow_rate": -0.49313259164035833,
-  "slurry_temp": -0.4995945525763811,
-  "source_pressure": 3.464508299816934,
-  "stage_temp": -0.6938884459642612,
-  "susceptor_temp": -0.5165975675749419,
-  "total_dose": 4.132671934533579,
-  "wafer_rotation": 1.046716835869675
-}
-answer:
-"""
-FEWSHOT_EXPLANATION_2 = (
-    "LOT24002A의 ION IMPLANT 공정에서 다수의 이상치가 관찰되었습니다.\n"
-    "구체적으로, DOSE 값은 정상 범위(-0.5 ~ 0.5)를 벗어나 -0.6939로 측정되었고,\n"
-    "CHAMBER 압력 역시 정상 범위(-0.2 ~ 0.2)를 벗어나 -0.3940으로 나타났습니다.\n"
-    "또한 OVERLAY_X(3.9329)와 BEAM_X(4.6329)는 정상 범위(-1.0 ~ 1.0)를 크게 초과하여,\n"
-    "패턴 정렬 불량 및 빔 위치 이탈이 심각하게 발생했음을 의미합니다.\n"
-    "IMPLANT_DEPTH 값은 정상 범위(0.5 ~ 1.5)를 벗어나 4.2817로 과도하게 깊었고,\n"
-    "RESIST_UNIFORMITY 또한 정상 범위(-0.5 ~ 0.5)를 벗어나 4.1157로 비정상적 편차를 보였습니다.\n"
-    "마지막으로, YIELD_ESTIMATION(4.1327), ALERT_SCORE(6.0283), PASS_FAIL(1.7927) 역시 정상 기준(각각 0.0~1.0)을 초과했습니다.\n"
-    "이러한 일련의 센서 이상치는 장비 빔 정렬 불량 및 챔버 조건 불안정에서 기인한 것으로 추정되며,\n"
-    "결과적으로 ION IMPLANT 공정 품질 저하 및 최종 수율 손실로 이어질 가능성이 큽니다."
-)
-
-FEWSHOT_TASK_2 = (
-    "- LOT24015A, ION_IMPLANT_003 장비의 YIELD_ESTIMATION 값(4.13)과 PASS_FAIL 지표(1.79)가 정상 범위(0.0~1.0)에서 크게 벗어나, 수율 저하 가능성에 대한 예측 분석 필요.\n"
-    "- BEAM_X 값(-0.67)이 정상 범위(-0.5~0.5)에서 이탈하여, 이온 빔 정렬 불량이 후속 공정 품질에 미치는 영향 예측 필요.\n"
-    "- RESIST_UNIFORMITY 값(6.02)이 정상 범위(≈0.8~1.2)를 초과하여, 레지스트 막 두께 불균일이 최종 소자 성능에 미치는 영향을 시뮬레이션할 필요.\n"
-    "- Alignment 및 Stage 관련 센서 값의 이상이 누적되어, 장비 조건 불안정이 전체 로트 품질과 최종 수율에 미칠 위험도를 사전 평가해야 함."
-)
-
-
-# =========================
-# 내부 유틸
-# =========================
 
 def _require_supported_process(process_type: str, func_name: str) -> None:
-    """process_type 필수 및 지원 여부 검사"""
     if not process_type:
         raise ValueError(
-            f"[{func_name}] process_type는 필수입니다. 지원 키 중 하나를 넣어주세요: {sorted(SUPPORTED_PROCESSES)}"
+            f"[{func_name}] process_type는 필수입니다. 지원 목록: {sorted(SUPPORTED_PROCESSES)}"
         )
     if process_type not in SUPPORTED_PROCESSES:
         raise ValueError(
-            f"[{func_name}] 지원하지 않는 process_type='{process_type}'. "
-            f"지원 키: {sorted(SUPPORTED_PROCESSES)}"
+            f"[{func_name}] 지원하지 않는 process_type='{process_type}'. 지원 목록: {sorted(SUPPORTED_PROCESSES)}"
         )
 
 
@@ -425,18 +616,15 @@ def _call_api(
     system_prompt: str,
     fewshots: List[Tuple[str, str]],
     data: Any,
-    max_tokens: int = 256,
+    max_tokens: int = 512,
     temperature: float = 0.7,
-    presence_penalty: float = 1.5,
+    presence_penalty: float = 1.1,
 ) -> str:
-    """
-    llm_generate에 맞춘 단일 프롬프트 구성 (few-shot + data)
-    """
+    # Few-shot을 단일 프롬프트로 직조
     prompt = system_prompt + "\n\n"
     for user_ex, assistant_ex in fewshots:
-        prompt += f"User: {user_ex}\nAssistant: {assistant_ex}\n"
+        prompt += f"User:\n{user_ex}\nAssistant:\n{assistant_ex}\n"
     prompt += f"User: data:\n{data}\n\nanswer:\nAssistant:"
-
     response = llm_generate(
         url=llm_url,
         prompt=prompt,
@@ -447,63 +635,92 @@ def _call_api(
     return response["text"]
 
 
-# =========================
-# 공개 API
-# =========================
+# ---------------------------------------------------------------------
+# 3) Few-shot (간결 버전 — 포맷 예시용)
+#    * 데이터는 실제 호출 시 사용자가 넘기는 JSON/딕트가 들어옵니다.
+# ---------------------------------------------------------------------
+
+FEWSHOT_USER_CASE_1 = """data:
+{"TEMPERATURE": 28.3, "PRESSURE": 3.6, "SLURRY_FLOW_RATE": 320, "MOTOR_CURRENT": 18.9}
+answer:
+"""
+FEWSHOT_EXPLANATION_1 = (
+    "- SLURRY_FLOW_RATE=320 (정상 200–300): 과도 유량 → 패드/웨이퍼 간 유막 두꺼워져 제거율 변동 가능.\n"
+    "- MOTOR_CURRENT=18.9A (정상 15–18): 구동부 부하 증가 → 패드 마모/정합 불량 의심.\n"
+    "인과: 유량 증가가 마찰 조건을 바꿔 모터 부하 상승을 동반했을 수 있습니다."
+)
+
+FEWSHOT_TASK_1 = (
+    "1) 유량-제거율 상관 분석(데이터: SLURRY_FLOW_RATE/REMOVAL_RATE; 방법: 회귀; 기준: R²>0.6)\n"
+    "2) 모터 전류 이상 원인 분리(데이터: MOTOR_CURRENT/VIBRATION; 방법: FFT; 기준: 특정 주파수 피크)\n"
+    "3) 세트포인트 조정 실험(데이터: 최근 2h; 방법: 5% 단계응답; 기준: 30분 내 안정화)"
+)
+
+FEWSHOT_USER_CASE_2 = """data:
+{"PRESSURE": 108, "TEMPERATURE": 31.5, "RF_POWER": 1250, "GAS_FLOW_RATE": 160}
+answer:
+"""
+FEWSHOT_EXPLANATION_2 = (
+    "- PRESSURE=108 mTorr (정상 50–100): 압력 상한 초과 → 식각 균일도 저하 가능성.\n"
+    "- RF_POWER=1250W (정상 800–1200): 전력 상한 초과 → 챔버 온도 상승과 플라즈마 불안정 유발.\n"
+    "인과: 전력 상향이 가스 밀도·온도를 끌어올려 압력 상승을 동반했을 수 있습니다."
+)
+
+FEWSHOT_TASK_2 = (
+    "1) 압력 상승 원인 추정(데이터: RF_POWER/CHAMBER_PRESSURE; 방법: 그랜저 인과성; 기준: p<0.05)\n"
+    "2) 가스 유량 최적화(데이터: GAS_FLOW_RATE/균일도; 방법: DOE 2×2; 기준: 변동률<±3%)\n"
+    "3) 파워 세트포인트 재설정(방법: 50W 단계감소; 기준: 압력 95 mTorr 재진입)"
+)
+
+
+# ---------------------------------------------------------------------
+# 4) 공개 API
+# ---------------------------------------------------------------------
 
 def event_explain(llm_url: str, event_detect_analysis: Any, process_type: str) -> str:
     """
-    이상치 설명 생성 (신규 20개 공정만 지원)
+    이상치 설명 생성 (모든 도메인 동일 상세도)
+    - process_type: 20개 키 중 하나 (예: 'semiconductor_etch_002')
     """
     _require_supported_process(process_type, "event_explain")
-
-    fewshots = [
-        (FEWSHOT_USER_CASE_1, FEWSHOT_EXPLANATION_1),
-        (FEWSHOT_USER_CASE_2, FEWSHOT_EXPLANATION_2),
-    ]
-    system_prompt = PROCESS_EXPLANATION_PROMPTS[process_type]
-    print(f"[event_explain] Using process-specific prompt: {process_type}")
-
+    spec = PROCESS_SPECS[process_type]
+    system_prompt = _build_prompt(spec, mode="explain")
+    fewshots = [(FEWSHOT_USER_CASE_1, FEWSHOT_EXPLANATION_1),
+                (FEWSHOT_USER_CASE_2, FEWSHOT_EXPLANATION_2)]
+    print(f"[event_explain] Using spec: {process_type} -> {spec['title']}")
     return _call_api(llm_url, system_prompt, fewshots, event_detect_analysis)
 
 
 def event_cause_candidates(llm_url: str, event_detect_analysis: Any, process_type: str) -> str:
     """
-    분석 과업 생성 (신규 20개 공정만 지원)
+    분석 과업 생성 (모든 도메인 동일 상세도)
+    - process_type: 20개 키 중 하나 (예: 'steel_production_004')
     """
     _require_supported_process(process_type, "event_cause_candidates")
-
-    fewshots = [
-        (FEWSHOT_USER_CASE_1, FEWSHOT_TASK_1),
-        (FEWSHOT_USER_CASE_2, FEWSHOT_TASK_2),
-    ]
-    system_prompt = PROCESS_TASK_PROMPTS[process_type]
-    print(f"[event_cause_candidates] Using process-specific task prompt: {process_type}")
-
+    spec = PROCESS_SPECS[process_type]
+    system_prompt = _build_prompt(spec, mode="task")
+    fewshots = [(FEWSHOT_USER_CASE_1, FEWSHOT_TASK_1),
+                (FEWSHOT_USER_CASE_2, FEWSHOT_TASK_2)]
+    print(f"[event_cause_candidates] Using spec: {process_type} -> {spec['title']}")
     return _call_api(llm_url, system_prompt, fewshots, event_detect_analysis)
 
 
-# =========================
-# 로컬 테스트
-# =========================
-
+# ---------------------------------------------------------------------
+# 5) 로컬 테스트
+# ---------------------------------------------------------------------
 if __name__ == "__main__":
     url = "0.0.0.0:8888"
 
-    # 단일 예시 (ETCH)
-    test_data_single = '{"RF_POWER_SOURCE":2200.0,"CHAMBER_PRESSURE":250.0,"ELECTRODE_TEMP":85.0}'
-    proc_single = "semiconductor_etch_002"
+    # 예시 1: 반도체 Etch
+    data1 = '{"PRESSURE":108,"TEMPERATURE":31.5,"RF_POWER":1250,"GAS_FLOW_RATE":160}'
+    print("=== Semiconductor Etch - 설명 ===")
+    print(event_explain(url, data1, "semiconductor_etch_002"))
+    print("\n=== Semiconductor Etch - 과업 ===")
+    print(event_cause_candidates(url, data1, "semiconductor_etch_002"))
 
-    # 다중 속성 예시 (FULL)
-    test_data_multi = '{"LOT_NO":"LOT30012A","PRODUCT_NAME":"DRAM_512","START_QTY":25,"CURRENT_STEP":"PHOTO","FINAL_YIELD":75.0,"EXPOSURE_DOSE":45.0,"FOCUS_POSITION":80.0,"STAGE_TEMP":23.4,"HUMIDITY":60.0}'
-    proc_multi = "semiconductor_full_004"
-
-    print("=== 단일 행 입력 (설명) ===")
-    print(event_explain(url, test_data_single, process_type=proc_single))
-    print("\n=== 단일 행 입력 (과업) ===")
-    print(event_cause_candidates(url, test_data_single, process_type=proc_single))
-
-    print("\n=== 다중 속성 입력 (설명) ===")
-    print(event_explain(url, test_data_multi, process_type=proc_multi))
-    print("\n=== 다중 속성 입력 (과업) ===")
-    print(event_cause_candidates(url, test_data_multi, process_type=proc_multi))
+    # 예시 2: 철강 Rolling
+    data2 = '{"THICKNESS":4.3,"ROLL_GAP":4.4,"ROLLING_SPEED":210,"TENSION":305,"TEMPERATURE":890}'
+    print("\n=== Steel Rolling - 설명 ===")
+    print(event_explain(url, data2, "steel_rolling_001"))
+    print("\n=== Steel Rolling - 과업 ===")
+    print(event_cause_candidates(url, data2, "steel_rolling_001"))
