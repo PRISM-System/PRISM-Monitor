@@ -1,0 +1,37 @@
+{
+  "file_identifier": "chemical_refining_003",
+  "model_version": "v1.0",
+  "training_timestamp": "2025-10-23T23:10:04.141754",
+  "feature_columns": [
+    "refine_id",
+    "purity",
+    "temperature",
+    "filter_pressure",
+    "flow_rate",
+    "filtration_rate",
+    "contaminant_level",
+    "membrane_conductivity",
+    "permeate_quality",
+    "backwash_cycle"
+  ],
+  "input_dim": 9,
+  "encoding_dim": 4,
+  "threshold": 86.07583524396587,
+  "training_data_info": {
+    "data_file": "prism_monitor/test-scenarios/test_data/chemical/chemical_refining_003.csv",
+    "num_samples": 5000,
+    "num_features": 10
+  },
+  "hyperparameters": {
+    "epochs": 50,
+    "batch_size": 32,
+    "learning_rate": 0.001,
+    "threshold_percentile": 99
+  },
+  "performance_metrics": {
+    "final_loss": 0.18715804815292358,
+    "final_val_loss": 26.296894073486328,
+    "mse_mean": 5.408754042231816,
+    "mse_std": 16.73267479703031
+  }
+}

@@ -1,0 +1,37 @@
+{
+  "file_identifier": "automotive_press_003",
+  "model_version": "v1.0",
+  "training_timestamp": "2025-10-23T23:08:10.535727",
+  "feature_columns": [
+    "press_id",
+    "press_force",
+    "die_temperature",
+    "stroke_speed",
+    "blank_thickness",
+    "lubrication",
+    "forming_depth",
+    "spring_back",
+    "surface_roughness",
+    "defect_rate"
+  ],
+  "input_dim": 9,
+  "encoding_dim": 4,
+  "threshold": 2.8141606718384704,
+  "training_data_info": {
+    "data_file": "prism_monitor/test-scenarios/test_data/automotive/automotive_press_003.csv",
+    "num_samples": 5000,
+    "num_features": 10
+  },
+  "hyperparameters": {
+    "epochs": 50,
+    "batch_size": 32,
+    "learning_rate": 0.001,
+    "threshold_percentile": 99
+  },
+  "performance_metrics": {
+    "final_loss": 0.18642723560333252,
+    "final_val_loss": 0.5393820405006409,
+    "mse_mean": 0.2568740784917036,
+    "mse_std": 0.4500999367708805
+  }
+}

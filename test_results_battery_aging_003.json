@@ -1,0 +1,10 @@
+{
+  "total_records": 5000,
+  "anomalies_detected": 50,
+  "target_file": "battery_aging_003",
+  "processing_mode": "process_specific_model",
+  "data_source": "CSV (폴백)",
+  "processing_time": "2025-10-23T23:41:47.743807",
+  "model_version": "v1.0",
+  "threshold": 42.85993608952087
+}

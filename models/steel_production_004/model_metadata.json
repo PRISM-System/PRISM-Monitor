@@ -1,0 +1,38 @@
+{
+  "file_identifier": "steel_production_004",
+  "model_version": "v1.0",
+  "training_timestamp": "2025-10-23T23:11:02.311691",
+  "feature_columns": [
+    "production_line",
+    "temperature",
+    "pressure",
+    "oxygen_flow",
+    "slag_composition",
+    "thickness",
+    "production_rate",
+    "quality_index",
+    "emission_level",
+    "energy_consumption",
+    "compliance_status"
+  ],
+  "input_dim": 10,
+  "encoding_dim": 5,
+  "threshold": 28.446478345813798,
+  "training_data_info": {
+    "data_file": "prism_monitor/test-scenarios/test_data/steel/steel_production_004.csv",
+    "num_samples": 5000,
+    "num_features": 11
+  },
+  "hyperparameters": {
+    "epochs": 50,
+    "batch_size": 32,
+    "learning_rate": 0.001,
+    "threshold_percentile": 99
+  },
+  "performance_metrics": {
+    "final_loss": 0.06485400348901749,
+    "final_val_loss": 10.340112686157227,
+    "mse_mean": 2.119703693599331,
+    "mse_std": 5.908075382949559
+  }
+}

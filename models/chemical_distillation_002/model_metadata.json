@@ -1,0 +1,37 @@
+{
+  "file_identifier": "chemical_distillation_002",
+  "model_version": "v1.0",
+  "training_timestamp": "2025-10-23T23:09:49.205057",
+  "feature_columns": [
+    "tower_id",
+    "pressure",
+    "temperature",
+    "reflux_ratio",
+    "reboiler_heat",
+    "feed_flow_rate",
+    "top_temp",
+    "bottom_temp",
+    "distillate_purity",
+    "condensate_flow"
+  ],
+  "input_dim": 9,
+  "encoding_dim": 4,
+  "threshold": 1.2745818392346133,
+  "training_data_info": {
+    "data_file": "prism_monitor/test-scenarios/test_data/chemical/chemical_distillation_002.csv",
+    "num_samples": 5000,
+    "num_features": 10
+  },
+  "hyperparameters": {
+    "epochs": 50,
+    "batch_size": 32,
+    "learning_rate": 0.001,
+    "threshold_percentile": 99
+  },
+  "performance_metrics": {
+    "final_loss": 0.16140256822109222,
+    "final_val_loss": 0.7603116035461426,
+    "mse_mean": 0.28079897350760197,
+    "mse_std": 0.2826245683180844
+  }
+}

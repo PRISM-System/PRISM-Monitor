@@ -1,0 +1,37 @@
+{
+  "file_identifier": "semiconductor_full_004",
+  "model_version": "v1.0",
+  "training_timestamp": "2025-10-23T23:07:24.824394",
+  "feature_columns": [
+    "rf_power",
+    "pressure",
+    "temperature",
+    "gas_flow_rate",
+    "vacuum_pump",
+    "plasma_density",
+    "electron_temp",
+    "process_yield",
+    "defect_count",
+    "compliance_status"
+  ],
+  "input_dim": 10,
+  "encoding_dim": 5,
+  "threshold": 3.043059704342469,
+  "training_data_info": {
+    "data_file": "prism_monitor/test-scenarios/test_data/semiconductor/semiconductor_full_004.csv",
+    "num_samples": 5000,
+    "num_features": 10
+  },
+  "hyperparameters": {
+    "epochs": 50,
+    "batch_size": 32,
+    "learning_rate": 0.001,
+    "threshold_percentile": 99
+  },
+  "performance_metrics": {
+    "final_loss": 0.11705980449914932,
+    "final_val_loss": 1.5203176736831665,
+    "mse_mean": 0.3976612794465221,
+    "mse_std": 0.685074728447135
+  }
+}

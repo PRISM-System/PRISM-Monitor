@@ -1,0 +1,10 @@
+{
+  "total_records": 361,
+  "anomalies_detected": 4,
+  "target_file": "semi_cmp_sensors",
+  "processing_mode": "process_specific_model",
+  "data_source": "CSV (폴백)",
+  "processing_time": "2025-10-23T23:37:32.567275",
+  "model_version": "v1.0",
+  "threshold": 0.7892582751727544
+}

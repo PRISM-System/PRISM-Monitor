@@ -1,0 +1,36 @@
+{
+  "file_identifier": "semiconductor_cmp_001",
+  "model_version": "v1.0",
+  "training_timestamp": "2025-10-23T23:07:40.388043",
+  "feature_columns": [
+    "motor_current",
+    "slurry_flow_rate",
+    "head_rotation",
+    "pressure",
+    "temperature",
+    "polish_time",
+    "pad_thickness",
+    "slurry_temp",
+    "vibration"
+  ],
+  "input_dim": 9,
+  "encoding_dim": 4,
+  "threshold": 0.7892582751727544,
+  "training_data_info": {
+    "data_file": "prism_monitor/test-scenarios/test_data/semiconductor/semiconductor_cmp_001.csv",
+    "num_samples": 5000,
+    "num_features": 9
+  },
+  "hyperparameters": {
+    "epochs": 50,
+    "batch_size": 32,
+    "learning_rate": 0.001,
+    "threshold_percentile": 99
+  },
+  "performance_metrics": {
+    "final_loss": 0.26437145471572876,
+    "final_val_loss": 0.7328829765319824,
+    "mse_mean": 0.35817252002124267,
+    "mse_std": 1.8426709060606037
+  }
+}

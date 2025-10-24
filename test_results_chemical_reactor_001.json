@@ -1,0 +1,10 @@
+{
+  "total_records": 5000,
+  "anomalies_detected": 50,
+  "target_file": "chemical_reactor_001",
+  "processing_mode": "process_specific_model",
+  "data_source": "CSV (폴백)",
+  "processing_time": "2025-10-23T23:40:43.239670",
+  "model_version": "v1.0",
+  "threshold": 1.8200779467300219
+}

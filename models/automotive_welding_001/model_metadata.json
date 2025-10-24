@@ -1,0 +1,37 @@
+{
+  "file_identifier": "automotive_welding_001",
+  "model_version": "v1.0",
+  "training_timestamp": "2025-10-23T23:08:24.634438",
+  "feature_columns": [
+    "line_id",
+    "weld_current",
+    "weld_voltage",
+    "wire_speed",
+    "travel_speed",
+    "shielding_gas",
+    "arc_length",
+    "heat_input",
+    "penetration_depth",
+    "weld_quality_index"
+  ],
+  "input_dim": 9,
+  "encoding_dim": 4,
+  "threshold": 8.878846688152082,
+  "training_data_info": {
+    "data_file": "prism_monitor/test-scenarios/test_data/automotive/automotive_welding_001.csv",
+    "num_samples": 5000,
+    "num_features": 10
+  },
+  "hyperparameters": {
+    "epochs": 50,
+    "batch_size": 32,
+    "learning_rate": 0.001,
+    "threshold_percentile": 99
+  },
+  "performance_metrics": {
+    "final_loss": 0.19763842225074768,
+    "final_val_loss": 1.3751999139785767,
+    "mse_mean": 0.4329757861280843,
+    "mse_std": 1.5661102505209037
+  }
+}

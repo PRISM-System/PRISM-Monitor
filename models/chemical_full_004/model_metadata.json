@@ -1,0 +1,38 @@
+{
+  "file_identifier": "chemical_full_004",
+  "model_version": "v1.0",
+  "training_timestamp": "2025-10-23T23:10:33.428236",
+  "feature_columns": [
+    "process_id",
+    "catalyst_ratio",
+    "temperature",
+    "pressure",
+    "ph",
+    "concentration",
+    "yield",
+    "selectivity",
+    "emission_level",
+    "waste_treatment",
+    "compliance_status"
+  ],
+  "input_dim": 10,
+  "encoding_dim": 5,
+  "threshold": 1.3675087149670306,
+  "training_data_info": {
+    "data_file": "prism_monitor/test-scenarios/test_data/chemical/chemical_full_004.csv",
+    "num_samples": 5000,
+    "num_features": 11
+  },
+  "hyperparameters": {
+    "epochs": 50,
+    "batch_size": 32,
+    "learning_rate": 0.001,
+    "threshold_percentile": 99
+  },
+  "performance_metrics": {
+    "final_loss": 0.12085902690887451,
+    "final_val_loss": 0.6658950448036194,
+    "mse_mean": 0.22997348902407339,
+    "mse_std": 0.2835883306576961
+  }
+}

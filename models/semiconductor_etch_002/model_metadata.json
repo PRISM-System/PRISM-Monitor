@@ -1,0 +1,36 @@
+{
+  "file_identifier": "semiconductor_etch_002",
+  "model_version": "v1.0",
+  "training_timestamp": "2025-10-23T23:07:09.923462",
+  "feature_columns": [
+    "pressure",
+    "vacuum_pump",
+    "gas_flow_rate",
+    "rf_power",
+    "temperature",
+    "etch_rate",
+    "bias_voltage",
+    "chamber_humidity",
+    "gas_composition"
+  ],
+  "input_dim": 9,
+  "encoding_dim": 4,
+  "threshold": 0.8259234761418419,
+  "training_data_info": {
+    "data_file": "prism_monitor/test-scenarios/test_data/semiconductor/semiconductor_etch_002.csv",
+    "num_samples": 5000,
+    "num_features": 9
+  },
+  "hyperparameters": {
+    "epochs": 50,
+    "batch_size": 32,
+    "learning_rate": 0.001,
+    "threshold_percentile": 99
+  },
+  "performance_metrics": {
+    "final_loss": 0.164622500538826,
+    "final_val_loss": 0.5049668550491333,
+    "mse_mean": 0.23262534087999714,
+    "mse_std": 0.1732463833205447
+  }
+}

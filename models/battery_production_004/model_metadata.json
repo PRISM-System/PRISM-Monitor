@@ -1,0 +1,38 @@
+{
+  "file_identifier": "battery_production_004",
+  "model_version": "v1.0",
+  "training_timestamp": "2025-10-23T23:09:20.712180",
+  "feature_columns": [
+    "production_line",
+    "temperature",
+    "voltage",
+    "current",
+    "capacity",
+    "soc",
+    "cell_weight",
+    "electrolyte_fill",
+    "seal_quality",
+    "yield_rate",
+    "safety_status"
+  ],
+  "input_dim": 10,
+  "encoding_dim": 5,
+  "threshold": 4.243440061708872,
+  "training_data_info": {
+    "data_file": "prism_monitor/test-scenarios/test_data/battery/battery_production_004.csv",
+    "num_samples": 5000,
+    "num_features": 11
+  },
+  "hyperparameters": {
+    "epochs": 50,
+    "batch_size": 32,
+    "learning_rate": 0.001,
+    "threshold_percentile": 99
+  },
+  "performance_metrics": {
+    "final_loss": 0.07342169433832169,
+    "final_val_loss": 1.5446763038635254,
+    "mse_mean": 0.36757383775170427,
+    "mse_std": 0.8544360592132922
+  }
+}

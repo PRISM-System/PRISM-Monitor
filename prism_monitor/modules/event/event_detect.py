@@ -25,6 +25,17 @@ matplotlib.use('Agg')
 
 warnings.filterwarnings('ignore')
 
+# GPU 메모리 증가 설정 (CuDNN 버전 불일치 우회)
+try:
+    gpus = tf.config.list_physical_devices('GPU')
+    if gpus:
+        for gpu in gpus:
+            tf.config.experimental.set_memory_growth(gpu, True)
+        print(f"✓ GPU 메모리 증가 모드 활성화 ({len(gpus)}개 GPU)")
+except Exception as e:
+    print(f"GPU 설정 중 경고: {e}")
+    # GPU 설정 실패 시 계속 진행
+
 class ModelManager:
     """
     모델 저장, 로딩, 관리 클래스 (개선된 버전)
@@ -447,63 +458,52 @@ class DataValidityChecker:
     """
     
     def __init__(self):
-        # 각 공정별 정상 범위 정의 (스키마 기반)
+        # 각 공정별 정상 범위 정의 (신규 4개 반도체 공정 기준)
         self.normal_ranges = {
-            'semi_photo_sensors': {
-                'exposure_dose': (20, 40),
-                'focus_position': (-50, 50),
-                'stage_temp': (22.9, 23.1),
-                'humidity': (40, 50),
-                'alignment_error_x': (0, 3),
-                'alignment_error_y': (0, 3),
-                'lens_aberration': (0, 5),
-                'illumination_uniformity': (98, 100),
-                'reticle_temp': (22.95, 23.05)
+            'semiconductor_full_004': {
+                'rf_power': (800, 1200),
+                'pressure': (60, 100),
+                'temperature': (20, 60),
+                'gas_flow_rate': (80, 220),
+                'vacuum_pump': (70, 110),
+                'plasma_density': (1e9, 5e10),
+                'electron_temp': (1, 6),
+                'process_yield': (90, 100),
+                'defect_count': (0, 10),
+                'compliance_status': (0, 1)
             },
-            'semi_etch_sensors': {
-                'rf_power_source': (500, 2000),
-                'rf_power_bias': (50, 500),
-                'chamber_pressure': (5, 200),
-                'gas_flow_cf4': (0, 200),
-                'gas_flow_o2': (0, 100),
-                'gas_flow_ar': (0, 500),
-                'gas_flow_cl2': (0, 200),
-                'electrode_temp': (40, 80),
-                'chamber_wall_temp': (60, 80),
-                'helium_pressure': (5, 20),
-                'plasma_density': (1e10, 1e12)
+            'semiconductor_etch_002': {
+                'pressure': (60, 100),
+                'vacuum_pump': (70, 110),
+                'gas_flow_rate': (80, 220),
+                'rf_power': (850, 1150),
+                'temperature': (15, 60),
+                'etch_rate': (100, 300),
+                'bias_voltage': (-220, -60),
+                'chamber_humidity': (0, 1),
+                'gas_composition': (0, 1)
             },
-            'semi_cvd_sensors': {
-                'susceptor_temp': (300, 700),
-                'chamber_pressure': (0.1, 760),
-                'precursor_flow_teos': (0, 500),
-                'precursor_flow_silane': (0, 1000),
-                'precursor_flow_wf6': (0, 100),
-                'carrier_gas_n2': (0, 20),
-                'carrier_gas_h2': (0, 10),
-                'showerhead_temp': (150, 250),
-                'liner_temp': (100, 200)
+            'semiconductor_deposition_003': {
+                'temperature': (300, 450),
+                'pressure': (150, 320),
+                'gas_flow_rate': (80, 260),
+                'rf_power': (450, 750),
+                'deposition_rate': (60, 140),
+                'film_thickness': (20, 90),
+                'substrate_temp': (320, 460),
+                'precursor_flow': (10, 70),
+                'uniformity': (70, 100)
             },
-            'semi_implant_sensors': {
-                'beam_current': (0.1, 5000),
-                'beam_energy': (0.2, 3000),
-                'total_dose': (1e11, 1e16),
-                'implant_angle': (0, 45),
-                'wafer_rotation': (0, 1200),
-                'source_pressure': (1e-6, 1e-4),
-                'analyzer_pressure': (1e-7, 1e-5),
-                'end_station_pressure': (1e-7, 1e-6),
-                'beam_uniformity': (98, 100)
-            },
-            'semi_cmp_sensors': {
-                'head_pressure': (2, 8),
-                'retainer_pressure': (2, 6),
-                'platen_rotation': (20, 150),
-                'head_rotation': (20, 150),
-                'slurry_flow_rate': (100, 300),
-                'slurry_temp': (20, 25),
-                'pad_temp': (30, 50),
-                'conditioner_pressure': (5, 9)
+            'semiconductor_cmp_001': {
+                'motor_current': (5, 40),
+                'slurry_flow_rate': (80, 350),
+                'head_rotation': (20, 200),
+                'pressure': (1, 6),
+                'temperature': (15, 40),
+                'polish_time': (100, 400),
+                'pad_thickness': (0.5, 5),
+                'slurry_temp': (10, 40),
+                'vibration': (0, 5)
             }
         }
     
@@ -985,10 +985,367 @@ class RealtimeAnomalyDetector:
         </svg>
         '''.strip()
 
-def detect_anomalies_realtime(prism_core_db, start: str, end: str, model_dir: str = "models"):
-    """실시간 데이터베이스 연동 이상탐지 수행 - drift_svg 포함 5개 반환값"""
-    
-    print(f"실시간 이상탐지 시작: {start} ~ {end}")
+# ============================================================================
+# 🆕 NEW VERSION: File-Based Model Support (CSV 파일별 모델 지원 - 20개 모델)
+# ============================================================================
+def detect_anomalies_realtime(prism_core_db, start: str, end: str,
+                               target_file: str = None,  # 🆕 수정: CSV 파일 식별자 지정
+                               target_process: str = None,  # 📝 DEPRECATED: 하위 호환용
+                               model_dir: str = "models",
+                               use_csv: bool = False):  # 🆕 CSV 파일 직접 읽기 옵션
+    """
+    실시간 데이터베이스 연동 이상탐지 수행
+
+    Args:
+        prism_core_db: 데이터베이스 연결 (use_csv=True면 None 가능)
+        start: 시작 시간 (ISO format)
+        end: 종료 시간 (ISO format)
+        target_file: 🆕 탐지할 CSV 파일 (예: 'semiconductor_cmp_001', 'automotive_welding_001')
+                    None이면 레거시 모드
+        target_process: 📝 DEPRECATED - 하위 호환용, target_file 사용 권장
+        model_dir: 모델 저장 디렉토리 (기본값: "models")
+        use_csv: 로컬 CSV 파일 직접 읽기 (API 대신)
+
+    Returns:
+        (anomalies, drift_results, analysis_summary, vis_json)
+    """
+    print(f"🆕 실시간 이상탐지 시작 (File-Based Model Mode): {start} ~ {end}")
+
+    # 하위 호환: target_process가 있으면 target_file로 변환
+    if not target_file and target_process:
+        print(f"   ⚠️  target_process는 deprecated됩니다. target_file을 사용하세요.")
+        target_file = target_process
+
+    if target_file:
+        print(f"   대상 파일: {target_file}")
+
+    # 🆕 공정별 모델 지원
+    if target_file or target_process:
+        return _detect_with_process_specific_model(
+            prism_core_db, start, end, target_file or target_process, model_dir, use_csv=use_csv
+        )
+    else:
+        # target이 지정되지 않으면 에러
+        raise ValueError("target_file 또는 target_process를 지정해야 합니다.")
+
+
+# ============================================================================
+# 🆕 HELPER FUNCTIONS: JSON 직렬화
+# ============================================================================
+def convert_to_json_serializable(obj):
+    """객체를 JSON 직렬화 가능한 형태로 변환"""
+    import pandas as pd
+    import numpy as np
+    from datetime import datetime, date
+
+    # numpy 배열이나 pandas Series/DataFrame 처리
+    if isinstance(obj, (np.ndarray, pd.Series)):
+        return [convert_to_json_serializable(item) for item in obj.tolist()]
+    elif isinstance(obj, pd.DataFrame):
+        return obj.to_dict(orient="records")
+
+    # scalar 값들에 대한 NA 체크 (배열이 아닌 경우만)
+    try:
+        if pd.isna(obj):
+            return None
+    except (ValueError, TypeError):
+        # 배열이거나 NA 체크가 불가능한 객체는 그냥 넘어감
+        pass
+
+    if isinstance(obj, (np.integer, np.int64, np.int32)):
+        return int(obj)
+    elif isinstance(obj, (np.floating, np.float64, np.float32)):
+        if np.isnan(obj):
+            return None
+        return float(obj)
+    elif isinstance(obj, (datetime, date)):
+        return obj.isoformat()
+    elif isinstance(obj, pd.Timestamp):
+        return obj.isoformat()
+    elif isinstance(obj, np.bool_):
+        return bool(obj)
+    elif isinstance(obj, bytes):
+        return obj.decode('utf-8', errors='ignore')
+    elif isinstance(obj, dict):
+        return {k: convert_to_json_serializable(v) for k, v in obj.items()}
+    elif isinstance(obj, (list, tuple)):
+        return [convert_to_json_serializable(item) for item in obj]
+    else:
+        return obj
+
+
+def dataframe_to_json_serializable(df):
+    """DataFrame을 JSON 직렬화 가능한 dict로 변환"""
+    if df.empty:
+        return []
+
+    # 각 행을 dict로 변환하면서 모든 값을 JSON 직렬화 가능하게 변환
+    records = []
+    for _, row in df.iterrows():
+        record = {}
+        for col in df.columns:
+            val = row[col]
+            record[col] = convert_to_json_serializable(val)
+        records.append(record)
+
+    return records
+
+
+# ============================================================================
+# 🆕 HELPER FUNCTION: CSV 파일에서 데이터 로드
+# ============================================================================
+def _load_data_from_csv(target_process: str, start: str, end: str):
+    """
+    로컬 CSV 파일에서 데이터 로드
+
+    Args:
+        target_process: 공정 식별자
+        start: 시작 시간
+        end: 종료 시간
+
+    Returns:
+        pandas DataFrame
+    """
+    import pandas as pd
+
+    # 공정 이름 -> CSV 파일 경로 매핑
+    process_to_csv = {
+        # Semiconductor
+        'semiconductor_cmp_001': 'prism_monitor/test-scenarios/test_data/semiconductor/semiconductor_cmp_001.csv',
+        'semiconductor_etch_002': 'prism_monitor/test-scenarios/test_data/semiconductor/semiconductor_etch_002.csv',
+        'semiconductor_deposition_003': 'prism_monitor/test-scenarios/test_data/semiconductor/semiconductor_deposition_003.csv',
+        'semiconductor_full_004': 'prism_monitor/test-scenarios/test_data/semiconductor/semiconductor_full_004.csv',
+        # Chemical
+        'chemical_reactor_001': 'prism_monitor/test-scenarios/test_data/chemical/chemical_reactor_001.csv',
+        'chemical_distillation_002': 'prism_monitor/test-scenarios/test_data/chemical/chemical_distillation_002.csv',
+        'chemical_refining_003': 'prism_monitor/test-scenarios/test_data/chemical/chemical_refining_003.csv',
+        'chemical_full_004': 'prism_monitor/test-scenarios/test_data/chemical/chemical_full_004.csv',
+        # Automotive
+        'automotive_welding_001': 'prism_monitor/test-scenarios/test_data/automotive/automotive_welding_001.csv',
+        'automotive_painting_002': 'prism_monitor/test-scenarios/test_data/automotive/automotive_painting_002.csv',
+        'automotive_press_003': 'prism_monitor/test-scenarios/test_data/automotive/automotive_press_003.csv',
+        'automotive_assembly_004': 'prism_monitor/test-scenarios/test_data/automotive/automotive_assembly_004.csv',
+        # Battery
+        'battery_formation_001': 'prism_monitor/test-scenarios/test_data/battery/battery_formation_001.csv',
+        'battery_coating_002': 'prism_monitor/test-scenarios/test_data/battery/battery_coating_002.csv',
+        'battery_aging_003': 'prism_monitor/test-scenarios/test_data/battery/battery_aging_003.csv',
+        'battery_production_004': 'prism_monitor/test-scenarios/test_data/battery/battery_production_004.csv',
+        # Steel
+        'steel_rolling_001': 'prism_monitor/test-scenarios/test_data/steel/steel_rolling_001.csv',
+        'steel_converter_002': 'prism_monitor/test-scenarios/test_data/steel/steel_converter_002.csv',
+        'steel_casting_003': 'prism_monitor/test-scenarios/test_data/steel/steel_casting_003.csv',
+        'steel_production_004': 'prism_monitor/test-scenarios/test_data/steel/steel_production_004.csv',
+    }
+
+    # CSV 파일 경로 찾기
+    csv_path = process_to_csv.get(target_process)
+    if not csv_path:
+        # 대문자로 시도
+        csv_path = process_to_csv.get(target_process.upper())
+
+    if not csv_path or not os.path.exists(csv_path):
+        raise FileNotFoundError(f"CSV 파일을 찾을 수 없음: {target_process}")
+
+    print(f"   📂 CSV 파일 로드: {csv_path}")
+
+    # CSV 파일 읽기
+    data = pd.read_csv(csv_path)
+    print(f"   ✓ 로드 완료: {len(data)} 행")
+
+    # 컬럼명 소문자 변환
+    data.columns = data.columns.str.lower()
+
+    # Timestamp 필터링
+    if 'timestamp' in data.columns:
+        data['timestamp'] = pd.to_datetime(data['timestamp'], utc=True)
+        start_time = pd.to_datetime(start, utc=True)
+        end_time = pd.to_datetime(end, utc=True)
+        data = data[(data['timestamp'] >= start_time) & (data['timestamp'] <= end_time)]
+        print(f"   ✓ 시간 필터링 완료: {len(data)} 행 (시간 범위: {start} ~ {end})")
+
+    return data
+
+
+# ============================================================================
+# 🆕 NEW FUNCTION: Process-Specific Model Detection (공정별 모델)
+# ============================================================================
+def _detect_with_process_specific_model(prism_core_db, start: str, end: str,
+                                        target_process: str, model_dir: str, use_csv: bool = False):
+    """
+    공정별 모델을 사용한 이상 탐지 (API 또는 CSV 기반 데이터 로딩)
+
+    Args:
+        target_process: 공정 식별자 (예: 'semi_cmp_sensors', 'semiconductor_cmp_001')
+        use_csv: True이면 로컬 CSV 파일에서 데이터 로드
+    """
+    from prism_monitor.utils.process_model_manager import ProcessModelManager
+    import pandas as pd
+
+    # 하위 호환성을 위한 별칭
+    target_file = target_process
+
+    print(f"🔍 공정별 모델로 이상 탐지 수행: {target_process}")
+    if use_csv:
+        print(f"   📁 데이터 소스: 로컬 CSV 파일 (강제)")
+    else:
+        print(f"   🌐 데이터 소스: API 우선, 실패 시 CSV 폴백")
+
+    try:
+        # 1. ProcessModelManager 초기화
+        process_model_manager = ProcessModelManager(base_model_dir=model_dir)
+
+        # 2. 모델 로드
+        try:
+            model, scaler, metadata = process_model_manager.get_model_for_process(target_process)
+            feature_cols = metadata['feature_columns']
+            threshold = metadata['threshold']
+            print(f"   ✓ {target_process} 모델 로드 완료 (features: {len(feature_cols)})")
+        except Exception as e:
+            print(f"   ✗ 모델 로드 실패 ({target_process}): {e}")
+            return [], [], {'error': f'Model not found: {e}'}, {"error": str(e)}
+
+        # 3. 데이터 로딩 (API 먼저 시도, 실패 시 CSV로 폴백)
+        data = None
+        data_source = None
+
+        if use_csv:
+            # 명시적으로 CSV 모드 지정된 경우
+            print(f"   📁 CSV 모드 강제 사용")
+            try:
+                data = _load_data_from_csv(target_process, start, end)
+                data_source = "CSV (강제)"
+            except Exception as e:
+                print(f"   ✗ CSV 로드 실패: {e}")
+                return [], [], {'error': f'CSV loading failed: {e}'}, {"error": str(e)}
+        else:
+            # API 먼저 시도
+            if prism_core_db is not None:
+                table_name = target_process.upper() if not target_process.startswith('semiconductor_') else target_process
+                print(f"   📂 API에서 데이터 로드 시도: {table_name}")
+                try:
+                    data = prism_core_db.get_table_data(table_name)
+                    print(f"   ✓ API 로드 완료: {len(data)} 행")
+                    data_source = "API"
+
+                    # 컬럼명 소문자 변환
+                    data.columns = data.columns.str.lower()
+
+                    # Timestamp 필터링
+                    if 'timestamp' in data.columns:
+                        data['timestamp'] = pd.to_datetime(data['timestamp'], utc=True)
+                        start_time = pd.to_datetime(start, utc=True)
+                        end_time = pd.to_datetime(end, utc=True)
+                        data = data[(data['timestamp'] >= start_time) & (data['timestamp'] <= end_time)]
+                        print(f"   ✓ 시간 필터링 완료: {len(data)} 행 (시간 범위: {start} ~ {end})")
+
+                except Exception as e:
+                    print(f"   ⚠️  API 로드 실패: {e}")
+                    print(f"   🔄 로컬 CSV 파일로 폴백...")
+                    data = None
+
+            # API 실패 또는 prism_core_db가 None인 경우 CSV로 폴백
+            if data is None:
+                try:
+                    data = _load_data_from_csv(target_process, start, end)
+                    data_source = "CSV (폴백)"
+                except Exception as e:
+                    print(f"   ✗ CSV 로드도 실패: {e}")
+                    return [], [], {'error': f'Both API and CSV loading failed: {e}'}, {"error": str(e)}
+
+        if len(data) == 0:
+            print(f"   ⚠️  시간 범위 내 데이터 없음")
+            return [], [], {}, {"anomalies": [], "drift_results": [], "raw_data": {}}
+
+        # 4. Feature 추출 및 전처리
+        # 문자열 컬럼 자동 필터링 및 누락된 feature 처리
+        numeric_feature_cols = []
+        for col in feature_cols:
+            if col not in data.columns:
+                # 컬럼이 없으면 0으로 채움
+                data[col] = 0
+                numeric_feature_cols.append(col)
+            else:
+                # 숫자형 데이터만 포함
+                if pd.api.types.is_numeric_dtype(data[col]):
+                    numeric_feature_cols.append(col)
+                else:
+                    print(f"   ⚠️  비숫자 컬럼 제외: {col} (타입: {data[col].dtype})")
+
+        # 숫자형 feature만 사용
+        if len(numeric_feature_cols) != len(feature_cols):
+            print(f"   📝 Feature 조정: {len(feature_cols)} → {len(numeric_feature_cols)} (숫자형만)")
+            feature_cols = numeric_feature_cols
+
+        X_test = data[feature_cols].values
+        X_test = np.nan_to_num(X_test, nan=0.0)
+        X_test_scaled = scaler.transform(X_test)
+
+        # 5. 이상탐지
+        reconstructed = model.predict(X_test_scaled, verbose=0)
+        mse_scores = np.mean(np.square(X_test_scaled - reconstructed), axis=1)
+
+        # 6. 이상치 판정
+        anomaly_mask = mse_scores > threshold
+        anomaly_indices = np.where(anomaly_mask)[0]
+
+        print(f"   📊 {len(anomaly_indices)}개 이상치 탐지 (전체 {len(data)}개 중)")
+
+        # 7. 이상치 레코드 생성
+        anomalies = []
+        for idx in anomaly_indices:
+            anomaly_record = {
+                'table_name': target_file,
+                'file_identifier': target_file,
+                'timestamp': data.iloc[idx].get('timestamp', datetime.now()).isoformat() if hasattr(data.iloc[idx].get('timestamp'), 'isoformat') else str(data.iloc[idx].get('timestamp')),
+                'equipment_id': data.iloc[idx].get('sensor_id') or data.iloc[idx].get('equipment_id', 'unknown'),
+                'anomaly_type': 'autoencoder_reconstruction_error',
+                'anomaly_score': float(mse_scores[idx]),
+                'threshold': float(threshold),
+                'severity': 'HIGH' if mse_scores[idx] > threshold * 2 else 'MEDIUM',
+                'model_used': metadata['model_version'],
+                'detection_method': 'file_specific_autoencoder'
+            }
+            anomalies.append(anomaly_record)
+
+        # 8. 분석 요약
+        analysis_summary = {
+            'total_records': len(data),
+            'anomalies_detected': len(anomalies),
+            'target_file': target_file,
+            'processing_mode': 'process_specific_model',
+            'data_source': data_source,  # API 또는 CSV
+            'processing_time': datetime.now().isoformat(),
+            'model_version': metadata['model_version'],
+            'threshold': float(threshold)
+        }
+
+        # 9. vis_json 생성
+        vis_json = {
+            "anomalies": convert_to_json_serializable(anomalies),
+            "drift_results": [],
+            "raw_data": {target_file: dataframe_to_json_serializable(data)},
+            "analysis_summary": analysis_summary
+        }
+
+        print(f"✅ 파일별 이상탐지 완료: {len(anomalies)}개 이상 탐지")
+        return anomalies, [], analysis_summary, vis_json
+
+    except Exception as e:
+        print(f"❌ 파일별 이상탐지 중 오류: {e}")
+        import traceback
+        traceback.print_exc()
+        return [], [], {'error': str(e)}, {"error": str(e)}
+
+
+# ============================================================================
+# 📝 LEGACY VERSION: 기존 방식 (모든 데이터 통합 탐지)
+# ============================================================================
+def _detect_anomalies_realtime_legacy(prism_core_db, start: str, end: str, model_dir: str = "models"):
+    """
+    기존 방식: 모든 센서 데이터를 통합하여 단일 모델로 이상 탐지
+    (하위 호환성 유지를 위해 보존)
+    """
+    print(f"📝 Legacy Mode: 기존 방식으로 이상탐지 수행: {start} ~ {end}")
     
     def convert_to_json_serializable(obj):
         """객체를 JSON 직렬화 가능한 형태로 변환"""
@@ -1193,20 +1550,48 @@ def detect_anomalies_realtime(prism_core_db, start: str, end: str, model_dir: st
         }
         return [], [], error_analysis, vis_json
 
-def _fetch_data_from_database_standalone(prism_core_db, start: str, end: str):
-    """독립적인 데이터 가져오기 함수"""
+# ============================================================================
+# 🆕 NEW VERSION: 새 데이터 경로 및 정규화 지원
+# ============================================================================
+def _fetch_data_from_database_standalone(prism_core_db, start: str, end: str, target_process: str = None):
+    """
+    데이터 가져오기 함수 (새 데이터 경로 및 공정별 필터링 지원)
+
+    Args:
+        prism_core_db: 데이터베이스 연결
+        start: 시작 시간
+        end: 종료 시간
+        target_process: 🆕 특정 공정만 로드 (예: 'semi_cmp_sensors')
+                       None이면 모든 공정 로드
+    """
     import pandas as pd
     from glob import glob
     import os
-    
+
+    # 🆕 데이터 정규화 import
+    try:
+        from prism_monitor.utils.data_normalizer import normalize_semiconductor_data, map_file_to_table_name
+        use_normalizer = True
+    except ImportError:
+        print("Warning: data_normalizer not found, using legacy mode")
+        use_normalizer = False
+
     start_time = pd.to_datetime(start, utc=True)
     end_time = pd.to_datetime(end, utc=True)
     datasets = {}
-    
+
+    # 🆕 파일명과 공정 매핑
+    file_to_process_map = {
+        'semiconductor_cmp_001.csv': 'semi_cmp_sensors',
+        'semiconductor_etch_002.csv': 'semi_etch_sensors',
+        'semiconductor_deposition_003.csv': 'semi_cvd_sensors',
+        # semiconductor_full_004.csv는 여러 공정 혼합이므로 제외 또는 별도 처리
+    }
+
     try:
         # 우선 로컬 데이터 사용 (테스트용)
         raise ValueError('use local data')
-        
+
         # 데이터베이스에서 데이터 가져오기 (실제 운영시 사용)
         if hasattr(prism_core_db, 'get_tables'):
             for table_name in prism_core_db.get_tables():
@@ -1215,28 +1600,107 @@ def _fetch_data_from_database_standalone(prism_core_db, start: str, end: str):
                     df['timestamp'] = pd.to_datetime(df['timestamp'], utc=True, errors='coerce')
                     df = df[(df['timestamp'] >= start_time) & (df['timestamp'] <= end_time)]
                 datasets[table_name] = df
-            
+
     except Exception as e:
         print(f"dataset error raised {e}, use local data")
-        # 로컬 CSV 파일에서 데이터 가져오기
+
+        # 🆕 새 데이터 경로 시도
         try:
-            data_paths = glob('prism_monitor/data/Industrial_DB_sample/*.csv')
+            data_paths = glob('prism_monitor/test-scenarios/test_data/semiconductor/*.csv')
+
+            if not data_paths:
+                # fallback to old path
+                print("새 데이터 경로에 파일 없음, 기존 경로 시도...")
+                data_paths = glob('prism_monitor/data/Industrial_DB_sample/*.csv')
+                use_normalizer = False  # 기존 데이터는 정규화 불필요
+
             for data_path in data_paths:
                 try:
+                    source_file = os.path.basename(data_path)
+
+                    # 🆕 새 데이터 경로인 경우 파일명으로 공정명 매핑
+                    if use_normalizer and source_file in file_to_process_map:
+                        table_name = file_to_process_map[source_file]
+
+                        # target_process가 지정된 경우 해당 공정만 로드
+                        if target_process and table_name != target_process:
+                            print(f"   공정 필터링: {table_name} 스킵 (대상: {target_process})")
+                            continue
+                    else:
+                        # 기존 데이터 경로
+                        table_name = source_file.split('.csv')[0].lower()
+
                     df = pd.read_csv(data_path)
-                    table_name = os.path.basename(data_path).split('.csv')[0].lower()
+
+                    # 🆕 데이터 정규화 (새 데이터인 경우)
+                    if use_normalizer and source_file in file_to_process_map:
+                        df = normalize_semiconductor_data(df, source_file)
+
+                    # 시간 필터링
                     if 'timestamp' in df.columns:
                         df['timestamp'] = pd.to_datetime(df['timestamp'], utc=True, errors='coerce')
                         df = df[(df['timestamp'] >= start_time) & (df['timestamp'] <= end_time)]
+
                     datasets[table_name] = df
-                    print(f"로컬 데이터 로드 완료: {table_name} ({len(df)}행)")
+                    print(f"   ✓ 로드 완료: {table_name} ({len(df)}행)")
+
                 except Exception as file_error:
-                    print(f"파일 로드 실패: {data_path}, 오류: {file_error}")
+                    print(f"   ✗ 파일 로드 실패: {data_path}, 오류: {file_error}")
                     continue
+
         except Exception as glob_error:
             print(f"로컬 데이터 폴더 접근 실패: {glob_error}")
-            
+
     return datasets
+
+
+# ============================================================================
+# 📝 LEGACY VERSION (주석 처리 - 참고용)
+# ============================================================================
+# def _fetch_data_from_database_standalone(prism_core_db, start: str, end: str):
+#     """독립적인 데이터 가져오기 함수 (기존 버전)"""
+#     import pandas as pd
+#     from glob import glob
+#     import os
+#
+#     start_time = pd.to_datetime(start, utc=True)
+#     end_time = pd.to_datetime(end, utc=True)
+#     datasets = {}
+#
+#     try:
+#         # 우선 로컬 데이터 사용 (테스트용)
+#         raise ValueError('use local data')
+#
+#         # 데이터베이스에서 데이터 가져오기 (실제 운영시 사용)
+#         if hasattr(prism_core_db, 'get_tables'):
+#             for table_name in prism_core_db.get_tables():
+#                 df = prism_core_db.get_table_data(table_name)
+#                 if 'timestamp' in df.columns:
+#                     df['timestamp'] = pd.to_datetime(df['timestamp'], utc=True, errors='coerce')
+#                     df = df[(df['timestamp'] >= start_time) & (df['timestamp'] <= end_time)]
+#                 datasets[table_name] = df
+#
+#     except Exception as e:
+#         print(f"dataset error raised {e}, use local data")
+#         # 로컬 CSV 파일에서 데이터 가져오기
+#         try:
+#             data_paths = glob('prism_monitor/data/Industrial_DB_sample/*.csv')
+#             for data_path in data_paths:
+#                 try:
+#                     df = pd.read_csv(data_path)
+#                     table_name = os.path.basename(data_path).split('.csv')[0].lower()
+#                     if 'timestamp' in df.columns:
+#                         df['timestamp'] = pd.to_datetime(df['timestamp'], utc=True, errors='coerce')
+#                         df = df[(df['timestamp'] >= start_time) & (df['timestamp'] <= end_time)]
+#                     datasets[table_name] = df
+#                     print(f"로컬 데이터 로드 완료: {table_name} ({len(df)}행)")
+#                 except Exception as file_error:
+#                     print(f"파일 로드 실패: {data_path}, 오류: {file_error}")
+#                     continue
+#         except Exception as glob_error:
+#             print(f"로컬 데이터 폴더 접근 실패: {glob_error}")
+#
+#     return datasets
 
 
 def _basic_anomaly_detection(data, table_name):

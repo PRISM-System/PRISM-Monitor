@@ -1,0 +1,38 @@
+{
+  "file_identifier": "automotive_assembly_004",
+  "model_version": "v1.0",
+  "training_timestamp": "2025-10-23T23:08:38.584185",
+  "feature_columns": [
+    "station_id",
+    "torque",
+    "pressure",
+    "temperature",
+    "cycle_time",
+    "defect_rate",
+    "tightening_angle",
+    "bolt_count",
+    "position_accuracy",
+    "quality_score",
+    "safety_status"
+  ],
+  "input_dim": 10,
+  "encoding_dim": 5,
+  "threshold": 4.13201446734368,
+  "training_data_info": {
+    "data_file": "prism_monitor/test-scenarios/test_data/automotive/automotive_assembly_004.csv",
+    "num_samples": 5000,
+    "num_features": 11
+  },
+  "hyperparameters": {
+    "epochs": 50,
+    "batch_size": 32,
+    "learning_rate": 0.001,
+    "threshold_percentile": 99
+  },
+  "performance_metrics": {
+    "final_loss": 0.13119687139987946,
+    "final_val_loss": 1.852445125579834,
+    "mse_mean": 0.4751096842797131,
+    "mse_std": 0.8831996569101112
+  }
+}

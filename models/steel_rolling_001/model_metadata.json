@@ -1,0 +1,37 @@
+{
+  "file_identifier": "steel_rolling_001",
+  "model_version": "v1.0",
+  "training_timestamp": "2025-10-23T23:11:31.952476",
+  "feature_columns": [
+    "line_id",
+    "thickness",
+    "roll_gap",
+    "rolling_speed",
+    "tension",
+    "temperature",
+    "roll_force",
+    "width",
+    "flatness",
+    "surface_quality"
+  ],
+  "input_dim": 9,
+  "encoding_dim": 4,
+  "threshold": 36.62512653461034,
+  "training_data_info": {
+    "data_file": "prism_monitor/test-scenarios/test_data/steel/steel_rolling_001.csv",
+    "num_samples": 5000,
+    "num_features": 10
+  },
+  "hyperparameters": {
+    "epochs": 50,
+    "batch_size": 32,
+    "learning_rate": 0.001,
+    "threshold_percentile": 99
+  },
+  "performance_metrics": {
+    "final_loss": 0.1897154450416565,
+    "final_val_loss": 5.063656330108643,
+    "mse_mean": 1.164271952911789,
+    "mse_std": 5.490440527325756
+  }
+}

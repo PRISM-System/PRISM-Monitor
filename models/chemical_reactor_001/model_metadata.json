@@ -1,0 +1,37 @@
+{
+  "file_identifier": "chemical_reactor_001",
+  "model_version": "v1.0",
+  "training_timestamp": "2025-10-23T23:10:18.601484",
+  "feature_columns": [
+    "reactor_id",
+    "temperature",
+    "pressure",
+    "ph",
+    "concentration",
+    "feed_rate",
+    "catalyst_ratio",
+    "agitator_speed",
+    "cooling_water_flow",
+    "reaction_rate"
+  ],
+  "input_dim": 9,
+  "encoding_dim": 4,
+  "threshold": 1.8200779467300219,
+  "training_data_info": {
+    "data_file": "prism_monitor/test-scenarios/test_data/chemical/chemical_reactor_001.csv",
+    "num_samples": 5000,
+    "num_features": 10
+  },
+  "hyperparameters": {
+    "epochs": 50,
+    "batch_size": 32,
+    "learning_rate": 0.001,
+    "threshold_percentile": 99
+  },
+  "performance_metrics": {
+    "final_loss": 0.20395709574222565,
+    "final_val_loss": 28.45864486694336,
+    "mse_mean": 5.854725779194323,
+    "mse_std": 75.9323833929901
+  }
+}

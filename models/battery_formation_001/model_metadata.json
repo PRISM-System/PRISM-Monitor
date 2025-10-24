@@ -1,0 +1,37 @@
+{
+  "file_identifier": "battery_formation_001",
+  "model_version": "v1.0",
+  "training_timestamp": "2025-10-23T23:09:35.388183",
+  "feature_columns": [
+    "cell_id",
+    "voltage",
+    "current",
+    "capacity",
+    "temperature",
+    "soc",
+    "cycle",
+    "internal_resistance",
+    "charge_rate",
+    "discharge_rate"
+  ],
+  "input_dim": 9,
+  "encoding_dim": 4,
+  "threshold": 27.036462548042728,
+  "training_data_info": {
+    "data_file": "prism_monitor/test-scenarios/test_data/battery/battery_formation_001.csv",
+    "num_samples": 5000,
+    "num_features": 10
+  },
+  "hyperparameters": {
+    "epochs": 50,
+    "batch_size": 32,
+    "learning_rate": 0.001,
+    "threshold_percentile": 99
+  },
+  "performance_metrics": {
+    "final_loss": 0.1770647168159485,
+    "final_val_loss": 4.08353328704834,
+    "mse_mean": 0.9583750312664957,
+    "mse_std": 6.646619257379483
+  }
+}

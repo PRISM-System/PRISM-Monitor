@@ -1,0 +1,37 @@
+{
+  "file_identifier": "automotive_painting_002",
+  "model_version": "v1.0",
+  "training_timestamp": "2025-10-23T23:07:55.624028",
+  "feature_columns": [
+    "booth_id",
+    "temperature",
+    "humidity",
+    "spray_pressure",
+    "paint_flow_rate",
+    "booth_airflow",
+    "atomization_quality",
+    "film_thickness",
+    "overspray_rate",
+    "curing_temp"
+  ],
+  "input_dim": 9,
+  "encoding_dim": 4,
+  "threshold": 7.006109240141517,
+  "training_data_info": {
+    "data_file": "prism_monitor/test-scenarios/test_data/automotive/automotive_painting_002.csv",
+    "num_samples": 5000,
+    "num_features": 10
+  },
+  "hyperparameters": {
+    "epochs": 50,
+    "batch_size": 32,
+    "learning_rate": 0.001,
+    "threshold_percentile": 99
+  },
+  "performance_metrics": {
+    "final_loss": 0.17372040450572968,
+    "final_val_loss": 3.4536712169647217,
+    "mse_mean": 0.8294041950434478,
+    "mse_std": 1.5942404637543106
+  }
+}

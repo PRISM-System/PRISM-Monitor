@@ -1,0 +1,37 @@
+{
+  "file_identifier": "steel_casting_003",
+  "model_version": "v1.0",
+  "training_timestamp": "2025-10-23T23:10:47.790485",
+  "feature_columns": [
+    "caster_id",
+    "slab_thickness",
+    "casting_speed",
+    "mold_width",
+    "temperature",
+    "cooling_water_flow",
+    "mold_level",
+    "strand_temperature",
+    "withdrawal_force",
+    "surface_defects"
+  ],
+  "input_dim": 9,
+  "encoding_dim": 4,
+  "threshold": 24.55030690222011,
+  "training_data_info": {
+    "data_file": "prism_monitor/test-scenarios/test_data/steel/steel_casting_003.csv",
+    "num_samples": 5000,
+    "num_features": 10
+  },
+  "hyperparameters": {
+    "epochs": 50,
+    "batch_size": 32,
+    "learning_rate": 0.001,
+    "threshold_percentile": 99
+  },
+  "performance_metrics": {
+    "final_loss": 0.16201934218406677,
+    "final_val_loss": 2.943361282348633,
+    "mse_mean": 0.7180852190500718,
+    "mse_std": 3.686168810105176
+  }
+}
