@@ -1,28 +1,3 @@
-"""
-대시보드 실시간 스트림 시뮬레이터 (하드코딩 최소화판)
-
-목표
-- CSV/모델 경로, 공정 메타정보 등을 **하드코딩 없이 자동 탐색/연결**
-- 모델 디렉터리의 `model_metadata.json`으로 대부분의 설정을 제어
-- 환경변수/인자 기반으로 경로 지정 (기본값 없이도 동작 가능)
-
-핵심 아이디어
-1) **CSV 자동 스캔**: `test_data_dir/**/**/*.csv` 전부 로딩. 산업명=상위 폴더명, 프로세스명=파일명에서 추정(또는 메타데이터로 override)
-2) **라인 컬럼 자동 추론**: `_ID`로 끝나는 컬럼/우선순위 목록/메타데이터의 `line_col`로 결정
-3) **모델 자동 연결**: `models_root/*/` 하위 각 폴더를 모델로 간주하고,
-   - 필수: `autoencoder_model.h5`, `scaler.pkl`, `model_metadata.json`
-   - `model_metadata.json`의 `csv_name` 또는 `csv_glob`로 대상 CSV 매칭
-   - 없으면 폴더명과 CSV basename(stem) 동일하면 매칭
-4) **상태/이상치 기본 규칙**: 별도 하드코딩 없이 공통 규칙 적용
-   - 상태: `STATE|STATUS|PROCESS_STATE` 중 존재하는 값 사용, 없으면 `RPM>0 => RUNNING`
-   - 이상치: AE 재구성오차 vs `threshold` 비교 (mse|mae)
-
-환경변수 (없으면 인자/기본값 사용)
-- PRISM_TEST_DATA_DIR, PRISM_MODELS_ROOT, PRISM_OUTPUT_DIR
-
-출력 스키마는 이전 버전과 동일.
-"""
-
 from __future__ import annotations
 
 import os
