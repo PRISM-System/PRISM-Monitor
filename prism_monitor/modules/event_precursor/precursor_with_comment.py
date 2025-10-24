@@ -123,7 +123,7 @@ def precursor(datasets):
     val_df, _, _, _ = prepare_features(val_df, train_stats=train_stats)
     test_df, _, _, _ = prepare_features(test_df, train_stats=train_stats)
 
-    print(f"특성 개수: {len(feature_cols)}")
+    print(f"✅ 특성 개수: {len(feature_cols)}")
 
     print("\n[4/5] 모델 학습 및 예측...")
 
@@ -142,10 +142,10 @@ def precursor(datasets):
             trained_model, model_scaler, feature_cols, test_df
         )
     else:
-        print("모델 학습 실패 - 기본값 반환")
+        print("⚠️ 모델 학습 실패 - 기본값 반환")
 
     print("\n" + "=" * 60)
-    print(f"Precursor 완료 - 이상 상태: {anomaly_status}")
+    print(f"✅ Precursor 완료 - 이상 상태: {anomaly_status}")
     print("=" * 60)
 
     return {

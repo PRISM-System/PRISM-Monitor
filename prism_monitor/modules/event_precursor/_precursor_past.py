@@ -10,92 +10,71 @@ import warnings
 import os
 from datetime import datetime, timedelta
 import matplotlib.pyplot as plt
+import seaborn as sns
 import time
-
-def load_single_csv(csv_path):
-    df = pd.read_csv(csv_path)
-    if 'TIMESTAMP' in df.columns:
-        df['TIMESTAMP'] = pd.to_datetime(df['TIMESTAMP'])
-    return df
 
 
 def load_and_explore_data(data_base_path):
     print("Data Loading...")
+    data_files = {
+        'semi_lot_manage': 'SEMI_LOT_MANAGE.csv',
+        'semi_process_history': 'SEMI_PROCESS_HISTORY.csv', 
+        'semi_param_measure': 'SEMI_PARAM_MEASURE.csv',
+        'semi_equipment_sensor': 'SEMI_EQUIPMENT_SENSOR.csv',
+        'semi_alert_config': 'SEMI_SENSOR_ALERT_CONFIG.csv',
+        'semi_photo_sensors': 'SEMI_PHOTO_SENSORS.csv',
+        'semi_etch_sensors': 'SEMI_ETCH_SENSORS.csv',
+        'semi_cvd_sensors': 'SEMI_CVD_SENSORS.csv',
+        'semi_implant_sensors': 'SEMI_IMPLANT_SENSORS.csv',
+        'semi_cmp_sensors': 'SEMI_CMP_SENSORS.csv'
+    }
+    
     datasets = {}
-
-    if os.path.isdir(data_base_path):
-        for industry_dir in os.listdir(data_base_path):
-            industry_path = os.path.join(data_base_path, industry_dir)
-
-            if os.path.isfile(industry_path) and industry_path.endswith('.csv'):
-                filename = os.path.basename(industry_path)
-                key = filename.replace('.csv', '')
-                print(f"Loading: {filename}")
-                try:
-                    df = pd.read_csv(industry_path)
-                    datasets[key] = df
-                    print(f"  - Shape: {df.shape}")
-                except Exception as e:
-                    print(f"  - Error: {e}")
-
-            elif os.path.isdir(industry_path):
-                for filename in os.listdir(industry_path):
-                    if filename.endswith('.csv'):
-                        file_path = os.path.join(industry_path, filename)
-
-                        key = filename.replace('.csv', '')
-                        print(f"Loading: {industry_dir}/{filename}")
-                        try:
-                            df = pd.read_csv(file_path)
-                            datasets[key] = df
-                            print(f"  - Shape: {df.shape}")
-                        except Exception as e:
-                            print(f"  - Error: {e}")
-
+    for key, filename in data_files.items():
+        file_path = os.path.join(data_base_path, filename)
+        if os.path.exists(file_path):
+            print(f"Loading: {filename}")
+            try:
+                df = pd.read_csv(file_path)
+                datasets[key] = df
+                print(f"  - Shape: {df.shape}")
+            except Exception as e:
+                print(f"  - Error: {e}")
+        else:
+            print(f"파일 없음: {file_path}")
+    
     return datasets
 
 def integrate_sensor_data(datasets):
-    print("센서 데이터 통합...")
-
+    print("Integrating sensor data...")
+    
+    sensor_tables = ['semi_photo_sensors', 'semi_etch_sensors', 'semi_cvd_sensors', 
+                    'semi_implant_sensors', 'semi_cmp_sensors']
+    
     integrated_sensors = []
-
-    for table_name, df in datasets.items():
-        if df.empty:
-            continue
-        df_copy = df.copy()
-        if 'TIMESTAMP' in df_copy.columns:
-            df_copy['TIMESTAMP'] = pd.to_datetime(df_copy['TIMESTAMP'])
-        equipment_col = None
-        possible_id_cols = ['SENSOR_ID', 'CHAMBER_ID', 'EQUIPMENT_ID', 'CELL_ID', 'LINE_ID', 'PRODUCTION_LINE']
-        for col in possible_id_cols:
-            if col in df_copy.columns:
-                equipment_col = col
-                break
-
-        if equipment_col is None:
-            id_cols = [col for col in df_copy.columns if col.endswith('_ID')]
-            if id_cols:
-                equipment_col = id_cols[0]
-
-        numeric_cols = df_copy.select_dtypes(include=[np.number]).columns.tolist()
-
-        df_copy['sensor_table'] = table_name
-
-        if numeric_cols:
-            id_vars = ['TIMESTAMP']
-            if equipment_col:
-                id_vars.append(equipment_col)
-            id_vars.append('sensor_table')
-
-            df_long = df_copy.melt(
-                id_vars=id_vars,
-                value_vars=numeric_cols,
-                var_name='sensor_type',
-                value_name='sensor_value'
-            )
-            integrated_sensors.append(df_long)
-            print(f"  - {table_name}: Sensor count: {len(numeric_cols)}, Record count: {len(df_copy)}")
-
+    
+    for table_name in sensor_tables:
+        if table_name in datasets:
+            df = datasets[table_name].copy()
+            common_cols = ['pno', 'equipment_id', 'lot_no', 'timestamp']
+            available_common = [col for col in common_cols if col in df.columns]
+            
+            if available_common:
+                numeric_cols = df.select_dtypes(include=[np.number]).columns.tolist()
+                sensor_cols = [col for col in numeric_cols if col != 'pno']
+                
+                df['sensor_table'] = table_name.replace('_sensors', '')
+                
+                if sensor_cols:
+                    df_long = df.melt(
+                        id_vars=available_common + ['sensor_table'],
+                        value_vars=sensor_cols,
+                        var_name='sensor_type',
+                        value_name='sensor_value'
+                    )
+                    integrated_sensors.append(df_long)
+                    print(f"  - {table_name}: Sensor count: {len(sensor_cols)}, Record count: {len(df)}")
+    
     if integrated_sensors:
         result = pd.concat(integrated_sensors, ignore_index=True)
         print(f"Integration finish: Total records: {len(result)} sensors")
@@ -105,95 +84,96 @@ def integrate_sensor_data(datasets):
 
 def create_unified_dataset(datasets):
     print("Creating unified dataset...")
-
-    integrated_sensors = integrate_sensor_data(datasets)
-
-    if integrated_sensors.empty:
-        print("센서 데이터가 없습니다.")
-        return pd.DataFrame()
-    if 'TIMESTAMP' not in integrated_sensors.columns:
-        print("TIMESTAMP 컬럼이 없습니다.")
-        return pd.DataFrame()
-    sensor_pivot = integrated_sensors.pivot_table(
-        index='TIMESTAMP',
-        columns='sensor_type',
-        values='sensor_value',
-        aggfunc='mean'
-    )
-    sensor_pivot.columns = [f"sensor_{col}" for col in sensor_pivot.columns]
-    sensor_pivot = sensor_pivot.reset_index()
     
-    sensor_pivot = sensor_pivot.ffill().bfill().fillna(0)
+    integrated_sensors = integrate_sensor_data(datasets)
+    
+    if 'semi_lot_manage' in datasets:
+        main_df = datasets['semi_lot_manage'].copy()
+        print(f"LOT data count: {len(main_df)} LOT")
+    else:
+        return pd.DataFrame()
+    
+    if not integrated_sensors.empty and 'lot_no' in integrated_sensors.columns:
+        sensor_stats = integrated_sensors.groupby(['lot_no', 'sensor_type'])['sensor_value'].agg([
+            'mean', 'std', 'min', 'max', 'count'
+        ]).reset_index()
+        
+        sensor_features = sensor_stats.pivot_table(
+            index='lot_no',
+            columns='sensor_type',
+            values=['mean', 'std', 'min', 'max'],
+            fill_value=0
+        )
+        
+        sensor_features.columns = [f"{stat}_{sensor}" for stat, sensor in sensor_features.columns]
+        sensor_features = sensor_features.reset_index()
+        
+        main_df = main_df.merge(sensor_features, on='lot_no', how='left')
+        print(f"센서 특성 추가 완료: {sensor_features.shape[1]-1}개 특성")
+    
+    if 'process_history' in datasets:
+        process_df = datasets['process_history']
+        if 'lot_no' in process_df.columns:
+            process_stats = process_df.groupby('lot_no').agg({
+                'in_qty': ['mean', 'sum'],
+                'out_qty': ['mean', 'sum'],
+            }).reset_index()
+            
+            process_stats.columns = [f"process_{col[0]}_{col[1]}" if col[1] else col[0] 
+                                        for col in process_stats.columns]
+            process_stats.columns = [col.replace('process_lot_no_', 'lot_no') for col in process_stats.columns]
+            
+            main_df = main_df.merge(process_stats, on='lot_no', how='left')
+    
+    if 'param_measure' in datasets:
+        param_df = datasets['param_measure']
+        if 'lot_no' in param_df.columns:
+            param_stats = param_df.groupby('lot_no')['measured_val'].agg([
+                'mean', 'std', 'min', 'max'
+            ]).reset_index()
+            
+            param_stats.columns = [f"param_{col}" if col != 'lot_no' else col 
+                                        for col in param_stats.columns]
+            
+            main_df = main_df.merge(param_stats, on='lot_no', how='left')
+    
+    print(f"최종 통합 데이터셋: {main_df.shape}")
+    return main_df
 
-    equipment_info = None
-    for df in datasets.values():
-        if 'TIMESTAMP' in df.columns:
-            df_temp = df.copy()
-            df_temp['TIMESTAMP'] = pd.to_datetime(df_temp['TIMESTAMP'])
-
-            equipment_col = None
-            possible_id_cols = ['SENSOR_ID', 'CHAMBER_ID', 'EQUIPMENT_ID', 'CELL_ID', 'LINE_ID']
-            for col in possible_id_cols:
-                if col in df_temp.columns:
-                    equipment_col = col
-                    break
-
-            if equipment_col is None:
-                id_cols = [col for col in df_temp.columns if col.endswith('_ID')]
-                if id_cols:
-                    equipment_col = id_cols[0]
-
-            if equipment_col:
-                equipment_info = df_temp[['TIMESTAMP', equipment_col]].drop_duplicates('TIMESTAMP')
-                equipment_info = equipment_info.rename(columns={equipment_col: 'equipment_id'})
-                break
-
-    if equipment_info is not None:
-        sensor_pivot = sensor_pivot.merge(equipment_info, on='TIMESTAMP', how='left')
-
-    print(f"최종 통합 데이터셋: {sensor_pivot.shape}")
-    return sensor_pivot
-
-def prepare_features(df, train_stats=None):
+def prepare_features(df):
     print("Preparing features and preprocessing...")
-
+    
     numeric_cols = df.select_dtypes(include=[np.number]).columns.tolist()
-    exclude_cols = []
-
-    if 'TIMESTAMP' in df.columns and 'TIMESTAMP' in numeric_cols:
-        exclude_cols.append('TIMESTAMP')
-
+    exclude_cols = ['pno']
+    if 'final_yield' in numeric_cols:
+        exclude_cols.append('final_yield')
+    
     feature_cols = [col for col in numeric_cols if col not in exclude_cols]
-
+    
     df_processed = df.copy()
     df_processed[feature_cols] = df_processed[feature_cols].fillna(0)
     
-    feature_data = df_processed[feature_cols]
-
-    if train_stats is None:
-        mean_vals = feature_data.mean()
-        std_vals = feature_data.std() + 1e-8
-        train_stats = {'mean': mean_vals, 'std': std_vals}
+    if 'final_yield' in df.columns:
+        yield_threshold = df['final_yield'].quantile(0.1)
+        df_processed['is_anomaly'] = df_processed['final_yield'] < yield_threshold
     else:
-        mean_vals = train_stats['mean']
-        std_vals = train_stats['std']
-    z_scores = np.abs((feature_data - mean_vals) / std_vals).mean(axis=1)
-
-    threshold = np.percentile(z_scores, 90)
-    df_processed['is_anomaly'] = z_scores > threshold
-
+        feature_data = df_processed[feature_cols]
+        z_scores = np.abs((feature_data - feature_data.mean()) / feature_data.std()).mean(axis=1)
+        threshold = np.percentile(z_scores, 90)
+        df_processed['is_anomaly'] = z_scores > threshold
+    
     scaler = StandardScaler()
     df_processed[feature_cols] = scaler.fit_transform(df_processed[feature_cols])
-
+    
     print(f"전처리 완료: {len(feature_cols)}개 특성")
-    print(f"이상 데이터 비율: {df_processed['is_anomaly'].mean():.2%}")
-
-    return df_processed, feature_cols, scaler, train_stats
+    print(f"이상 LOT 비율: {df_processed['is_anomaly'].mean():.2%}")
+    
+    return df_processed, feature_cols, scaler
 
 
 def create_time_series_data(data, feature_cols, sequence_length=10, prediction_horizon=5):
     print(f"Creating time series data... (sequence_length: {sequence_length}, prediction_horizon: {prediction_horizon})")
-
+    
     X, y = [], []
     feature_data = data[feature_cols].values
 
@@ -201,14 +181,15 @@ def create_time_series_data(data, feature_cols, sequence_length=10, prediction_h
     for i in range(len(data) - prediction_horizon):
         future_window = data['is_anomaly'].iloc[i+1:i+1+prediction_horizon]
         future_anomalies.append(1 if future_window.any() else 0)
-
+    
+    # 시계열 시퀀스 생성
     for i in range(sequence_length, len(feature_data) - prediction_horizon):
         X.append(feature_data[i-sequence_length:i])
-        y.append(future_anomalies[i])
-
+        y.append(future_anomalies[i-sequence_length])
+    
     X = np.array(X, dtype=np.float32)
     y = np.array(y, dtype=np.float32)
-
+    
     print(f"시계열 데이터 생성 완료: X shape={X.shape}, y shape={y.shape}")
     return X, y
 
@@ -304,52 +285,40 @@ def create_multi_output_lstm(input_size, hidden_size=128, num_layers=3,
     return MultiOutputLSTM()
 
 
-def train_lstm_model(model, X_train, y_train, X_val, y_val,
+def train_lstm_model(model, X_train, y_train, X_val, y_val, 
                     epochs=50, batch_size=32, learning_rate=0.001):
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     model = model.to(device)
-
+    
     # 데이터 로더 생성
     train_dataset = TensorDataset(torch.tensor(X_train), torch.tensor(y_train))
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
-
+    
     val_dataset = TensorDataset(torch.tensor(X_val), torch.tensor(y_val))
     val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
-
-    # Fixed: 클래스 불균형 처리 - pos_weight 계산
-    num_pos = (y_train == 1).sum()
-    num_neg = (y_train == 0).sum()
-    if num_pos > 0:
-        pos_weight = torch.tensor([num_neg / num_pos]).to(device)
-        print(f"클래스 불균형 처리: pos_weight={pos_weight.item():.2f} (양성: {num_pos}, 음성: {num_neg})")
-    else:
-        pos_weight = torch.tensor([1.0]).to(device)
-        print("경고: 양성 샘플이 없습니다. pos_weight=1.0 사용")
-
-    criterion = nn.BCELoss(weight=None)
+    
+    # 손실 함수 및 옵티마이저
+    criterion = nn.BCELoss()
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)
     scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, patience=5, factor=0.5)
     
     train_losses, val_losses = [], []
-
+    
     print("모델 학습 시작...")
     for epoch in range(epochs):
+        # 학습 모드
         model.train()
         train_loss = 0
         for batch_X, batch_y in train_loader:
             batch_X, batch_y = batch_X.to(device), batch_y.to(device)
-
+            
             optimizer.zero_grad()
             outputs = model(batch_X).squeeze(-1) # 원래 squeeze()
-
-            # Fixed: 클래스 불균형 고려한 weighted loss
-            batch_weights = torch.where(batch_y == 1, pos_weight.squeeze(), torch.tensor(1.0).to(device))
-            loss = nn.functional.binary_cross_entropy(outputs, batch_y, weight=batch_weights)
-
+            loss = criterion(outputs, batch_y)
             loss.backward()
             optimizer.step()
-
+            
             train_loss += loss.item()
 
         model.eval()
@@ -437,31 +406,30 @@ def predict_future_anomalies(model, X_test, threshold=0.5):
 def generate_alerts(anomaly_probs, lot_numbers=None, # feature_names
                 alert_threshold=0.7, warning_threshold=0.5):
     alerts = []
-
+    
     for i, prob in enumerate(anomaly_probs):
-        # Modified: lot_no 대신 timestamp 또는 sample_id 사용
-        sample_id = lot_numbers[i] if lot_numbers else f"sample_{i:04d}"
-
+        lot_no = lot_numbers[i] if lot_numbers else f"lot_{i:04d}"
+        
         if prob >= alert_threshold:
             alert_level = "CRITICAL"
-            message = f"위험! : Sample {sample_id} - 이상 발생 확률 {prob:.1%}"
+            message = f"🚨 위험: LOT {lot_no} - 24시간 내 이상 발생 확률 {prob:.1%}"
             action = "즉시 점검 필요"
         elif prob >= warning_threshold:
             alert_level = "WARNING"
-            message = f"경고: Sample {sample_id} - 이상 징후 감지 (확률 {prob:.1%})"
+            message = f"⚠️ 경고: LOT {lot_no} - 이상 징후 감지 (확률 {prob:.1%})"
             action = "예방 점검 권장"
         else:
             continue
-
+        
         alerts.append({
-            'sample_id': sample_id,  # Modified: lot_no -> sample_id
+            'lot_no': lot_no,
             'alert_level': alert_level,
             'probability': prob,
             'message': message,
             'action': action,
             'timestamp': datetime.now()
         })
-
+    
     return alerts
 
 # def calculate_remaining_useful_life(model, current_data, max_horizon=100, 
@@ -522,7 +490,7 @@ def run_single_output_scenario(train_df, val_df, test_df, feature_cols, scaler):
 
     SEQ_LENGTH = 2
     PREDICTION_HORIZON = 1
-
+    
     X_train, y_train = create_time_series_data(train_df, feature_cols, SEQ_LENGTH, PREDICTION_HORIZON)
     X_val, y_val = create_time_series_data(val_df, feature_cols, SEQ_LENGTH, PREDICTION_HORIZON)
     X_test, y_test = create_time_series_data(test_df, feature_cols, SEQ_LENGTH, PREDICTION_HORIZON)
@@ -533,37 +501,33 @@ def run_single_output_scenario(train_df, val_df, test_df, feature_cols, scaler):
 
     input_size = X_train.shape[2]
     model = create_lstm_model(input_size=input_size)
-
+    
+    # 테스트를 위해 낮은 epoch 설정
     trained_model, _, _ = train_lstm_model(model, X_train, y_train, X_val, y_val, epochs=10)
 
     print("\n 테스트 데이터 예측 및 경고 생성")
     probs, labels = predict_future_anomalies(trained_model, X_test)
 
     test_indices = test_df.index[SEQ_LENGTH : len(probs) + SEQ_LENGTH]
-
-    if 'TIMESTAMP' in test_df.columns:
-        timestamps = test_df.loc[test_indices, 'TIMESTAMP'].tolist()
-        lot_numbers = [str(ts) for ts in timestamps]
-    elif 'equipment_id' in test_df.columns:
-        lot_numbers = test_df.loc[test_indices, 'equipment_id'].tolist()
-    else:
-        lot_numbers = None
+    lot_numbers = test_df.loc[test_indices, 'lot_no'].tolist() if 'lot_no' in test_df else None
 
     alerts = generate_alerts(probs, lot_numbers=lot_numbers)
-
+    
     if alerts:
         print(f"총 {len(alerts)}개의 경고가 생성되었습니다.")
         for alert in alerts[:5]:
             print(f"  - {alert['message']}")
     else:
         print("생성된 경고가 없습니다.")
-
+        
+    # 잔여 유효 수명(RUL) 예측 예시
     print("\nRUL 예측 예시 (테스트 데이터 첫 번째 샘플)")
     first_test_sequence = X_test[0]
     predicted_rul = calculate_remaining_useful_life(trained_model, first_test_sequence)
     print(f"첫 번째 테스트 샘플의 예측 RUL: {predicted_rul} 스텝")
     print("=" * 50)
-
+    
+    # 실시간 모니터링에서 사용할 수 있도록 모델과 스케일러를 반환
     return trained_model, scaler
 
 
@@ -605,49 +569,47 @@ def run_multi_output_scenario(train_df, val_df, test_df, feature_cols):
     return pred_value
 
 
-def real_time_monitoring(model, scaler, feature_cols, new_data_stream,
+def real_time_monitoring(model, scaler, feature_cols, new_data_stream, 
                         sequence_length=10, update_interval=1):
     """실시간 데이터 스트림 모니터링 및 예측"""
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     model = model.to(device)
     model.eval()
-
+    
     # 버퍼 초기화
     data_buffer = []
-    max_anomaly_prob = 0.0
-    max_status = '0'
-
+    
     print("실시간 모니터링 시작...")
-
+    
     for timestamp, new_data in new_data_stream:
+        # 데이터 전처리
         processed_data = scaler.transform(new_data[feature_cols].values.reshape(1, -1))
         data_buffer.append(processed_data[0])
-
+        
+        # 버퍼가 충분히 채워졌을 때만 예측
         if len(data_buffer) >= sequence_length:
+            # 최근 sequence_length 만큼의 데이터 사용
             input_sequence = np.array(data_buffer[-sequence_length:])
             input_tensor = torch.tensor(input_sequence).unsqueeze(0).float().to(device)
-
+            
+            # 예측 수행
             with torch.no_grad():
                 anomaly_prob = model(input_tensor).cpu().numpy()[0, 0]
 
+            # 버퍼 크기 제한
             if len(data_buffer) > sequence_length * 2:
                 data_buffer = data_buffer[-sequence_length:]
 
+            # 경고 판단
             if anomaly_prob >= 0.7:
                 print(f"[{timestamp}] 위험 경고: 이상 확률 {anomaly_prob:.1%}")
-                max_status = '2'
-                max_anomaly_prob = max(max_anomaly_prob, anomaly_prob)
+                return '2'
             elif anomaly_prob >= 0.3:
                 print(f"[{timestamp}] 주의: 이상 징후 감지 (확률 {anomaly_prob:.1%})")
-                if max_status < '1':
-                    max_status = '1'
-                max_anomaly_prob = max(max_anomaly_prob, anomaly_prob)
+                return '1'
             else:
                 print(f"[{timestamp}] 안전: 이상 징후 발생 가능성 낮음 (확률 {anomaly_prob:.1%})")
-                max_anomaly_prob = max(max_anomaly_prob, anomaly_prob)
-
-    print(f"\n모니터링 완료: 최대 이상 확률 {max_anomaly_prob:.1%}, 상태: {max_status}")
-    return max_status
+                return '0'
 
 
 
@@ -665,8 +627,8 @@ def run_real_time_monitoring_scenario(trained_model, scaler, feature_cols, test_
         scaler=scaler,
         feature_cols=feature_cols,
         new_data_stream=mock_data_stream,
-        sequence_length=2,
-        update_interval=1
+        sequence_length=2,  # 시계열 예측에 사용할 과거 데이터 길이
+        update_interval=1   # 예측 업데이트 간격
     )
     
     print("\n실시간 모니터링 시뮬레이션이 완료되었습니다.")
