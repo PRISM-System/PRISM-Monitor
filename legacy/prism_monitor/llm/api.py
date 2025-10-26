@@ -12,6 +12,8 @@ def llm_generate(url, prompt, model='/root/models/openai/gpt-oss-120b', max_toke
         "max_tokens": max_tokens,
         "temperature": temperature,
     }
+    res = requests.post(url, json=data)
+    return res.json()
 
     
     try:

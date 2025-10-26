@@ -8,7 +8,6 @@ from InstructionRF.prompt_manager import PromptManager
 from prism_monitor.llm.api import temp_llm_call
 from prism_monitor.modules.query_decompose.query_decompose import _query_decompose
 
-"Assembly(Automotive) | Painting(Automotive) | Press(Automotive) | Welding(Automotive) | Aging(Battery) | Coating(Battery) | Formation(Battery) | Production(Battery) | Distillation(Chemical) | Full(Chemical) | Reactor(Chemical) | Refining(Chemical) | Cmp(Semiconductor) | Deposition(Semiconductor) | Etch(Semiconductor) | Full(Semiconductor) | Casting(Steel) | Converter(Steel) | Production(Steel) | Rolling(Steel)"
 SUBCLASS_CSV_MAP = {
     "Assembly(Automotive)": "prism_monitor/test-scenarios/test_data/automotive/automotive_assembly_004.csv",
     "Painting(Automotive)": "prism_monitor/test-scenarios/test_data/automotive/automotive_painting_002.csv",

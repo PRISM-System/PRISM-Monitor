@@ -1,26 +1,15 @@
-# Web Framework
-fastapi[standard]==0.116.1
-uvicorn[standard]==0.35.0
+fastapi==0.116.1
+uvicorn==0.35.0
 pydantic==2.11.7
 pydantic-settings==2.10.1
-
-# Data Processing & Analysis
 pandas==2.3.2
 pandasql==0.7.3
-
-# Database
 tinydb==4.8.2
-
-# Machine Learning & AI
 scikit-learn==1.7.1
 tensorflow==2.20.0
-torch==2.8.0
-openai==1.107.0
-vllm
-
-# Vector Database
-weaviate-client==4.16.9
-
-# Data Visualization
+openai==1.90.0
 matplotlib==3.10.5
 seaborn==0.13.2
+pyod==2.0.5
+joblib==1.5.2
+skforecast==0.18.0

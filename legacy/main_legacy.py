@@ -11,7 +11,11 @@ from fastapi import FastAPI, Query, Path
 from typing import Union, Literal
 
 from prism_monitor.data.database import PrismCoreDataBase
-from src.fastapi.data_model import (
+from prism_monitor.data.models import (
+    DashboardResponse,
+    StatusPendingResponse,
+    EventOutputRequest, EventOutputResponse,
+    MonitoringOutputRequest, MonitoringOutputResponse,
     EventDetectRequest, EventDetectResponse,
     EventExplainRequest, EventExplainResponse,
     CauseCandidatesRequest, CauseCandidatesResponse,
@@ -19,11 +23,16 @@ from src.fastapi.data_model import (
     EvaluateRiskRequest, EvaluateRiskResponse,
     DashboardUpdateRequest, DashboardUpdateResponse,
     WorkflowStartRequest, WorkflowStartResponse,
+    RealTimeMonitoringResponse
 )
 from prism_monitor.modules.task import (
+    monitoring_dashboard,
+    monitoring_status_pending,
+    monitoring_output,
     workflow_start
 )
 from prism_monitor.modules.monitoring import (
+    monitoring_event_output, 
     monitoring_event_detect, 
     monitoring_event_explain, 
     monitoring_event_cause_candidates,
@@ -56,6 +65,70 @@ def read_root():
     logger.info("Root endpoint accessed.")
     return {"message": "Hello World"}
 
+@app.get(
+    "/api/v1/task/{task_id}/monitoring/dashboard", 
+    response_model=DashboardResponse,
+    summary="실시간 대시보드 조회 (line or sensor)",
+    tags=["Monitoring"]
+)
+def get_dashboard_data(
+    task_id: int = Path(..., description="작업 ID"),
+    type: Literal["LINE", "SENSOR"] = Query("LINE", description="요청 타입, LINE 또는 SENSOR"),
+    field: int = Query(4, description="필터링할 필드, line_id 또는 sensor_id")
+):
+    logger.info(f"Dashboard requested: task_id={task_id}, type={type}, field={field}")
+    res = monitoring_dashboard(task_id, type, field)
+    return res
+
+#/api/v1/task/{task_id}/monitoring/status=pending
+@app.get(
+    "/api/v1/task/{task_id}/monitoring/status",
+    response_model=StatusPendingResponse,
+    summary="과업 처리 진행 상황 조회",
+    tags=["Monitoring"]
+)
+def get_task_status(
+    task_id: int = Path(..., description="작업 ID"),
+    status: Literal["pending"] = Query("pending", description="과업 상태 필터")
+):
+    logger.info(f"Task status requested: task_id={task_id}, status={status}")
+    res = monitoring_status_pending(task_id, status)
+    return res
+
+#/api/v1/monitoring/event/output
+@app.post(
+    "/api/v1/monitoring/event/output",
+    response_model=EventOutputResponse,
+    summary="이상 발생 알림",
+    tags=["Monitoring"]
+)
+def receive_monitoring_event(body: EventOutputRequest):
+    logger.info(f"Monitoring event received: {body}")
+    res = monitoring_event_output(
+        status=body.result.status,
+        anomaly_detected=body.result.anomalyDetected,
+        description=body.result.description
+    )
+    return res
+
+@app.post(
+    "/api/v1/task/{task_id}/monitoring/output",
+    response_model=MonitoringOutputResponse,
+    summary="과업지시 결과 오케스트레이션 전달",
+    tags=["Monitoring"]
+)
+def receive_monitoring_output(
+    task_id: int = Path(..., description="과업 ID"),
+    body: MonitoringOutputRequest = ...
+):
+    logger.info(f"Monitoring output received: task_id={task_id}, body={body}")
+    res = monitoring_output(
+        task_id=task_id,
+        status=body.result.status,
+        anomaly_detected=body.result.anomalyDetected,
+        description=body.result.description
+    )
+    return res
 
 @app.post(
     "/api/v1/monitoring/event/detect",
