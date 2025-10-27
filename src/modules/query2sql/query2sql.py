@@ -5,7 +5,7 @@ import pandas as pd
 import pandasql as psql
 
 from pathlib import Path
-from InstructionRF.prompt_manager import PromptManager
+from src.modules.llm.prompt_manager import PromptManager
 from src.modules.llm.llm import llm_generate_bimatrix
 from src.test_scenarios.modeling import TEST_SCENARIOS_DATA_MAPPING
 
