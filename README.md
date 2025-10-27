@@ -2,6 +2,27 @@
 
 이 프로젝트는 시나리오 데이터 기반의 모니터링 대시보드와 복잡한 분석 워크플로우를 실행하는 AI 시스템입니다. 자연어 쿼리를 입력받아 다단계 분석을 수행하고, 실시간으로 시스템 상태를 예측합니다.
 
+## 전체 예시 코드
+```
+#bash
+docker-compose up --build
+
+#python
+import requests
+#대시보드 조회
+url = 'http://localhost:8001/api/v1/monitoring/dashboard'
+res = requests.get(url)
+print(res.json())
+#이상탐지 수행
+url = 'http://localhost:8001/api/v1/workflow/start'
+data = {
+    'taskId': 'example_task_id',
+    'query': '어셈블리 생산라인 최근 이상탐지 해줘'
+}
+res = requests.post(url, json=data)
+print(res.json())
+```
+
 ## 주요 기능 (Main Features)
 
 ### 1. 대시보드 (Dashboard)
