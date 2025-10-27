@@ -1,67 +1,61 @@
-FROM nvidia/cuda:12.1.0-runtime-ubuntu22.04
+# -------------------------------------------------------------
+# 1. 기본 이미지 변경
+# -------------------------------------------------------------
+# NVIDIA CUDA 이미지 대신 공식 Python 3.11-slim 이미지를 사용합니다.
+# 'bullseye'는 Debian 11을 의미하며, 안정적이고 가볍습니다.
+FROM python:3.11-slim-bullseye
 
-# 환경 변수 설정
-ENV DEBIAN_FRONTEND=noninteractive
+# -------------------------------------------------------------
+# 2. 환경 변수 설정
+# -------------------------------------------------------------
 ENV PYTHONUNBUFFERED=1
-# Pipenv가 .venv 폴더를 프로젝트 디렉토리(/app) 내부에 생성하도록 설정
 ENV PIPENV_VENV_IN_PROJECT=1
-# Python 버전을 3.11로 설정
-ENV PIPENV_DEFAULT_PYTHON_VERSION=3.11
+# DEBIAN_FRONTEND는 apt-get 사용 시 대화형 프롬프트를 비활성화합니다.
+ENV DEBIAN_FRONTEND=noninteractive
 
-# 기본 패키지 설치
-RUN apt-get update && apt-get install -y \
-    software-properties-common \
-    curl \
-    git \
-    && add-apt-repository ppa:deadsnakes/ppa \
-    && apt-get update \
-    && apt-get install -y \
-    # Python 3.11 관련 패키지 설치
-    python3.11 \
-    python3.11-dev \
-    python3.11-venv \
-    python3-pip \
-    # 심볼릭 링크를 3.11로 변경
-    && ln -sf /usr/bin/python3.11 /usr/bin/python3 \
-    && ln -sf /usr/bin/python3.11 /usr/bin/python \
+# -------------------------------------------------------------
+# 3. 시스템 종속성 설치
+# -------------------------------------------------------------
+# Pipfile에서 git 저장소 등을 사용할 수 있으므로 git과 curl은 설치합니다.
+# --no-install-recommends로 불필요한 패키지를 제외하여 용량을 줄입니다.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        curl \
+        git \
+    # apt 캐시를 삭제하여 이미지 용량을 확보합니다.
     && rm -rf /var/lib/apt/lists/*
 
-# 작업 디렉토리 설정
+# -------------------------------------------------------------
+# 4. Pipenv 설치 및 종속성 설치 (캐시 최적화)
+# -------------------------------------------------------------
 WORKDIR /app
 
-COPY .env-local .
-RUN mv .env-local .env
+# pip 자체와 pipenv를 먼저 설치합니다.
+# --no-cache-dir로 pip 캐시를 남기지 않습니다.
+RUN pip install --no-cache-dir --upgrade pip pipenv
 
-# 애플리케이션 파일 나머지 복사
-COPY . .
+# ★ Docker 캐시 최적화
+# 소스 코드(.py)가 아닌 의존성 파일(Pipfile)만 먼저 복사합니다.
+# 이렇게 하면 소스 코드만 변경 시, 매번 pipenv install을 다시 실행하지 않습니다.
+COPY Pipfile Pipfile.lock ./
 
-
-# pip 업그레이드 및 필수 패키지 설치 (3.11 사용)
-RUN python3.11 -m ensurepip --upgrade \
-    && python3.11 -m pip install --upgrade pip setuptools wheel
-
-# -------------------------------------------------------------
-# 👇 Pipenv 설치 및 종속성 복사
-# -------------------------------------------------------------
-
-# Pipenv 설치
-RUN pip install pipenv
-
-# Pipenv를 사용하여 가상 환경 생성 및 패키지 설치
-# --deploy 플래그는 Pipfile.lock에 기반하여 정확히 설치합니다.
+# --deploy 플래그로 Pipfile.lock을 사용해 정확한 버전의 패키지를 설치합니다.
 RUN pipenv install --deploy
 
 # -------------------------------------------------------------
-# 👇 .env-local을 .env로 복사 추가
+# 5. 소스 코드 및 환경 파일 복사
 # -------------------------------------------------------------
 
-# 환경 변수 파일을 복사 (주의: .env-local이 프로젝트 루트에 존재해야 합니다)
-# 이 파일을 복사하는 것은 빌드 시 환경 변수 설정이 필요하거나, 
-# 애플리케이션 코드가 .env 파일을 읽도록 설계된 경우에 유용합니다.
+# .env-local 파일을 .env로 이름을 변경하여 복사합니다.
+COPY .env-local .env
 
-# 포트 노출
+# 나머지 애플리케이션 소스 코드를 복사합니다.
+COPY . .
+
+# -------------------------------------------------------------
+# 6. 포트 노출 및 실행
+# -------------------------------------------------------------
 EXPOSE 8001
 
-# 시작 명령어
 # pipenv run을 사용하여 가상 환경 내에서 uvicorn을 실행합니다.
 CMD ["pipenv", "run", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8001"]

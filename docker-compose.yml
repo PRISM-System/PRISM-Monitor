@@ -1,14 +1,8 @@
-version: '3.8' # Docker Compose 파일 형식 버전 지정
-
 services:
   # 서비스 이름 (원하는 이름으로 변경 가능)
-  fastapi-app:
+  prism_monitor:
     # 이 서비스의 빌드 컨텍스트는 현재 디렉토리(Dockerfile이 있는 곳)임을 명시
     build: .
-    
-    # .env 파일에서 환경 변수를 로드하도록 지정
-    env_file:
-      - .env
       
     # 컨테이너의 8001 포트를 호스트의 8001 포트에 매핑
     # Uvicorn이 8001 포트로 실행되므로, 이 포트를 외부로 노출
