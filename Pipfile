@@ -3,6 +3,11 @@ url = "https://pypi.org/simple"
 verify_ssl = true
 name = "pypi"
 
+[[source]]
+url = "https://download.pytorch.org/whl/cpu"
+verify_ssl = true
+name = "downloadpytorch"
+
 [packages]
 fastapi = "==0.116.1"
 uvicorn = "==0.35.0"
@@ -19,6 +24,7 @@ seaborn = "==0.13.2"
 pyod = "==2.0.5"
 joblib = "==1.5.2"
 skforecast = "==0.18.0"
+torch = {version = "*", index = "downloadpytorch"}
 
 [dev-packages]
 ipykernel = "*"
