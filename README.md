@@ -34,21 +34,44 @@ print(res.json())
     ```json
     {
     "dashboard": {
-        "semiconductor_cmp": [
-        {
-            "ANOMALY_SCORE": 0.09563945978879929,
-            "HEAD_ROTATION": 120.17138671875,
-            "MOTOR_CURRENT": 16.496299743652344,
-            "PAD_THICKNESS": 2.012294054031372,
-            "POLISH_TIME": 199.8785858154297,
-            "PRESSURE": 3.149606227874756,
-            "SLURRY_FLOW_RATE": 251.85693359375,
-            "SLURRY_TEMP": 25.056913375854492,
-            "TEMPERATURE": 25.00965118408203,
-            "VIBRATION": 0.986939549446106
-        }],
-        "semiconductor_etch": [...]
-    }
+        "semiconductor_cmp": {
+            "predictions" : [
+                {
+                    "ANOMALY_SCORE": 0.09563945978879929,
+                    "HEAD_ROTATION": 120.17138671875,
+                    "MOTOR_CURRENT": 16.496299743652344,
+                    "PAD_THICKNESS": 2.012294054031372,
+                    "POLISH_TIME": 199.8785858154297,
+                    "PRESSURE": 3.149606227874756,
+                    "SLURRY_FLOW_RATE": 251.85693359375,
+                    "SLURRY_TEMP": 25.056913375854492,
+                    "TEMPERATURE": 25.00965118408203,
+                    "VIBRATION": 0.986939549446106
+                },
+                {
+                    ...
+                }
+            ],
+            "current_data": [
+                {
+                    "ANOMALY_SCORE": 0.09563945978879929,
+                    "HEAD_ROTATION": 120.17138671875,
+                    "MOTOR_CURRENT": 16.496299743652344,
+                    "PAD_THICKNESS": 2.012294054031372,
+                    "POLISH_TIME": 199.8785858154297,
+                    "PRESSURE": 3.149606227874756,
+                    "SLURRY_FLOW_RATE": 251.85693359375,
+                    "SLURRY_TEMP": 25.056913375854492,
+                    "TEMPERATURE": 25.00965118408203,
+                    "VIBRATION": 0.986939549446106
+                },
+                {
+                    ...
+                }
+            ],
+            "semiconductor_etch": [...]
+            }
+        }
     }
     ```
 
