@@ -71,10 +71,31 @@ print(res.json())
                 {
                     ...
                 }
+            ]
+        },
+        "semiconductor_etch": {
+            "predictions" : [
+                {
+                    "ANOMALY_SCORE": 0.09563945978879929,
+                    "...": ...,
+                },
+                {
+                    "ANOMALY_SCORE": 0.09563945978879929,
+                    "...": ...,
+                },
             ],
-            "semiconductor_etch": [...]
-            }
+            "current_data": [
+                {
+                    "ANOMALY_SCORE": 0.09563945978879929,
+                    "...": ...,
+                },
+                {
+                    "ANOMALY_SCORE": 0.09563945978879929,
+                    "...": ...,
+                },
+            ]
         }
+    }
     }
     ```
 
