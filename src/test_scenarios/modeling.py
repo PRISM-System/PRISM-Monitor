@@ -309,14 +309,24 @@ class TestScenarioModel:
 
         predictions = forecaster.predict(last_window=X)
         predictions = predictions.reset_index(names='TIMESTAMP').pivot(index='TIMESTAMP', columns='level', values='pred')
-        return predictions
+
+        return {
+            'predictions': predictions,
+            'current_data': X
+        }
     
     def get_dashboard(self):
         res = {}
         for target_process in TEST_SCENARIOS_DATA_MAPPING.keys():
-            forecasting_prediction_df = self.forecasting_predict(target_process)
-            forecasting_prediction = dataframe_to_json_serializable(forecasting_prediction_df)
-            res[target_process] = forecasting_prediction
+            forecasting_predict_res = self.forecasting_predict(target_process)
+            predictions_df = forecasting_predict_res['predictions']
+            current_data_df = forecasting_predict_res['current_data']
+            predictions = dataframe_to_json_serializable(predictions_df)
+            current_data = dataframe_to_json_serializable(current_data_df)
+            res[target_process] = {
+                'predictions': predictions,
+                'current_data': current_data
+            }
         return res
 
 def load_test_scenarios_data(target_process: str, start: str = None, end: str = None, sample_len: int = 30):
