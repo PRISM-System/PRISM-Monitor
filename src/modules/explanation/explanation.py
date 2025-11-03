@@ -5,7 +5,7 @@
 # - 설명(event_explain) / 과업(event_cause_candidates) 둘 다 동일한 상세도 유지
 
 from typing import Dict, List, Tuple, Any
-from src.modules.llm.llm import llm_generate_bimatrix
+from src.modules.llm.llm import LLMCallManager
 
 # ---------------------------------------------------------------------
 # 1) 공정 스펙 사전 (사용자 제공 템플릿을 코드로 내장)
@@ -653,7 +653,7 @@ FEWSHOT_TASK_2 = (
 # 4) 공개 API
 # ---------------------------------------------------------------------
 
-def event_explain(llm_url: str, event_detect_analysis: Any, process_type: str) -> str:
+def event_explain(event_detect_analysis: Any, process_type: str) -> str:
     """
     이상치 설명 생성 (모든 도메인 동일 상세도)
     - process_type: 20개 키 중 하나 (예: 'semiconductor_etch_002')
@@ -669,11 +669,11 @@ def event_explain(llm_url: str, event_detect_analysis: Any, process_type: str) -
     for user_ex, assistant_ex in fewshots:
         prompt += f"User:\n{user_ex}\nAssistant:\n{assistant_ex}\n"
     prompt += f"User: data:\n{event_detect_analysis}\n\nanswer:\nAssistant:"
-    response = llm_generate_bimatrix(bimatrix_llm_url=llm_url, prompt=prompt, max_tokens=len(prompt)+1024, is_json=False)
+    response = LLMCallManager.invoke(prompt=prompt, max_tokens=len(prompt)+1024, is_json=False)
     return response
 
 
-def event_cause_candidates(llm_url: str, event_detect_analysis: Any, process_type: str) -> str:
+def event_cause_candidates(event_detect_analysis: Any, process_type: str) -> str:
     """
     분석 과업 생성 (모든 도메인 동일 상세도)
     - process_type: 20개 키 중 하나 (예: 'steel_production_004')
@@ -689,7 +689,7 @@ def event_cause_candidates(llm_url: str, event_detect_analysis: Any, process_typ
     for user_ex, assistant_ex in fewshots:
         prompt += f"User:\n{user_ex}\nAssistant:\n{assistant_ex}\n"
     prompt += f"User: data:\n{event_detect_analysis}\n\nanswer:\nAssistant:"
-    response = llm_generate_bimatrix(bimatrix_llm_url=llm_url, prompt=prompt, max_tokens=len(prompt)+1024, is_json=False)
+    response = LLMCallManager.invoke(prompt=prompt, max_tokens=len(prompt)+1024, is_json=False)
 
     return response
 

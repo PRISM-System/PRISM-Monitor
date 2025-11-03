@@ -69,7 +69,6 @@ def app_start_workflow(body: WorkflowStartRequest):
     res = workflow_start(
         task_id=body.taskId,
         query=body.query,
-        bimatrix_llm_url=os.environ['LLM_URL']
     )
     return res
 

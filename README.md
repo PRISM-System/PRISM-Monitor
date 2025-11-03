@@ -3,6 +3,17 @@
 이 프로젝트는 시나리오 데이터 기반의 모니터링 대시보드와 복잡한 분석 워크플로우를 실행하는 AI 시스템입니다. 자연어 쿼리를 입력받아 다단계 분석을 수행하고, 실시간으로 시스템 상태를 예측합니다.
 
 ## 전체 예시 코드
+### env 준비
+```
+#.env-local 파일에 작성합니다.
+BIMATRIX_LLM_AGENT_INVOKE_URL=https://grnd.bimatrix.co.kr/django/agi/core/api/agents/Monitoring/invoke/
+BIMATRIX_LLM_URL=https://grnd.bimatrix.co.kr/django/agi/llm-agent/
+PLATFORM_URL=https://grnd.bimatrix.co.kr/django/agi/
+ID=hanyang
+PW=hanyang1234
+USER_ID=user_2222
+OPENROUTER_API_KEY= #임시 백업용 llm 키, 키 존재시 llm 호출 에러시에 openrouter의 무료 모델을 사용합니다
+```
 ### 실행
 ```
 #bash
@@ -21,6 +32,7 @@ url = 'http://localhost:8001/api/v1/workflow/start'
 data = {
     'taskId': 'example_task_id',
     'query': '어셈블리 생산라인 최근 이상탐지 해줘'
+    'extra_key': '...'
 }
 res = requests.post(url, json=data)
 print(res.json())

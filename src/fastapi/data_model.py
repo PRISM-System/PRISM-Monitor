@@ -69,11 +69,15 @@ class DashboardResponse(BaseModel):
     dashboard: dict = {}
 
 class WorkflowStartResponse(BaseModel):
+    summary: str = ''
+    monitored_timeseries: dict = {}
     result: str = ''
 
 class WorkflowStartRequest(BaseModel):
     taskId: str = 'TASK_0001'
     query: str = ''
+    class Config:
+        extra = "allow"  # 정의되지 않은 키도 허용
 
 class RealTimeMonitoringResponse(BaseModel):
     visJson: dict = {}

@@ -16,32 +16,33 @@ from src.modules.util.util import dataframe_to_json_serializable
 
 DIR_PATH = Path(__file__).parent.resolve()
 
+
 TEST_SCENARIOS_DATA_MAPPING = {
     # Semiconductor
     'semiconductor_cmp': DIR_PATH / 'test_data/semiconductor/semiconductor_cmp_001.csv',
     'semiconductor_etch': DIR_PATH / 'test_data/semiconductor/semiconductor_etch_002.csv',
     'semiconductor_deposition': DIR_PATH / 'test_data/semiconductor/semiconductor_deposition_003.csv',
     'semiconductor_full': DIR_PATH / 'test_data/semiconductor/semiconductor_full_004.csv',
-    # Chemical
-    'chemical_reactor': DIR_PATH / 'test_data/chemical/chemical_reactor_001.csv',
-    'chemical_distillation': DIR_PATH / 'test_data/chemical/chemical_distillation_002.csv',
-    'chemical_refining': DIR_PATH / 'test_data/chemical/chemical_refining_003.csv',
-    'chemical_full': DIR_PATH / 'test_data/chemical/chemical_full_004.csv',
-    # Automotive
-    'automotive_welding': DIR_PATH / 'test_data/automotive/automotive_welding_001.csv',
-    'automotive_painting': DIR_PATH / 'test_data/automotive/automotive_painting_002.csv',
-    'automotive_press': DIR_PATH / 'test_data/automotive/automotive_press_003.csv',
-    'automotive_assembly': DIR_PATH / 'test_data/automotive/automotive_assembly_004.csv',
-    # Battery
-    'battery_formation': DIR_PATH / 'test_data/battery/battery_formation_001.csv',
-    'battery_coating': DIR_PATH / 'test_data/battery/battery_coating_002.csv',
-    'battery_aging': DIR_PATH / 'test_data/battery/battery_aging_003.csv',
-    'battery_production': DIR_PATH / 'test_data/battery/battery_production_004.csv',
-    # Steel
-    'steel_rolling': DIR_PATH / 'test_data/steel/steel_rolling_001.csv',
-    'steel_converter': DIR_PATH / 'test_data/steel/steel_converter_002.csv',
-    'steel_casting': DIR_PATH / 'test_data/steel/steel_casting_003.csv',
-    'steel_production': DIR_PATH / 'test_data/steel/steel_production_004.csv',
+    # # Chemical
+    # 'chemical_reactor': DIR_PATH / 'test_data/chemical/chemical_reactor_001.csv',
+    # 'chemical_distillation': DIR_PATH / 'test_data/chemical/chemical_distillation_002.csv',
+    # 'chemical_refining': DIR_PATH / 'test_data/chemical/chemical_refining_003.csv',
+    # 'chemical_full': DIR_PATH / 'test_data/chemical/chemical_full_004.csv',
+    # # Automotive
+    # 'automotive_welding': DIR_PATH / 'test_data/automotive/automotive_welding_001.csv',
+    # 'automotive_painting': DIR_PATH / 'test_data/automotive/automotive_painting_002.csv',
+    # 'automotive_press': DIR_PATH / 'test_data/automotive/automotive_press_003.csv',
+    # 'automotive_assembly': DIR_PATH / 'test_data/automotive/automotive_assembly_004.csv',
+    # # Battery
+    # 'battery_formation': DIR_PATH / 'test_data/battery/battery_formation_001.csv',
+    # 'battery_coating': DIR_PATH / 'test_data/battery/battery_coating_002.csv',
+    # 'battery_aging': DIR_PATH / 'test_data/battery/battery_aging_003.csv',
+    # 'battery_production': DIR_PATH / 'test_data/battery/battery_production_004.csv',
+    # # Steel
+    # 'steel_rolling': DIR_PATH / 'test_data/steel/steel_rolling_001.csv',
+    # 'steel_converter': DIR_PATH / 'test_data/steel/steel_converter_002.csv',
+    # 'steel_casting': DIR_PATH / 'test_data/steel/steel_casting_003.csv',
+    # 'steel_production': DIR_PATH / 'test_data/steel/steel_production_004.csv',
 }
 
 

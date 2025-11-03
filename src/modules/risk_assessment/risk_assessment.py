@@ -1,8 +1,8 @@
 
-from src.modules.llm.llm import llm_generate_bimatrix
+from src.modules.llm.llm import LLMCallManager
 
 
-def evaluate_event_risk(llm_url, event_detect_analysis, event_detect_analysis_history=''):
+def evaluate_event_risk(event_detect_analysis, event_detect_analysis_history=''):
     """이벤트 위험 평가를 위한 LLM 프롬프트 생성"""
     prompt = f"""
     반도체 제조 공정에서 발생한 이상 이벤트와 제안된 대응 행동을 평가해주세요.
@@ -36,12 +36,12 @@ def evaluate_event_risk(llm_url, event_detect_analysis, event_detect_analysis_hi
         "improvement_suggestions": ["개선 제안 1", "개선 제안 2"]
     }}
     """
-    response = llm_generate_bimatrix(bimatrix_llm_url=llm_url, prompt=prompt, max_tokens=len(prompt)+2048)
+    response = LLMCallManager.invoke(prompt=prompt, max_tokens=len(prompt)+2048)
     print(response)
     return response
 
 
-def prediction_risk(llm_url, task_instructions, task_instructions_history=''):
+def prediction_risk(task_instructions, task_instructions_history=''):
     """예측 AI 결과물 위험 평가를 위한 LLM 프롬프트 생성"""
     prompt = f"""
     반도체 제조 장비의 예측 유지보수 계획을 평가해주세요.
@@ -74,5 +74,5 @@ def prediction_risk(llm_url, task_instructions, task_instructions_history=''):
         "optimization_suggestions": ["최적화 제안 1", "최적화 제안 2"]
     }}
     """
-    response = llm_generate_bimatrix(bimatrix_llm_url=llm_url, prompt=prompt, max_tokens=len(prompt)+2048)
+    response = LLMCallManager.invoke(prompt=prompt, max_tokens=len(prompt)+2048)
     return response

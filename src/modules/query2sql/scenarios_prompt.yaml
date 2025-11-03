@@ -4,10 +4,10 @@ system_prompt: |
 
   [Task Instructions]
   사용자 쿼리가 입력되면 다음 4단계를 정확히 수행하십시오.
-  1. 쿼리 분석: 사용자의 쿼리에서 핵심 키워드, 의도(분석, 예측, 제어 등), 특정 엔티티(예: 'WELD_L2', '2025년 5월 1일')를 파악합니다.
-  2. 대분류 예측: 아래 [Knowledge Base]에 제공된 예시를 바탕으로 가장 적절한 '대분류' (예: automotive, battery)를 예측합니다.
-  3. 소분류 예측: 동일한 예시를 바탕으로 가장 적절한 '소분류' (예: 용접라인 데이터셋, 배터리 셀 데이터셋)를 예측합니다.
-  4. SQL 생성: 예측된 '소분류'에 해당하는 스키마를 사용하여 사용자 쿼리의 의도를 해결하는 데 필요한 데이터 로우(row)들을 반환하는 SQL 쿼리를 생성합니다.
+  1. 대분류 예측(class): 아래 [Knowledge Base]에 제공된 예시를 바탕으로 가장 적절한 '대분류' (예: automotive, battery)를 예측합니다.
+  2. 소분류 예측(subclass): 동일한 예시를 바탕으로 가장 적절한 '소분류' (예: 용접라인 데이터셋, 배터리 셀 데이터셋)를 예측합니다.
+  3. 조회할 내용(description): 주어진 '대분류'와 '소분류'에 해당하는 스키마를 참고하여, 사용자 쿼리의 의도를 해결하는 데 어떠한 데이터 로우(row)들이 필요한지 판단합니다.
+  4. SQL 생성(sql): 예측된 '소분류'에 해당하는 스키마를 사용하여 사용자 쿼리의 의도를 해결하는 데 필요한 데이터 로우(row)들을 반환하는 SQL 쿼리를 생성합니다.
     - 테이블 이름: 테이블 이름은 'df' 로 고정합니다.
     - 컬럼 선택: 사용자가 쿼리를 분석하는 데 필요한 모든 데이터를 제공하기 위해 항상 SELECT *를 사용하십시오.
     - 조건 : 쿼리에 특정 날짜나 식별자(ID)가 언급된 경우에만 WHERE 절에 포함시키십시오. subclass나 class를 조건으로 사용하지 마십시오.
@@ -21,12 +21,13 @@ system_prompt: |
 
 
 instruction_schema:
-  original_query: "string (original user input)"
-  classified_class: "automotive | battery | semiconductor | chemical | steel"
-  classification_subclass: "automotive_assembly | automotive_painting | automotive_press | automotive_welding | battery_aging | battery_coating | battery_formation | battery_production | chemical_distillation | chemical_full | chemical_reactor | chemical_refining | semiconductor_cmp | semiconductor_deposition | semiconductor_etch | semiconductor_full | steel_casting | steel_converter | steel_production | steel_rolling"
+input:
+  user_query: "string (original user input)"
+output:
+  class: "automotive | battery | semiconductor | chemical | steel"
+  subclass: "automotive_assembly | automotive_painting | automotive_press | automotive_welding | battery_aging | battery_coating | battery_formation | battery_production | chemical_distillation | chemical_full | chemical_reactor | chemical_refining | semiconductor_cmp | semiconductor_deposition | semiconductor_etch | semiconductor_full | steel_casting | steel_converter | steel_production | steel_rolling"
+  description: "string (brief explanation of classification and SQL generation rationale)"
   sql: "string (generated SQL query)"
-  confidence: "float (0.0 - 1.0)"
-  evidence_terms: ["list of detected domain terms or sensor-related words"]
 
 refinement_rules:
 class_identification:
@@ -37,22 +38,27 @@ chemical: "Mentions 화학, 증류, 전환, 반응기, 정제 등과 관련된 �
 steel: "Mentions 강철, 압연, 주조, 용접 등과 관련된 단어"
 
 subclass_identification:
+automotive:
 automotive_assembly: "Mentions 조립라인, 조립공정, 부품 등과 관련된 단어"
 automotive_painting: "Mentions 도장, 페인팅, 코팅 등과 관련된 단어"
 automotive_press: "Mentions 프레스, 성형, 금형 등과 관련된 단어"
 automotive_welding: "Mentions 용접, 용접라인, 용접품질 등과 관련된 단어"
+battery:
 battery_aging: "Mentions 배터리 노화, 사이클 수, 용량 저하 등과 관련된 단어"
 battery_coating: "Mentions 배터리 코팅, 코팅 두께, 코팅 품질 등과 관련된 단어"
 battery_formation: "Mentions 배터리 형성, 전압, 전류 등과 관련된 단어"
 battery_production: "Mentions 배터리 생산, 생산량, 생산 라인 등과 관련된 단어"
+chemical:
 chemical_distillation: "Mentions 증류, 증류탑, 분리 등과 관련된 단어"
 chemical_full: "Mentions 화학 전체 공정, 종합 데이터 등과 관련된 단어"
 chemical_reactor: "Mentions 반응기, 반응 온도, 촉매 등과 관련된 단어"
 chemical_refining: "Mentions 정제, 불순물 제거, 정제 공정 등과 관련된 단어"
+semiconductor:
 semiconductor_cmp: "Mentions CMP, 연마, 패드 온도, 슬러리 등과 관련된 단어"
 semiconductor_deposition: "Mentions 증착, CVD, 챔버 압력, 서셉터 온도 등과 관련된 단어"
 semiconductor_etch: "Mentions 식각, 에칭, 플라즈마 밀도, RF 파워 등과 관련된 단어"
 semiconductor_full: "Mentions 반도체 전체 공정, 종합 데이터 등과 관련된 단어"
+steel:
 steel_casting: "Mentions 주조, 용탕 온도, 주조 속도 등과 관련된 단어"
 steel_converter: "Mentions 전로, 산소 주입, 전로 온도 등과 관련된 단어"
 steel_production: "Mentions 강철 생산, 생산량, 생산 라인 등과 관련된 단어"
@@ -80,222 +86,192 @@ steel_rolling: "TIMESTAMP,LINE_ID,THICKNESS,ROLL_GAP,ROLLING_SPEED,TENSION,TEMPE
 steel_converter: "TIMESTAMP,CONVERTER_ID,TEMPERATURE,OXYGEN_FLOW,LANCE_POSITION,PRESSURE,SLAG_COMPOSITION,CARBON_CONTENT,PHOSPHORUS_LEVEL,SULFUR_LEVEL,BATH_LEVEL\n2025-05-01T00:00:00Z,CONV_1,1646.27,499.66,1500.6,1.0,3.15,0.058,90.03,50.48,2827.37"
 steel_production: "TIMESTAMP,PRODUCTION_LINE,TEMPERATURE,PRESSURE,OXYGEN_FLOW,SLAG_COMPOSITION,THICKNESS,PRODUCTION_RATE,QUALITY_INDEX,EMISSION_LEVEL,ENERGY_CONSUMPTION,COMPLIANCE_STATUS\n2025-05-01T00:00:00Z,PROD_L2,1647.91,1.0,499.21,2.95,3.81,202.46,97,108.83,502.16,1"
 
-confidence_criteria:
-- "Mentions specific process or sensor terms → strong indicator for relevant class"
-- "Includes multiple related terms from the same class → higher confidence"
-
 feature_priority:
 - "Direct process name match (e.g., CMP, CVD, Etch, Photo) → highest confidence"
 - "Multiple related sensor parameters → higher confidence"
 - "LOT, 제품, 수율 → strong indicator for lot management"
 
-confidence_assignment:
-- "≥3 strong domain terms → confidence ≥ 0.9"
-- "1–2 relevant terms → confidence 0.6–0.8"
-- "Inferred only by general context → confidence ≤ 0.5"
-
 examples:
 automotive_welding_example:
-input: "용접 라인의 WELD_CURRENT가 불안정합니다. 현재 용접 품질 상태를 분석해주세요."
+input: 
+  user_query: "용접 라인 WELD_L1~L4의 WELD_CURRENT 이상 감지 및 용접 품질 상태 분석. 시간 범위: 2025-05-01T00:00:00Z ~ 2025-05-01T13:20:00Z. 주요 변수: WELD_CURRENT, WELD_VOLTAGE, WELD_QUALITY_INDEX"
 output:
-original_query: "용접 라인의 WELD_CURRENT가 불안정합니다. 현재 용접 품질 상태를 분석해주세요."
-classified_class: "automotive"
-classified_subclass: "automotive_welding"
-sql: "SELECT * FROM df ORDER BY TIMESTAMP DESC LIMIT 100;"
-confidence: 0.96
-evidence_terms: ["WELD_CURRENT", "용접", "품질"]
+  class: "automotive"
+  subclass: "automotive_welding"
+  description: "2025-05-01 00:00~13:20 기간 동안의 용접 전류 및 관련 변수 모니터링 결과"
+  sql: "SELECT * FROM df WHERE TIMESTAMP BETWEEN '2025-05-01T00:00:00Z' AND '2025-05-01T13:20:00Z';"
 
 automotive_painting_example:
-input: "도장 부스의 HUMIDITY가 계속 상승하고 있습니다. 도막 품질에 미칠 영향을 예측해주세요."
+input: 
+  user_query: "도장 부스 BOOTH_P1~P4의 HUMIDITY 상승 추이 감지 및 현재 상태 분석. 시간 범위: 2025-05-01T00:00:00Z ~ 2025-05-01T13:40:00Z. 주요 변수: HUMIDITY, TEMPERATURE, COATING_QUALITY_INDEX"
 output:
-original_query: "도장 부스의 HUMIDITY가 계속 상승하고 있습니다. 도막 품질에 미칠 영향을 예측해주세요."
-classified_class: "automotive"
-classified_subclass: "automotive_painting"
-sql: "SELECT * FROM df ORDER BY TIMESTAMP DESC LIMIT 100;"
-confidence: 0.95
-evidence_terms: ["HUMIDITY", "도장", "품질"]
+  class: "automotive"
+  subclass: "automotive_painting"
+  description: "2025-05-01 00:00~13:40 기간 동안의 습도 및 관련 변수 모니터링 결과"
+  sql: "SELECT * FROM df WHERE TIMESTAMP BETWEEN '2025-05-01T00:00:00Z' AND '2025-05-01T13:40:00Z';"
 
 automotive_press_example:
-input: "Press 공정의 PRESS_FORCE가 계속 증가하고 있어 금형 손상이 우려됩니다. 최적 제어 방안을 제시해주세요."
+input:
+  user_query: "프레스 PRESS_01~PRESS_04의 PRESS_FORCE 이상 감지 및 현재 상태 분석. 시간 범위: 2025-05-01T00:00:00Z ~ 2025-05-01T14:10:00Z. 주요 변수: PRESS_FORCE, DIE_TEMPERATURE, QUALITY_SCORE"
 output:
-original_query: "Press 공정의 PRESS_FORCE가 계속 증가하고 있어 금형 손상이 우려됩니다. 최적 제어 방안을 제시해주세요."
-classified_class: "automotive"
-classified_subclass: "automotive_press"
-sql: "SELECT * FROM df ORDER BY TIMESTAMP DESC LIMIT 100;"
-confidence: 0.97
-evidence_terms: ["PRESS_FORCE", "금형 손상", "최적 제어 방안"]
+  class: "automotive"
+  subclass: "automotive_press"
+  description: "2025-05-01 00:00~14:10 기간 동안의 프레스 공정 모니터링 결과"
+  sql: "SELECT * FROM df WHERE TIMESTAMP BETWEEN '2025-05-01T00:00:00Z' AND '2025-05-01T14:10:00Z';"
 
 
 automotive_assembly_example:
-input: "조립 라인의 TIGHTENING_TORQUE가 규격을 벗어나고 있습니다. 안전 기준을 만족하는 최적 제어 방안을 제시하고 규제 준수 여부를 확인해주세요."
+input:
+  user_query: "조립 스테이션 STATION_A1~A4의 TIGHTENING_TORQUE 이상 감지 및 현재 상태 분석. 시간 범위: 2025-05-01T00:00:00Z ~ 2025-05-01T14:30:00Z. 주요 변수: TIGHTENING_TORQUE, ANGLE, ASSEMBLY_QUALITY_INDEX"
 output:
-original_query: "조립 라인의 TIGHTENING_TORQUE가 규격을 벗어나고 있습니다. 안전 기준을 만족하는 최적 제어 방안을 제시하고 규제 준수 여부를 확인해주세요."
-classified_class: "automotive"
-classified_subclass: "automotive_assembly"
-sql: "SELECT * FROM df ORDER BY TIMESTAMP DESC LIMIT 100;"
-confidence: 0.98
-evidence_terms: ["TIGHTENING_TORQUE", "안전 기준", "최적 제어 방안"]
-
+  class: "automotive"
+  subclass: "automotive_assembly"
+  description: "2025-05-01 00:00~14:30 기간 동안의 조립 공정 모니터링 결과"
+  sql: "SELECT * FROM df WHERE TIMESTAMP BETWEEN '2025-05-01T00:00:00Z' AND '2025-05-01T14:30:00Z';"
 
 battery_formation_example:
-input: "배터리 셀 CELL_F001의 VOLTAGE가 비정상적으로 변동하고 있습니다. 현재 상태를 분석해주세요."
+input:
+  user_query: "배터리 셀 CELL_F001의 VOLTAGE가 비정상적으로 변동하고 있습니다. 현재 상태를 분석해주세요"
 output:
-original_query: "배터리 셀 CELL_F001의 VOLTAGE가 비정상적으로 변동하고 있습니다. 현재 상태를 분석해주세요."
-classified_class: "automotive"
-classified_subclass: "battery_formation"
-sql: "SELECT * FROM df WHERE CELL_ID = 'CELL_F001' ORDER BY TIMESTAMP DESC LIMIT 100;"
-confidence: 0.95
-evidence_terms: ["CELL_F001", "온도", "전압"]
+  class: "automotive"
+  subclass: "battery_formation"
+  description: "배터리 셀 CELL_F001의 온도 및 전압 변동에 대한 상태 분석 결과"
+  sql: "SELECT * FROM df WHERE CELL_ID = 'CELL_F001' ORDER BY TIMESTAMP DESC LIMIT 100;"
 
 battery_coating_example:
-input: "코팅 라인의 COATING_THICKNESS가 목표치를 벗어나고 있습니다. 품질 불량 발생 시점을 예측해주세요."
+input:
+  user_query: "코팅 라인의 COATING_THICKNESS가 목표치를 벗어나고 있습니다. 품질 불량 발생 시점을 예측해주세요."
 output:
-original_query: "코팅 라인의 COATING_THICKNESS가 목표치를 벗어나고 있습니다. 품질 불량 발생 시점을 예측해주세요."
-classified_class: "battery"
-classified_subclass: "battery_coating"
-sql: "SELECT * FROM df ORDER BY TIMESTAMP DESC LIMIT 100;"
-confidence: 0.94
-evidence_terms: ["COATING_THICKNESS", "코팅", "품질 불량"]
+  class: "battery"
+  subclass: "battery_coating"
+  description: "코팅 라인의 COATING_THICKNESS 모니터링 결과"
+  sql: "SELECT * FROM df ORDER BY TIMESTAMP DESC LIMIT 100;"
 
 battery_aging_example:
-input: "에이징 챔버의 배터리 SOH가 예상보다 빠르게 저하되고 있습니다. 자동으로 조건을 최적화해주세요."
+input:
+  user_query: "에이징 챔버의 배터리 SOH가 예상보다 빠르게 저하되고 있습니다. 자동으로 조건을 최적화해주세요."
 output:
-original_query: "에이징 챔버의 배터리 SOH가 예상보다 빠르게 저하되고 있습니다. 자동으로 조건을 최적화해주세요."
-classified_class: "battery"
-classified_subclass: "battery_aging"
-sql: "SELECT * FROM df ORDER BY TIMESTAMP DESC LIMIT 100;"
-confidence: 0.93
-evidence_terms: ["SOH", "에이징", "조건 최적화"]
+  class: "battery"
+  subclass: "battery_aging"
+  description: "에이징 챔버의 배터리 SOH 모니터링 결과"
+  sql: "SELECT * FROM df ORDER BY TIMESTAMP DESC LIMIT 100;"
 
 battery_production_example:
-input: "배터리 생산 라인의 TEMPERATURE가 증가 추세입니다. 예측 및 제어를 수행하고 안전 규제 준수 여부를 확인해주세요."
+input:
+  user_query: "배터리 생산 라인의 TEMPERATURE가 증가 추세입니다. 예측 및 제어를 수행하고 안전 규제 준수 여부를 확인해주세요."
 output:
-original_query: "배터리 생산 라인의 TEMPERATURE가 증가 추세입니다. 예측 및 제어를 수행하고 안전 규제 준수 여부를 확인해주세요."
-classified_class: "battery"
-classified_subclass: "battery_production"
-sql: "SELECT * FROM df ORDER BY TIMESTAMP DESC LIMIT 100;"
-confidence: 0.95
-evidence_terms: ["TEMPERATURE", "생산 라인", "안전 규제 준수"]
+  class: "battery"
+  subclass: "battery_production"
+  description: "배터리 생산 라인의 TEMPERATURE 모니터링 결과"
+  sql: "SELECT * FROM df ORDER BY TIMESTAMP DESC LIMIT 100;"
 
 chemical_reactor_example:
-input: "반응기 REACT_A3의 TEMPERATURE가 급격히 상승하고 있습니다. 현재 상황을 분석해주세요."
+input:
+  user_query: "화학 반응기 REACT_A1~A4의 TEMPERATURE 급상승 감지 및 현재 상태 분석. 시간 범위: 2025-05-01T00:00:00Z ~ 2025-05-01T13:35:00Z. 주요 변수: TEMPERATURE, PRESSURE, REACTION_RATE"
 output:
-original_query: "반응기 REACT_A3의 TEMPERATURE가 급격히 상승하고 있습니다. 현재 상황을 분석해주세요."
-classified_class: "chemical"
-classified_subclass: "chemical_reactor"
-sql: "SELECT * FROM df WHERE REACTOR_ID = 'REACT_A3' ORDER BY TIMESTAMP DESC LIMIT 100;"
-confidence: 0.96
-evidence_terms: ["REACT_A3", "TEMPERATURE", "반응기"]
+  class: "chemical"
+  subclass: "chemical_reactor"
+  description: "2025-05-01 00:00~13:35 기간 동안의 화학 반응기 모니터링 결과"
+  sql: "SELECT * FROM df WHERE TIMESTAMP BETWEEN '2025-05-01T00:00:00Z' AND '2025-05-01T13:35:00Z';"
 
 chemical_distillation_example:
-input: "증류탑 TOWER_01의 PRESSURE가 계속 증가하고 있습니다. 안전 압력 한계에 도달할 시점을 예측해주세요."
+input: 
+  user_query: "증류탑 TOWER_01~TOWER_04의 PRESSURE 상승 추이 감지 및 현재 상태 분석. 시간 범위: 2025-05-01T00:00:00Z ~ 2025-05-01T14:15:00Z. 주요 변수: PRESSURE, TEMPERATURE, SEPARATION_EFFICIENCY"
 output:
-original_query: "증류탑 TOWER_01의 PRESSURE가 계속 증가하고 있습니다. 안전 압력 한계에 도달할 시점을 예측해주세요."
-classified_class: "chemical"
-classified_subclass: "chemical_distillation"
-sql: "SELECT * FROM df WHERE TOWER_ID = 'TOWER_01' ORDER BY TIMESTAMP DESC LIMIT 100;"
-confidence: 0.95
-evidence_terms: ["TOWER_01", "PRESSURE", "증류탑"]
+  class: "chemical"
+  subclass: "chemical_distillation"
+  description: "2025-05-01 00:00~14:15 기간 동안의 증류탑 PRESSURE 모니터링 결과"
+  sql: "SELECT * FROM df WHERE TIMESTAMP BETWEEN '2025-05-01T00:00:00Z' AND '2025-05-01T14:15:00Z';"
 
 chemical_refining_example:
-input: "정제 공정에서 제품 순도가 계속 떨어지고 있어. 품질 불량이 예상되니까 최적 운전 조건을 찾아서 자동으로 적용해줘."
+input:
+  user_query: "정제 공정에서 제품 순도가 계속 떨어지고 있어. 품질 불량이 예상되니까 최적 운전 조건을 찾아서 자동으로 적용해줘."
 output:
-original_query: "정제 공정에서 제품 순도가 계속 떨어지고 있어. 품질 불량이 예상되니까 최적 운전 조건을 찾아서 자동으로 적용해줘."
-classified_class: "chemical"
-classified_subclass: "chemical_refining"
-sql: "SELECT * FROM df ORDER BY TIMESTAMP DESC LIMIT 100;"
-confidence: 0.94
-evidence_terms: ["제품 순도", "정제 공정", "최적 운전 조건"]
+  class: "chemical"
+  subclass: "chemical_refining"
+  description: "정제 공정의 제품 순도 모니터링 결과"
+  sql: "SELECT * FROM df ORDER BY TIMESTAMP DESC LIMIT 100;"
 
 chemical_full_example:
-input: "전체 공정에서 촉매 사용량이 증가하고 있어. 생산성은 좋아 보이는데 환경 배출 기준 초과가 걱정돼. 최적 운전 조건을 찾고 법규 준수 여부도 확인해줘."
+input:
+  user_query: "전체 공정에서 촉매 사용량이 증가하고 있어. 생산성은 좋아 보이는데 환경 배출 기준 초과가 걱정돼. 최적 운전 조건을 찾고 법규 준수 여부도 확인해줘."
 output:
-original_query: "전체 공정에서 촉매 사용량이 증가하고 있어. 생산성은 좋아 보이는데 환경 배출 기준 초과가 걱정돼. 최적 운전 조건을 찾고 법규 준수 여부도 확인해줘."
-classified_class: "chemical"
-classified_subclass: "chemical_full"
-sql: "SELECT * FROM df ORDER BY TIMESTAMP DESC LIMIT 100;"
-confidence: 0.95
-evidence_terms: ["촉매 사용량", "환경 배출 기준", "법규 준수"]
+  class: "chemical"
+  subclass: "chemical_full"
+  description: "전체 공정의 촉매 사용량 모니터링 결과"
+  sql: "SELECT * FROM df ORDER BY TIMESTAMP DESC LIMIT 100;"
 
 semiconductor_cmp_example:
-input: "CMP 공정에서 Slurry 유량이 불안정합니다. 현재 상황을 분석해주세요."
+input:
+  user_query: "CMP 센서 SENSOR_ID의 SLURRY_FLOW_RATE 이상 감지 및 현재 상태 분석. 시간 범위: 2025-05-01T00:00:00Z ~ 2025-05-01T13:50:00Z. 주요 변수: SLURRY_FLOW_RATE, MOTOR_CURRENT, TEMPERATURE"
 output:
-original_query: "CMP 공정에서 Slurry 유량이 불안정합니다. 현재 상황을 분석해주세요."
-classified_class: "semiconductor"
-classified_subclass: "semiconductor_cmp"
-sql: "SELECT * FROM df ORDER BY TIMESTAMP DESC LIMIT 100;"
-confidence: 0.96
-evidence_terms: ["CMP", "Slurry 유량", "불안정"]
+  class: "semiconductor"
+  subclass: "semiconductor_cmp"
+  description: "2025-05-01 00:00~13:50 기간 동안의 CMP 센서 모니터링 결과"
+  sql: "SELECT * FROM df WHERE TIMESTAMP BETWEEN '2025-05-01T00:00:00Z' AND '2025-05-01T13:50:00Z';"
 
 semiconductor_etch_example:
-input: "Etching 공정의 PRESSURE가 계속 상승하고 있습니다. 언제 임계치에 도달할지 예측해주세요."
+input:
+  user_query: "플라즈마 식각 챔버 CHAMBER_E1~E4의 PRESSURE 상승 추이 감지 및 현재 상태 분석. 시간 범위: 2025-05-01T00:00:00Z ~ 2025-05-01T14:20:00Z. 주요 변수: PRESSURE, VACUUM_PUMP, ETCH_RATE"
 output:
-original_query: "Etching 공정의 PRESSURE가 계속 상승하고 있습니다. 언제 임계치에 도달할지 예측해주세요."
-classified_class: "semiconductor"
-classified_subclass: "semiconductor_etch"
-sql: "SELECT * FROM df ORDER BY TIMESTAMP DESC LIMIT 100;"
-confidence: 0.95
-evidence_terms: ["Etching", "PRESSURE", "임계치"]
+  class: "semiconductor"
+  subclass: "semiconductor_etch"
+  description: "2025-05-01 00:00~14:20 기간 동안의 플라즈마 식각 챔버 PRESSURE 모니터링 결과"
+  sql: "SELECT * FROM df WHERE TIMESTAMP BETWEEN '2025-05-01T00:00:00Z' AND '2025-05-01T14:20:00Z';"
 
 semiconductor_deposition_example:
-input: "Deposition 공정의 TEMPERATURE가 불안정합니다. 자동으로 안정화시켜주세요."
+input:
+  user_query: "Deposition 챔버 CHAMBER_D1~D4의 TEMPERATURE 불안정 감지 및 현재 상태 분석. 시간 범위: 2025-05-01T00:00:00Z ~ 2025-05-01T14:40:00Z. 주요 변수: TEMPERATURE, DEPOSITION_RATE, UNIFORMITY"
 output:
-original_query: "Deposition 공정의 TEMPERATURE가 불안정합니다. 자동으로 안정화시켜주세요."
-classified_class: "semiconductor"
-classified_subclass: "semiconductor_deposition"
-sql: "SELECT * FROM df ORDER BY TIMESTAMP DESC LIMIT 100;"
-confidence: 0.94
-evidence_terms: ["Deposition", "TEMPERATURE", "불안정"]
+  class: "semiconductor"
+  subclass: "semiconductor_deposition"
+  description: "2025-05-01 00:00~14:40 기간 동안의 Deposition 챔버 TEMPERATURE 모니터링 결과"
+  sql: "SELECT * FROM df WHERE TIMESTAMP BETWEEN '2025-05-01T00:00:00Z' AND '2025-05-01T14:40:00Z';"
 
 semiconductor_full_example:
-input: "반도체 공정에서 RF_POWER가 증가 추세입니다. 예측 및 제어를 수행하고 규제 준수 여부를 확인해주세요."
+input:
+  user_query: "반도체 제조 장비 EQUIPMENT_ID의 RF_POWER 증가 추이 감지 및 현재 상태 분석. 시간 범위: 2025-05-01T00:00:00Z ~ 2025-05-01T15:00:00Z. 주요 변수: RF_POWER, PRESSURE, PROCESS_YIELD"
 output:
-original_query: "반도체 공정에서 RF_POWER가 증가 추세입니다. 예측 및 제어를 수행하고 규제 준수 여부를 확인해주세요."
-classified_class: "semiconductor"
-classified_subclass: "semiconductor_full"
-sql: "SELECT * FROM df ORDER BY TIMESTAMP DESC LIMIT 100;"
-confidence: 0.95
-evidence_terms: ["RF_POWER", "반도체 공정", "규제 준수 여부"]
+  class: "semiconductor"
+  subclass: "semiconductor_full"
+  description: "2025-05-01 00:00~15:00 기간 동안의 반도체 제조 장비 RF_POWER 모니터링 결과"
+  sql: "SELECT * FROM df WHERE TIMESTAMP BETWEEN '2025-05-01T00:00:00Z' AND '2025-05-01T15:00:00Z';"
 
 steel_rolling_example:
-input: "압연 라인 ROLL_004의 THICKNESS가 목표 편차를 초과하고 있습니다. 현재 상황을 분석해주세요."
+input:
+  user_query: "압연 라인 ROLL_004의 THICKNESS가 목표 편차를 초과하고 있습니다. 현재 상황을 분석해주세요."
 output:
-original_query: "압연 라인 ROLL_004의 THICKNESS가 목표 편차를 초과하고 있습니다. 현재 상황을 분석해주세요."
-classified_class: "steel"
-classified_subclass: "steel_rolling"
-sql: "SELECT * FROM df WHERE LINE_ID = 'ROLL_004' ORDER BY TIMESTAMP DESC LIMIT 100;"
-confidence: 0.96
-evidence_terms: ["ROLL_004", "THICKNESS", "압연"]
+  class: "steel"
+  subclass: "steel_rolling"
+  description: "압연 라인 ROLL_004의 THICKNESS 모니터링 결과"
+  sql: "SELECT * FROM df WHERE LINE_ID = 'ROLL_004' ORDER BY TIMESTAMP DESC LIMIT 100;"
 
 steel_converter_example:
-input: "전로의 TEMPERATURE와 OXYGEN_FLOW가 변동하고 있습니다. SLAG_COMPOSITION 상태를 예측해주세요."
+input:
+  user_query: "전로의 TEMPERATURE와 OXYGEN_FLOW가 변동하고 있습니다. SLAG_COMPOSITION 상태를 예측해주세요."
 output:
-original_query: "전로의 TEMPERATURE와 OXYGEN_FLOW가 변동하고 있습니다. SLAG_COMPOSITION 상태를 예측해주세요."
-classified_class: "steel"
-classified_subclass: "steel_converter"
-sql: "SELECT * FROM df ORDER BY TIMESTAMP DESC LIMIT 100;"
-confidence: 0.95
-evidence_terms: ["TEMPERATURE", "OXYGEN_FLOW", "SLAG_COMPOSITION"]
+  class: "steel"
+  subclass: "steel_converter"
+  description: "전로의 TEMPERATURE와 OXYGEN_FLOW 변동에 따른 SLAG_COMPOSITION 예측 결과"
+  sql: "SELECT * FROM df ORDER BY TIMESTAMP DESC LIMIT 100;"
 
 steel_casting_example:
-input: "2025년 5월 1일 연속주조 공정에서 슬라브 두께 편차와 표면 결함이 증가하고 있습니다. 현재 상태를 분석하고, 향후 품질 저하를 예측한 뒤, 최적 제어 파라미터를 제시해 주세요."
+input:
+  user_query: "2025년 5월 1일 연속주조 공정에서 슬라브 두께 편차와 표면 결함이 증가하고 있습니다. 현재 상태를 분석하고, 향후 품질 저하를 예측한 뒤, 최적 제어 파라미터를 제시해 주세요."
 output:
-original_query: "2025년 5월 1일 연속주조 공정에서 슬라브 두께 편차와 표면 결함이 증가하고 있습니다. 현재 상태를 분석하고, 향후 품질 저하를 예측한 뒤, 최적 제어 파라미터를 제시해 주세요."
-classified_class: "steel"
-classified_subclass: "steel_casting"
-sql: "SELECT * FROM df WHERE DATE(TIMESTAMP) = '2025-05-01' ORDER BY TIMESTAMP DESC;"
-confidence: 0.97
-evidence_terms: ["슬라브 두께 편차", "표면 결함", "최적 제어 파라미터"]
+  class: "steel"
+  subclass: "steel_casting"
+  description: "2025년 5월 1일 연속주조 공정에서 슬라브 두께 편차와 표면 결함 증가에 따른 분석 결과"
+  sql: "SELECT * FROM df WHERE DATE(TIMESTAMP) = '2025-05-01' ORDER BY TIMESTAMP DESC;"
 
 steel_production_example:
-input: "2025년 5월 1일 통합 생산라인에서 온도가 상승하고 배출 수준이 증가하는 추세입니다. 현재 상태를 분석하고, 향후 안전·환경 위반을 예측한 뒤, 최적 제어 파라미터를 제시하고, 관련 규제 준수 여부를 검증해 주세요."
+input:
+  user_query: "2025년 5월 1일 통합 생산라인에서 온도가 상승하고 배출 수준이 증가하는 추세입니다. 현재 상태를 분석하고, 향후 안전·환경 위반을 예측한 뒤, 최적 제어 파라미터를 제시하고, 관련 규제 준수 여부를 검증해 주세요."
 output:
-original_query: "2025년 5월 1일 통합 생산라인에서 온도가 상승하고 배출 수준이 증가하는 추세입니다. 현재 상태를 분석하고, 향후 안전·환경 위반을 예측한 뒤, 최적 제어 파라미터를 제시하고, 관련 규제 준수 여부를 검증해 주세요."
-classified_class: "steel"
-classified_subclass: "steel_production"
-sql: "SELECT * FROM df WHERE DATE(TIMESTAMP) = '2025-05-01' ORDER BY TIMESTAMP DESC;"
-confidence: 0.98
-evidence_terms: ["온도 상승", "배출 수준", "규제 준수 여부"]
+  class: "steel"
+  subclass: "steel_production"
+  description: "2025년 5월 1일 통합 생산라인에서 온도 상승과 배출 수준 증가에 따른 분석 결과"
+  sql: "SELECT * FROM df WHERE DATE(TIMESTAMP) = '2025-05-01' ORDER BY TIMESTAMP DESC;"
 
 
 processing_guidelines:

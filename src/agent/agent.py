@@ -33,7 +33,7 @@ TOOLS = {
 }
 
 class MonitoringAgent:
-    def __init__(self, url: str, agent_name: str="MonitoringAgent"):
+    def __init__(self, url: str, agent_name: str="Monitoring"):
         self.url = url
         self.agent_name = agent_name
         self.tools = TOOLS
@@ -47,25 +47,25 @@ class MonitoringAgent:
             "role_prompt": ROLE_PROMPT,
             "tools": list(self.tools.keys())
         }
-        response = requests.post(f"{self.url}/core/api/agents/", json=payload)
+        response = requests.post(f"{self.url}/core/api/agents/", json=payload, timeout=10)
         print('register_agent', response.status_code, response.content)
         return 
     
     def delete_agent(self):
-        response = requests.delete(f"{self.url}/core/api/agents/{self.agent_name}/")
-        print('delete_agent', response.status_code, response.content)
+        response = requests.delete(f"{self.url}/core/api/agents/{self.agent_name}/", timeout=10)
+        print('delete_agent', response.status_code, response.content)   
         return 
     
     
     def delete_tools(self):
         for tool in self.tools:
-            response = requests.delete(f"{self.url}/core/api/tools/{tool}/")
+            response = requests.delete(f"{self.url}/core/api/tools/{tool}/", timeout=10)
             print('delete_tools', response.status_code, response.content)
         return 
     
     def register_tools(self):
         for tool in self.tools.values():
-            response = requests.post(f"{self.url}/core/api/tools/", json=tool)
+            response = requests.post(f"{self.url}/core/api/tools/", json=tool, timeout=10)
             print('register_tools', response.status_code, response.content)
         return
 
@@ -78,5 +78,12 @@ class MonitoringAgent:
             self.delete_tools()
         except Exception as e:
             print(f"Tool deletion failed: {e}")
-        self.register_tools()
-        self.register_agent()
+        try:
+            print("Registering tools...")
+            self.register_tools()
+        except Exception as e:
+            print(f"Tool registration failed: {e}")
+        try:
+            self.register_agent()
+        except Exception as e:
+            print(f"Agent registration failed: {e}")
