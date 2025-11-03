@@ -36,6 +36,15 @@ data = {
 }
 res = requests.post(url, json=data)
 print(res.json())
+#{
+#    'summary': '...', # <-를 사용하면 됩니다.
+#    'result': '...',
+#    'monitored_timeseries':{
+#        'format': 'csv',
+#        'description': '...',
+#        'sample_data': '...'
+#    }
+#}
 ```
 
 ## 주요 기능 (Main Features)
@@ -120,13 +129,20 @@ print(res.json())
     ```json
     {
       "taskId": "TASK_0001",
-      "query": "용접 라인의 WELD_CURRENT가 불안정합니다. 현재 용접 품질 상태를 분석해주세요"
+      "query": "용접 라인의 WELD_CURRENT가 불안정합니다. 현재 용접 품질 상태를 분석해주세요",
+      "extras": "..."
     }
     ```
 * **응답 예시 (Response Example):**
     ```json
     {
-    "result": "분석결과 ... 입니다."
+        "summary": "...",
+        "result": "...",
+        "monitored_timeseries":{
+            "format": "csv",
+            "description": "...",
+            "sample_data": "..."
+        }
     }
     ```
 * **워크플로우 단계:**
