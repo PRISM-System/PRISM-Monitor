@@ -3,11 +3,19 @@ services:
   prism_monitor:
     # 이 서비스의 빌드 컨텍스트는 현재 디렉토리(Dockerfile이 있는 곳)임을 명시
     build: .
-      
-    # 컨테이너의 8001 포트를 호스트의 8001 포트에 매핑
-    # Uvicorn이 8001 포트로 실행되므로, 이 포트를 외부로 노출
+
+    # 컨테이너의 8002 포트를 호스트의 8002 포트에 매핑
+    # Uvicorn이 8002 포트로 실행되므로, 이 포트를 외부로 노출
     ports:
-      - "8001:8001"
-    
+      - "8002:8002"
+
+    # 다른 PRISM 서비스들과 통신하기 위해 공유 네트워크 사용
+    networks:
+      - prism-shared-network
+
     # Dockerfile의 CMD를 오버라이드하지 않고 그대로 사용
-    # CMD ["pipenv", "run", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8001"]
+    # CMD ["pipenv", "run", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8002"]
+
+networks:
+  prism-shared-network:
+    external: true

@@ -74,8 +74,16 @@ class WorkflowStartResponse(BaseModel):
     result: str = ''
 
 class WorkflowStartRequest(BaseModel):
-    taskId: str = 'TASK_0001'
-    query: str = ''
+    taskId: str = Field(
+        default='CMP_TASK_20250501_001',
+        description="Task identifier",
+        examples=['CMP_TASK_20250501_001']
+    )
+    query: str = Field(
+        default='CMP 센서 SENSOR_ID의 SLURRY_FLOW_RATE 이상 감지 및 현재 상태 분석. 시간 범위: 2025-05-01T00:00:00Z ~ 2025-05-01T13:50:00Z. 주요 변수: SLURRY_FLOW_RATE, MOTOR_CURRENT, TEMPERATURE',
+        description="Query describing the monitoring task",
+        examples=['CMP 센서 SENSOR_ID의 SLURRY_FLOW_RATE 이상 감지 및 현재 상태 분석. 시간 범위: 2025-05-01T00:00:00Z ~ 2025-05-01T13:50:00Z. 주요 변수: SLURRY_FLOW_RATE, MOTOR_CURRENT, TEMPERATURE']
+    )
     class Config:
         extra = "allow"  # 정의되지 않은 키도 허용
 

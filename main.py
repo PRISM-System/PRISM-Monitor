@@ -37,13 +37,17 @@ formatter = logging.Formatter('[%(asctime)s] %(levelname)s in %(module)s: %(mess
 handler.setFormatter(formatter)
 logger.addHandler(handler)
 
-AGENT = MonitoringAgent(os.environ['PLATFORM_URL'])
+AGENT = MonitoringAgent(os.environ['LLM_URL'])
 
 TEST_SCENARIO_MODEL = TestScenarioModel()
 TEST_SCENARIO_MODEL.set_models()
 
 
-app = FastAPI()
+app = FastAPI(
+    title="PRISM Monitoring",
+    description="자율 제조 구현을 위한 AI 에이전트 모니터링 모듈",
+    version="1.0"
+)
 
 
 @app.get(
@@ -83,7 +87,6 @@ def app_query2sql(body: Query2SQLRequest):
     logger.info(f"Query to SQL requested: {body}")
     res = query2sql(
         user_query=body.query,
-        bimatrix_llm_url=os.environ['LLM_URL'],
         serialize=True
     )
     return {'result': res}

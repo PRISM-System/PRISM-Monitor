@@ -47,25 +47,25 @@ class MonitoringAgent:
             "role_prompt": ROLE_PROMPT,
             "tools": list(self.tools.keys())
         }
-        response = requests.post(f"{self.url}/core/api/agents/", json=payload, timeout=10)
+        response = requests.post(f"{self.url}/api/agents/", json=payload, timeout=10)
         print('register_agent', response.status_code, response.content)
         return 
     
     def delete_agent(self):
-        response = requests.delete(f"{self.url}/core/api/agents/{self.agent_name}/", timeout=10)
+        response = requests.delete(f"{self.url}/api/agents/{self.agent_name}/", timeout=10)
         print('delete_agent', response.status_code, response.content)   
         return 
     
     
     def delete_tools(self):
         for tool in self.tools:
-            response = requests.delete(f"{self.url}/core/api/tools/{tool}/", timeout=10)
+            response = requests.delete(f"{self.url}/api/tools/{tool}/", timeout=10)
             print('delete_tools', response.status_code, response.content)
         return 
     
     def register_tools(self):
         for tool in self.tools.values():
-            response = requests.post(f"{self.url}/core/api/tools/", json=tool, timeout=10)
+            response = requests.post(f"{self.url}/api/tools/", json=tool, timeout=10)
             print('register_tools', response.status_code, response.content)
         return
 

@@ -24,11 +24,11 @@ docker-compose up --build
 #python
 import requests
 #대시보드 조회
-url = 'http://localhost:8001/api/v1/monitoring/dashboard'
+url = 'http://localhost:8002/api/v1/monitoring/dashboard'
 res = requests.get(url)
 print(res.json())
 #이상탐지 수행
-url = 'http://localhost:8001/api/v1/workflow/start'
+url = 'http://localhost:8002/api/v1/workflow/start'
 data = {
     'taskId': 'example_task_id',
     'query': '어셈블리 생산라인 최근 이상탐지 해줘'
