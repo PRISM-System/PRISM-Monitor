@@ -37,10 +37,10 @@ RUN pip install --no-cache-dir --upgrade pip pipenv
 # ★ Docker 캐시 최적화
 # 소스 코드(.py)가 아닌 의존성 파일(Pipfile)만 먼저 복사합니다.
 # 이렇게 하면 소스 코드만 변경 시, 매번 pipenv install을 다시 실행하지 않습니다.
-COPY Pipfile Pipfile.lock ./
+COPY Pipfile ./
 
-# --deploy 플래그로 Pipfile.lock을 사용해 정확한 버전의 패키지를 설치합니다.
-RUN pipenv install --deploy
+# Pipfile.lock을 생성하면서 패키지를 설치합니다.
+RUN pipenv install
 
 # -------------------------------------------------------------
 # 5. 소스 코드 및 환경 파일 복사
