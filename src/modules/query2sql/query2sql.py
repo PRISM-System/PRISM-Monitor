@@ -18,10 +18,11 @@ def _query2sql(user_query):
         # Use generate endpoint with messages format and thinking disabled
         res = LLMCallManager.llm_agent_invoke_bimatrix(prompt=prompt, is_json=True)
         print(res)
-        cls = res['class']
-        sub_class = res['subclass']
-        description = res['description']
-        sql_query = res['sql'] 
+        cls = res.get('class')
+        sub_class = res.get('subclass')
+        # Handle both 'description' and '' (empty string) keys for backwards compatibility
+        description = res.get('description') or res.get('') or ''
+        sql_query = res.get('sql') or 'SELECT * FROM df ORDER BY TIMESTAMP DESC LIMIT 100;' 
         if TEST_SCENARIOS_DATA_MAPPING.get(sub_class) is None:
             print(f"알 수 없는 소분류입니다: {sub_class}. 가장 유사한 소분류를 찾습니다.")
             possible_subclasses = list(TEST_SCENARIOS_DATA_MAPPING.keys())
