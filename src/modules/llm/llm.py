@@ -85,7 +85,7 @@ class LLMCallManager:
             "extra_body": extra_body
         }
 
-        url = LLMCallManager.bimatrix_llm_url.rstrip('/') + '/api/generate'
+        url = LLMCallManager.bimatrix_llm_url.rstrip('/') + '/core/api/generate'
         print(f"Calling LLM at URL: {url}")
         print(f"Sending messages format with thinking disabled")
         response = requests.post(url, json=data, timeout=60)
