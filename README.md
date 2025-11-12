@@ -6,13 +6,13 @@
 ### env 준비
 ```
 #.env-local 파일에 작성합니다.
-BIMATRIX_LLM_AGENT_INVOKE_URL=https://grnd.bimatrix.co.kr/django/agi/core/api/agents/Monitoring/invoke/
-BIMATRIX_LLM_URL=https://grnd.bimatrix.co.kr/django/agi/llm-agent/
-PLATFORM_URL=https://grnd.bimatrix.co.kr/django/agi/
 ID=hanyang
 PW=hanyang1234
 USER_ID=user_2222
-OPENROUTER_API_KEY= #임시 백업용 llm 키, 키 존재시 llm 호출 에러시에 openrouter의 무료 모델을 사용합니다
+PYTHONPATH=./prism-core:./
+OPENROUTER_API_KEY=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
+PRISM_CORE_URL=https://grnd.bimatrix.co.kr/django/agi/ # or http://147.47.39.144:8000/ (prsim core url)
+AGENT_NAME=MonitoringAgent
 ```
 ### 실행
 ```
