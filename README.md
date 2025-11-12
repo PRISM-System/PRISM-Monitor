@@ -10,7 +10,7 @@ ID=hanyang
 PW=hanyang1234
 USER_ID=user_2222
 PYTHONPATH=./prism-core:./
-OPENROUTER_API_KEY=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
+OPENROUTER_API_KEY= #무료 llm api key (optional)
 PRISM_CORE_URL=https://grnd.bimatrix.co.kr/django/agi/ # or http://147.47.39.144:8000/ (prsim core url)
 AGENT_NAME=MonitoringAgent
 ```
