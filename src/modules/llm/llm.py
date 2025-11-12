@@ -33,24 +33,34 @@ class LLMCallManager:
         raise ValueError("All LLM strategies failed")
 
     def llm_agent_invoke_bimatrix(prompt, is_json=True, **kwargs):
+        # Disable thinking mode for structured JSON output
+        extra_body = kwargs.get("extra_body", {})
+        if "chat_template_kwargs" not in extra_body:
+            extra_body["chat_template_kwargs"] = {}
+        extra_body["chat_template_kwargs"]["enable_thinking"] = False
+
         data = {
             "prompt": prompt,
             "max_tokens": kwargs.get("max_tokens", 4096),
             "temperature": kwargs.get("temperature", 0.7),
             "use_tools": kwargs.get("use_tools", False),
             "max_tool_calls": kwargs.get("max_tool_calls", 3),
-            "extra_body": kwargs.get("extra_body", {}),
+            "extra_body": extra_body,
             "user_id": kwargs.get("user_id", "default_user"),
             "session_id": kwargs.get("session_id", "default_session"),
             "tool_for_use": kwargs.get("tool_for_use", []),
         }
 
+        print(f"Calling agent invoke at URL: {LLMCallManager.bimatrix_llm_agent_invoke_url}")
+        print(f"extra_body: {data.get('extra_body')}")
         response = requests.post(LLMCallManager.bimatrix_llm_agent_invoke_url, json=data, timeout=60)
+        print(f"Response status: {response.status_code}")
+        print(f"Response text: {response.text[:1000]}")
         try:
             content = response.json()['text']
         except Exception as e:
             print(f"Error parsing response: {e}")
-            print(response.json())
+            print(f"Full response: {response.text}")
             raise ValueError("Failed to parse LLM response")
         if is_json:
             if "```json\n" in content:
@@ -59,22 +69,33 @@ class LLMCallManager:
         return content
 
     def llm_agent_bimatrix(prompt, is_json=True, **kwargs):
-        messages = [
-            {"role": "user", "content": prompt}
-        ]
+        # messages 형식으로 변환
+        messages = [{"role": "user", "content": prompt}]
+
+        # extra_body에 thinking 비활성화 추가
+        extra_body = kwargs.get("extra_body", {})
+        if "chat_template_kwargs" not in extra_body:
+            extra_body["chat_template_kwargs"] = {}
+        extra_body["chat_template_kwargs"]["enable_thinking"] = False
+
         data = {
-            "model": "/root/models/openai/gpt-oss-120b",
             "messages": messages,
-            "max_tokens": kwargs.get("max_tokens", 4096),
+            "max_tokens": kwargs.get("max_tokens", 1024),
             "temperature": kwargs.get("temperature", 0.7),
+            "extra_body": extra_body
         }
 
-        response = requests.post(LLMCallManager.bimatrix_llm_url, json=data, timeout=60)
+        url = LLMCallManager.bimatrix_llm_url.rstrip('/') + '/core/api/generate'
+        print(f"Calling LLM at URL: {url}")
+        print(f"Sending messages format with thinking disabled")
+        response = requests.post(url, json=data, timeout=60)
+        print(f"Response status: {response.status_code}")
+        print(f"Response content: {response.text[:500]}")
         try:
-            content = response.json()['choices'][0]['message']['content']
+            content = response.json()['text']
         except Exception as e:
             print(f"Error parsing response: {e}")
-            print(response.json())
+            print(f"Response JSON: {response.text}")
             raise ValueError("Failed to parse LLM response")
         if is_json:
             if "```json\n" in content:

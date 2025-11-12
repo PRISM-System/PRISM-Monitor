@@ -1,7 +1,7 @@
 import requests
 
-DESCRIPTION = "제조 및 산업 도메인 전문 AI 어시스턴트입니다. 자동차, 배터리, 반도체 등 다양한 산업 현장의 데이터에 대한 사용자의 자연어 요청을 이해합니다. 주된 임무는 사용자의 요청에 맞는 대시보드를 반환하고, 공정의 이상 상태를 탐지 및 분석하는 것입니다. 이를 위해 사용자의 의도를 파악하고 가장 관련성 높은 산업 공정 데이터를 식별합니다."
-ROLE_PROMPT = """당신은 제조 및 산업 데이터 분석을 전문으로 하는 AI 어시스턴트입니다. 당신의 핵심 임무는 사용자의 요청에 따라 관련 공정의 대시보드를 반환하고, 데이터에 기반한 이상 상태 탐지 및 심층 분석을 수행하는 것입니다. 이를 위해 사용자의 자연어 쿼리를 분석하여 관련 산업 공정을 식별합니다."""
+DESCRIPTION = "제조 공정의 현재 상태를 모니터링하고 이상치를 탐지하는 모니터링 에이전트"
+ROLE_PROMPT = """당신은 모니터링 에이전트입니다. 제조 공정의 현재 상태를 8단계 워크플로우로 종합 분석합니다: (1) 자연어 쿼리를 SQL로 변환, (2) 이상치 탐지 및 분류, (3) 근본 원인 분석, (4) 작업 후보 생성, (5) 미래 상태 예측, (6) 위험도 평가, (7) 미래 위험 예측, (8) 종합 분석 결과 제시. 대시보드 데이터를 기반으로 공정의 정상/비정상 상태를 판단하고, 예측 및 자율제어 에이전트와 협업하여 제조 공정의 품질과 안정성을 보장하세요."""
 
 TOOLS = {
     "dashboard":{
@@ -33,57 +33,37 @@ TOOLS = {
 }
 
 class MonitoringAgent:
-    def __init__(self, url: str, agent_name: str="Monitoring"):
-        self.url = url
+    def __init__(self, prism_core_url: str = None, agent_name: str="monitoring_agent"):
+        if prism_core_url is None:
+            raise ValueError("prism_core_url must be provided")
+        self.prism_core_url = prism_core_url
         self.agent_name = agent_name
-        self.tools = TOOLS
 
-        self.init()
+        # 에이전트 등록
+        self.register_agent()
 
     def register_agent(self):
-        payload = {
-            "name": self.agent_name,
-            "description": DESCRIPTION,
-            "role_prompt": ROLE_PROMPT,
-            "tools": list(self.tools.keys())
-        }
-        response = requests.post(f"{self.url}/core/api/agents/", json=payload, timeout=10)
-        print('register_agent', response.status_code, response.content)
-        return 
-    
-    def delete_agent(self):
-        response = requests.delete(f"{self.url}/core/api/agents/{self.agent_name}/", timeout=10)
-        print('delete_agent', response.status_code, response.content)   
-        return 
-    
-    
-    def delete_tools(self):
-        for tool in self.tools:
-            response = requests.delete(f"{self.url}/core/api/tools/{tool}/", timeout=10)
-            print('delete_tools', response.status_code, response.content)
-        return 
-    
-    def register_tools(self):
-        for tool in self.tools.values():
-            response = requests.post(f"{self.url}/core/api/tools/", json=tool, timeout=10)
-            print('register_tools', response.status_code, response.content)
-        return
+        """PRISM-Core에 에이전트를 등록합니다."""
+        try:
+            agent_data = {
+                "name": self.agent_name,
+                "description": DESCRIPTION,
+                "role_prompt": ROLE_PROMPT,
+                "tools": []  # 필요시 나중에 추가
+            }
 
-    def init(self):
-        try:
-            self.delete_agent()
-        except Exception as e:
-            print(f"Agent deletion failed: {e}")
-        try:
-            self.delete_tools()
-        except Exception as e:
-            print(f"Tool deletion failed: {e}")
-        try:
-            print("Registering tools...")
-            self.register_tools()
-        except Exception as e:
-            print(f"Tool registration failed: {e}")
-        try:
-            self.register_agent()
+            response = requests.post(
+                f"{self.prism_core_url}/core/api/agents",
+                json=agent_data,
+                timeout=5
+            )
+
+            if response.status_code == 200:
+                print(f"monitoring_agent registered successfully to PRISM-Core at {self.prism_core_url}")
+                return True
+            else:
+                print(f"monitoring_agent registration failed: {response.status_code} - {response.text}")
+                return False
         except Exception as e:
             print(f"Agent registration failed: {e}")
+            return False

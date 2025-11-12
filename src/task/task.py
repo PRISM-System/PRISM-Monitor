@@ -59,8 +59,8 @@ def workflow_start(task_id: str, query: str):
     except Exception as e:
         print(f"Error during workflow: {e}")
         res = {
-            'summary': str(sub_result),
-            'result': str(sub_result)
+            'summary': f"Workflow execution failed: {str(e)}",
+            'result': log
         }
     res['monitored_timeseries'] = {
         "format": "csv",

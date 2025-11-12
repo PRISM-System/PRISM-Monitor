@@ -7,7 +7,7 @@ def workflow(log):
     ## 제조공정 로그
     {log}
     """
-    analysis = LLMCallManager.invoke(prompt=prompt)
+    analysis = LLMCallManager.invoke(prompt=prompt, is_json=False)
     print('workflow analysis result:', analysis)
 
     prompt = f"""
@@ -15,7 +15,7 @@ def workflow(log):
     ## 제조공정 보고서
     {analysis}
     """
-    summary = LLMCallManager.invoke(prompt=prompt)
+    summary = LLMCallManager.invoke(prompt=prompt, is_json=False)
     print('workflow summary result:', summary)
     return {
         'summary': summary,

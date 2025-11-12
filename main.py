@@ -37,13 +37,23 @@ formatter = logging.Formatter('[%(asctime)s] %(levelname)s in %(module)s: %(mess
 handler.setFormatter(formatter)
 logger.addHandler(handler)
 
-AGENT = MonitoringAgent(os.environ['PLATFORM_URL'])
+# MonitoringAgent를 생성하면 자동으로 PRISM-Core에 등록됩니다
+PRISM_CORE_URL = os.getenv("PRISM_CORE_BASE_URL") or os.getenv("LLM_URL")
+if not PRISM_CORE_URL:
+    raise ValueError("PRISM_CORE_BASE_URL or LLM_URL environment variable must be set")
+# URL 끝의 슬래시 제거
+PRISM_CORE_URL = PRISM_CORE_URL.rstrip('/')
+AGENT = MonitoringAgent(prism_core_url=PRISM_CORE_URL)
 
 TEST_SCENARIO_MODEL = TestScenarioModel()
 TEST_SCENARIO_MODEL.set_models()
 
 
-app = FastAPI()
+app = FastAPI(
+    title="PRISM Monitoring",
+    description="자율 제조 구현을 위한 AI 에이전트 모니터링 모듈",
+    version="1.0"
+)
 
 
 @app.get(
@@ -83,7 +93,6 @@ def app_query2sql(body: Query2SQLRequest):
     logger.info(f"Query to SQL requested: {body}")
     res = query2sql(
         user_query=body.query,
-        bimatrix_llm_url=os.environ['LLM_URL'],
         serialize=True
     )
     return {'result': res}
