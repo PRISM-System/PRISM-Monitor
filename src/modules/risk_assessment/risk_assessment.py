@@ -74,5 +74,7 @@ def prediction_risk(task_instructions, task_instructions_history=''):
         "optimization_suggestions": ["최적화 제안 1", "최적화 제안 2"]
     }}
     """
+    print('lenprompt', len(prompt))
     response = LLMCallManager.invoke(prompt=prompt, max_tokens=len(prompt)+2048)
+    print(response)
     return response

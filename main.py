@@ -37,16 +37,10 @@ formatter = logging.Formatter('[%(asctime)s] %(levelname)s in %(module)s: %(mess
 handler.setFormatter(formatter)
 logger.addHandler(handler)
 
-# MonitoringAgent를 생성하면 자동으로 PRISM-Core에 등록됩니다
-PRISM_CORE_URL = os.getenv("PRISM_CORE_BASE_URL") or os.getenv("LLM_URL")
-if not PRISM_CORE_URL:
-    raise ValueError("PRISM_CORE_BASE_URL or LLM_URL environment variable must be set")
-# URL 끝의 슬래시 제거
-PRISM_CORE_URL = PRISM_CORE_URL.rstrip('/')
-AGENT = MonitoringAgent(prism_core_url=PRISM_CORE_URL)
-
 TEST_SCENARIO_MODEL = TestScenarioModel()
 TEST_SCENARIO_MODEL.set_models()
+
+AGENT = MonitoringAgent(prism_core_url=os.environ["PRISM_CORE_URL"], agent_name=os.environ["AGENT_NAME"])
 
 
 app = FastAPI(
@@ -125,7 +119,6 @@ def app_event_detect(body: EventDetectRequest):
 def app_event_explain(body: EventExplainRequest):
     logger.info(f"Event explanation requested: {body}")
     res = event_explain(
-        llm_url=os.environ['LLM_URL'],
         event_detect_analysis=body.eventDetectAnalysis,
         process_type=body.targetProcess,
     )
@@ -141,7 +134,6 @@ def app_event_explain(body: EventExplainRequest):
 def app_cause_candidates(body: CauseCandidatesRequest):
     logger.info(f"Cause candidates requested: {body}")
     res = event_cause_candidates(
-        llm_url=os.environ['LLM_URL'],
         event_detect_analysis=body.eventDetectAnalysis,
         process_type=body.targetProcess,
     )
@@ -175,7 +167,6 @@ def app_event_precursor(body: PrecursorRequest):
 def app_evaluate_risk(body: EvaluateRiskRequest):
     logger.info(f"Evaluate risk requested: {body}")
     res = evaluate_event_risk(
-        llm_url=os.environ['LLM_URL'],
         event_detect_analysis=body.eventDetectAnalysis
     )
     return {'result': res}
@@ -190,7 +181,6 @@ def app_evaluate_risk(body: EvaluateRiskRequest):
 def app_prediction_risk(body: PredictionRiskRequest):
     logger.info(f"Prediction risk requested: {body}")
     res = prediction_risk(
-        llm_url=os.environ['LLM_URL'],
         task_instructions=body.taskInstructions
     )
     return {'result': res}

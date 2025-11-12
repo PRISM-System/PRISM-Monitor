@@ -3,25 +3,28 @@ import json
 import requests
 
 class LLMCallManager:
-    strategys = ['bimatrix_llm_agent_invoke', 'bimatrix_llm', 'openrouter']
+    strategys = ['llm_agent_invoke', 'llm_invoke', 'openrouter']
     selected_strategy_index = 0
-    bimatrix_llm_agent_invoke_url = os.environ.get('BIMATRIX_LLM_AGENT_INVOKE_URL', '')
-    bimatrix_llm_url = os.environ.get('BIMATRIX_LLM_URL', '')
+    retry_attempts = 3
+    base_url = os.environ['PRISM_CORE_URL'].rstrip('/')
+    agent_name = os.environ['AGENT_NAME']
+    llm_agent_invoke_url = f"{base_url}/core/api/agents/{agent_name}/invoke/"
+    llm_invoke_url = f"{base_url}/llm-agent/"
     openrouter_api_key = os.environ.get('OPENROUTER_API_KEY', '')
     print(f"LLMCallManager initialized with strategies: {strategys}")
 
     def _invoke(*args, **kwds):
         strategy = LLMCallManager.strategys[LLMCallManager.selected_strategy_index]
-        if strategy == 'bimatrix_llm_agent_invoke':
-            return LLMCallManager.llm_agent_invoke_bimatrix(*args, **kwds)
-        elif strategy == 'bimatrix_llm':
-            return LLMCallManager.llm_agent_bimatrix(*args, **kwds)
+        if strategy == 'llm_agent_invoke':
+            return LLMCallManager.llm_agent_invoke(*args, **kwds)
+        elif strategy == 'llm_invoke':
+            return LLMCallManager.llm_invoke(*args, **kwds)
         elif strategy == 'openrouter':
             return LLMCallManager.llm_generate_openrouter(*args, **kwds)
         else:
             raise ValueError(f"Unknown LLM strategy: {strategy}")
         
-    def invoke(*args, **kwds):
+    def invoke_rotate(*args, **kwds):
         for _ in range(len(LLMCallManager.strategys)):
             try:
                 print(f"Trying LLM strategy: {LLMCallManager.strategys[LLMCallManager.selected_strategy_index]}")
@@ -31,8 +34,19 @@ class LLMCallManager:
                 LLMCallManager.selected_strategy_index = (LLMCallManager.selected_strategy_index + 1) % len(LLMCallManager.strategys)
                 continue
         raise ValueError("All LLM strategies failed")
+    
+    def invoke(*args, **kwds):
+        for attempt in range(LLMCallManager.retry_attempts):
+            try:
+                print(f"LLM invoke attempt {attempt + 1}")
+                return LLMCallManager._invoke(*args, **kwds)
+            except Exception as e:
+                print(f"LLM call failed on attempt {attempt + 1}: {e}")
+                if attempt == LLMCallManager.retry_attempts - 1:
+                    raise
+                continue
 
-    def llm_agent_invoke_bimatrix(prompt, is_json=True, **kwargs):
+    def llm_agent_invoke(prompt, is_json=True, **kwargs):
         # Disable thinking mode for structured JSON output
         extra_body = kwargs.get("extra_body", {})
         if "chat_template_kwargs" not in extra_body:
@@ -51,9 +65,9 @@ class LLMCallManager:
             "tool_for_use": kwargs.get("tool_for_use", []),
         }
 
-        print(f"Calling agent invoke at URL: {LLMCallManager.bimatrix_llm_agent_invoke_url}")
+        print(f"Calling agent invoke at URL: {LLMCallManager.llm_agent_invoke_url}")
         print(f"extra_body: {data.get('extra_body')}")
-        response = requests.post(LLMCallManager.bimatrix_llm_agent_invoke_url, json=data, timeout=60)
+        response = requests.post(LLMCallManager.llm_agent_invoke_url, json=data, timeout=60)
         print(f"Response status: {response.status_code}")
         print(f"Response text: {response.text[:1000]}")
         try:
@@ -68,7 +82,7 @@ class LLMCallManager:
             return json.loads(content)
         return content
 
-    def llm_agent_bimatrix(prompt, is_json=True, **kwargs):
+    def llm_invoke(prompt, is_json=True, **kwargs):
         # messages 형식으로 변환
         messages = [{"role": "user", "content": prompt}]
 
@@ -85,7 +99,7 @@ class LLMCallManager:
             "extra_body": extra_body
         }
 
-        url = LLMCallManager.bimatrix_llm_url.rstrip('/') + '/core/api/generate'
+        url = LLMCallManager.llm_invoke_url
         print(f"Calling LLM at URL: {url}")
         print(f"Sending messages format with thinking disabled")
         response = requests.post(url, json=data, timeout=60)

@@ -33,10 +33,10 @@ TOOLS = {
 }
 
 class MonitoringAgent:
-    def __init__(self, prism_core_url: str = None, agent_name: str="monitoring_agent"):
+    def __init__(self, prism_core_url: str = None, agent_name: str="Monitoring"):
         if prism_core_url is None:
             raise ValueError("prism_core_url must be provided")
-        self.prism_core_url = prism_core_url
+        self.prism_core_url = prism_core_url.rstrip('/')
         self.agent_name = agent_name
 
         # 에이전트 등록
@@ -53,7 +53,7 @@ class MonitoringAgent:
             }
 
             response = requests.post(
-                f"{self.prism_core_url}/core/api/agents",
+                f"{self.prism_core_url}/core/api/agents/",
                 json=agent_data,
                 timeout=5
             )
@@ -62,7 +62,7 @@ class MonitoringAgent:
                 print(f"monitoring_agent registered successfully to PRISM-Core at {self.prism_core_url}")
                 return True
             else:
-                print(f"monitoring_agent registration failed: {response.status_code} - {response.text}")
+                print(f"monitoring_agent registration failed: {response.status_code} - {response.content.decode('utf-8')}")
                 return False
         except Exception as e:
             print(f"Agent registration failed: {e}")

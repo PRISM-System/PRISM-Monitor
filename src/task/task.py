@@ -31,7 +31,7 @@ def workflow_start(task_id: str, query: str):
     print(f"event precursor result: {precursor_res}")
 
     try:
-        evaluate_risk_res = evaluate_event_risk(str(detect_res))
+        evaluate_risk_res = evaluate_event_risk(str(detect_res['summary']))
         print(f"event evaluate risk result: {evaluate_risk_res}")
     except Exception as e:
         print(f"Error during evaluate_event_risk: {e}")
@@ -46,10 +46,10 @@ def workflow_start(task_id: str, query: str):
 
     log = {
         'query': query,
-        'query2sqlResult': query2sql_res,
-        'detectResult': detect_res,
+        # 'query2sqlResult': query2sql_res,
+        # 'detectResult': detect_res,
         'explainResult': explain_res,
-        'causeCandidatesResult': cause_candidates_res,
+        # 'causeCandidatesResult': cause_candidates_res,
         'precursorResult': precursor_res,
         'evaluateRiskResult': evaluate_risk_res,
         'predictionRiskResult': prediction_risk_res

@@ -16,7 +16,7 @@ def _query2sql(user_query):
         manager = PromptManager(Path(__file__).parent.resolve() / 'scenarios_prompt_semionly.yaml')
         prompt = manager.get_full_prompt(user_query)
         # Use generate endpoint with messages format and thinking disabled
-        res = LLMCallManager.llm_agent_invoke_bimatrix(prompt=prompt, is_json=True)
+        res = LLMCallManager.invoke(prompt=prompt, is_json=True)
         print(res)
         cls = res.get('class')
         sub_class = res.get('subclass')
